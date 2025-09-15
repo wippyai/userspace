@@ -1,0 +1,46 @@
+version: "1.0"
+namespace: userspace.kb9.views
+
+entries:
+  # userspace.kb9.views:browse
+  - name: browse
+    kind: template.jet
+    meta:
+      name: browse_kb9
+      type: view.page
+      title: Browse KB9 Content
+      icon: tabler:hierarchy-2
+      description: Browse KB9 knowledge base content in hierarchical tree structure
+      content_type: text/html
+      secure: true
+    source: file://browse.jet
+    set: app.views.common:templates
+    
+  # userspace.kb9.views:create
+  - name: create
+    kind: template.jet
+    meta:
+      name: create_kb9
+      type: view.page
+      title: Create KB9 Knowledge Base
+      icon: tabler:database-import
+      description: Form to create a new configurable KB9 knowledge base with pluggable contracts
+      content_type: text/html
+      secure: true
+    source: file://create.jet
+    set: app.views.common:templates
+    
+  # userspace.kb9.views:manage
+  - name: manage
+    kind: template.jet
+    meta:
+      name: manage_kb9
+      type: view.page
+      title: Manage KB9 Knowledge Base
+      icon: tabler:database-import
+      description: Interface to manage KB9 knowledge base records and configuration
+      content_type: text/html
+      secure: true
+    source: file://manage.jet
+    set: app.views.common:templates
+    

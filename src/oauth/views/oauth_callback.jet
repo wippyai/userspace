@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorization</title>
+    <style>
+        /* CSS Custom Properties for unified timing */
+        :root {
+            --timing-fast: 0.2s;
+            --timing-normal: 0.3s;
+            --timing-slow: 0.6s;
+            --timing-loading: 1.2s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: #0f172a;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #f8fafc;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 3rem 2rem;
+            min-height: 300px;
+            min-width: 400px;
+            position: relative;
+        }
+
+        .icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            position: relative;
+            transition: all var(--timing-normal) ease;
+            /* Hardware acceleration */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+        }
+
+        .loading {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: #64748b;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            /* Ensure perfect centering of loading content */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .success {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: #ffffff;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+        }
+
+        .error {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            color: #ffffff;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+        }
+
+        /* Unified 1.2s timing for all animations */
+        @keyframes spin {
+            from { 
+                transform: rotate(0deg) translate3d(0, 0, 0); 
+            }
+            to { 
+                transform: rotate(360deg) translate3d(0, 0, 0); 
+            }
+        }
+
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translate3d(0, 0, 0);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05) translate3d(0, 0, 0);
+            }
+            70% {
+                transform: scale(0.9) translate3d(0, 0, 0);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translate3d(0, 0, 0);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% {
+                transform: translateX(0) translate3d(0, 0, 0);
+            }
+            10%, 30%, 50%, 70%, 90% {
+                transform: translateX(-2px) translate3d(0, 0, 0);
+            }
+            20%, 40%, 60%, 80% {
+                transform: translateX(2px) translate3d(0, 0, 0);
+            }
+        }
+
+        @keyframes progressPulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1) translate3d(0, 0, 0);
+            }
+            50% {
+                opacity: 0.6;
+                transform: scale(1.2) translate3d(0, 0, 0);
+            }
+        }
+
+        /* Pure CSS spinner with unified timing */
+        .spinner {
+            animation: spin var(--timing-loading) linear infinite;
+            /* Perfect centering without text dependencies */
+            display: inline-block;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            /* Explicit centering for perfect rotation axis */
+            transform-origin: center center;
+        }
+
+        /* Success icon animation */
+        .success-check {
+            font-size: 2.5rem;
+            animation: bounceIn var(--timing-slow) ease;
+            will-change: transform, opacity;
+            transform: translate3d(0, 0, 0);
+        }
+
+        /* Error icon animation */
+        .error-x {
+            font-size: 2.5rem;
+            animation: shake 0.5s ease, bounceIn var(--timing-slow) ease;
+            will-change: transform, opacity;
+            transform: translate3d(0, 0, 0);
+        }
+
+        /* Remove character-based spinner styles - no longer needed */
+
+        /* Pure CSS border spinner - mathematically centered */
+        .css-spinner {
+            width: 2.5rem;
+            height: 2.5rem;
+            border: 3px solid rgba(100, 116, 139, 0.2);
+            border-top: 3px solid #64748b;
+            border-radius: 50%;
+            display: inline-block;
+            /* Perfect mathematical centering */
+            transform-origin: center center;
+            /* Hardware acceleration */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 0.75rem;
+            line-height: 1.2;
+            min-height: 2.25rem;
+            transition: all var(--timing-normal) ease;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: #cbd5e1;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+            min-height: 1.5rem;
+            transition: all var(--timing-normal) ease;
+        }
+
+        .auto-close {
+            font-size: 0.875rem;
+            color: #64748b;
+            background: rgba(51, 65, 85, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            backdrop-filter: blur(4px);
+            min-height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--timing-normal) ease;
+        }
+
+        /* Smooth state morphing with consistent transitions */
+        .state {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity var(--timing-normal) ease, transform var(--timing-normal) ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transform: translate3d(0, 10px, 0);
+            will-change: opacity, transform;
+        }
+
+        .state.active {
+            opacity: 1;
+            position: relative;
+            transform: translate3d(0, 0, 0);
+        }
+
+        /* Enhanced error styling */
+        .error .subtitle {
+            color: #fecaca;
+        }
+
+        /* Sequential progress indicator */
+        .progress {
+            position: absolute;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%) translate3d(0, 0, 0);
+            display: flex;
+            gap: 0.25rem;
+            will-change: transform;
+        }
+
+        .progress-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(100, 116, 139, 0.3);
+            transition: all var(--timing-normal) ease;
+            will-change: transform, background-color, opacity;
+            transform: translate3d(0, 0, 0);
+        }
+
+        .progress-dot.active {
+            background: #3b82f6;
+            animation: progressPulse var(--timing-loading) infinite;
+        }
+
+        .progress-dot.completed {
+            background: #10b981;
+            transform: scale(1.1) translate3d(0, 0, 0);
+        }
+
+        .progress-dot.failed {
+            background: #ef4444;
+            transform: scale(1.1) translate3d(0, 0, 0);
+        }
+
+        /* Performance optimizations */
+        .icon, .spinner, .progress-dot, .state {
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Loading State -->
+    <div id="loading-state" class="state active">
+        <div class="icon loading">
+            <!-- Pure CSS border spinner - no font dependencies -->
+            <div class="css-spinner spinner"></div>
+        </div>
+        <h1>Connecting</h1>
+        <div class="subtitle">Completing your authorization...</div>
+        <div class="auto-close">Processing connection</div>
+    </div>
+
+    <!-- Success State -->
+    <div id="success-state" class="state">
+        <div class="icon success">
+            <div class="success-check">✓</div>
+        </div>
+        <h1>Connected</h1>
+        <div class="subtitle">Authorization completed successfully</div>
+        <div class="auto-close">This window will close shortly</div>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="state">
+        <div class="icon error">
+            <div class="error-x">✗</div>
+        </div>
+        <h1>Connection Failed</h1>
+        <div class="subtitle" id="error-message">Unable to complete authorization</div>
+        <div class="auto-close">This window will close shortly</div>
+    </div>
+
+    <!-- Progress indicator -->
+    <div class="progress">
+        <div class="progress-dot active" id="dot1"></div>
+        <div class="progress-dot" id="dot2"></div>
+        <div class="progress-dot" id="dot3"></div>
+    </div>
+</div>
+
+<script>
+    const urlParams = {
+    {{ if query_params.code }}code: "{{ query_params.code }}",{{ end }}
+    {{ if query_params.state }}state: "{{ query_params.state }}",{{ end }}
+    {{ if query_params.error }}error: "{{ query_params.error }}",{{ end }}
+    {{ if query_params.error_description }}error_description: "{{ query_params.error_description }}",{{ end }}
+    {{ if query_params.provider }}provider: "{{ query_params.provider }}"{{ else }}provider: "oauth"{{ end }}
+    };
+
+    function setState(stateId) {
+        // Hide all states with smooth transition
+        document.querySelectorAll('.state').forEach(state => {
+            state.classList.remove('active');
+        });
+
+        // Show target state with delay for smooth morphing
+        setTimeout(() => {
+            document.getElementById(stateId).classList.add('active');
+        }, 50);
+    }
+
+    function updateProgress(stage) {
+        const dots = document.querySelectorAll('.progress-dot');
+        
+        // Reset all dots
+        dots.forEach(dot => {
+            dot.classList.remove('active', 'completed', 'failed');
+        });
+
+        switch (stage) {
+            case 'loading':
+                // Dot 1: Active (loading)
+                document.getElementById('dot1').classList.add('active');
+                break;
+            case 'processing':
+                // Dot 1: Completed, Dot 2: Active (processing)
+                document.getElementById('dot1').classList.add('completed');
+                document.getElementById('dot2').classList.add('active');
+                break;
+            case 'success':
+                // Dot 1 & 2: Completed, Dot 3: Completed (success)
+                document.getElementById('dot1').classList.add('completed');
+                document.getElementById('dot2').classList.add('completed');
+                document.getElementById('dot3').classList.add('completed');
+                break;
+            case 'error':
+                // Dot 1: Completed, Dot 2: Failed, Dot 3: Inactive
+                document.getElementById('dot1').classList.add('completed');
+                document.getElementById('dot2').classList.add('failed');
+                break;
+        }
+    }
+
+    function showSuccess() {
+        updateProgress('success');
+        setState('success-state');
+
+        // Send simple success message to parent window
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'oauth_result',
+                success: true,
+                state_token: urlParams.state
+            }, '*');
+        }
+
+        // Store simple success in localStorage as fallback
+        localStorage.setItem(`oauth_result_${urlParams.state}`, JSON.stringify({
+            success: true
+        }));
+    }
+
+    function showError(error) {
+        updateProgress('error');
+        setState('error-state');
+        document.getElementById('error-message').textContent = error;
+
+        // Send error message to parent window
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'oauth_result',
+                success: false,
+                error: error,
+                state_token: urlParams.state
+            }, '*');
+        }
+
+        // Store error in localStorage as fallback
+        localStorage.setItem(`oauth_result_${urlParams.state}`, JSON.stringify({
+            success: false,
+            error: error
+        }));
+    }
+
+    function closeWindow() {
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'oauth_window_closing',
+                state_token: urlParams.state
+            }, '*');
+        }
+        window.close();
+    }
+
+    async function processCallback() {
+        // Initialize with loading state
+        updateProgress('loading');
+
+        if (urlParams.error) {
+            setTimeout(() => showError('Authorization was denied'), 800);
+            return;
+        }
+
+        if (!urlParams.code) {
+            setTimeout(() => showError('Authorization code missing'), 800);
+            return;
+        }
+
+        if (!urlParams.state) {
+            setTimeout(() => showError('Invalid request'), 800);
+            return;
+        }
+
+        try {
+            // Show processing stage after initial delay
+            setTimeout(() => {
+                updateProgress('processing');
+            }, 600);
+
+            // Add a minimum delay for better UX and to show progress
+            await new Promise(resolve => setTimeout(resolve, 1200));
+
+            const response = await fetch('/api/public/userspace/oauth/callback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: urlParams.code,
+                    state: urlParams.state,
+                    provider: urlParams.provider
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Network error');
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                showSuccess();
+            } else {
+                showError(result.error || 'Authorization failed');
+            }
+
+        } catch (error) {
+            showError('Connection error');
+        }
+    }
+
+    window.addEventListener('load', () => {
+        processCallback();
+
+        // Auto-close after showing result
+        setTimeout(() => {
+            if (document.getElementById('success-state').classList.contains('active') ||
+                document.getElementById('error-state').classList.contains('active')) {
+                closeWindow();
+            }
+        }, 3000);
+    });
+</script>
+</body>
+</html>

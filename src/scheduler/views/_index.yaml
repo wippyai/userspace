@@ -1,0 +1,21 @@
+version: "1.0"
+namespace: userspace.scheduler.views
+
+entries:
+  # userspace.scheduler.views:dashboard
+  - name: dashboard
+    kind: template.jet
+    meta:
+      name: schedules
+      type: view.page
+      title: Schedules
+      group: Keeper
+      icon: tabler:calendar-time
+      description: Manage and view scheduled tasks
+      order: 400
+      content_type: text/html
+      announced: true
+      secure: true
+    source: file://dashboard.jet
+    set: app.views.common:templates
+    

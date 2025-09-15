@@ -1,0 +1,356 @@
+version: "1.0"
+namespace: userspace.drafling.traits
+
+entries:
+  # userspace.drafling.traits:context_prompt
+  - name: context_prompt
+    kind: function.lua
+    meta:
+      name: Project Context Prompt
+      comment: Dynamic prompt function that generates current project context for agents
+      tags:
+        - drafling
+        - project
+        - context
+        - prompt
+        - dynamic
+      description: Generates real-time project context including title, status, template categories, and entry types for agent prompts
+    source: file://context_prompt.lua
+    modules:
+      - ctx
+      - security
+      - json
+    imports:
+      doc_repo: userspace.drafling.persist:doc_repo
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handle
+    
+  # userspace.drafling.traits:create_entry
+  - name: create_entry
+    kind: function.lua
+    meta:
+      type: tool
+      title: Create Entry
+      tags:
+        - drafling
+        - project
+        - create
+        - entry
+      description: Create a new entry in the project with template validation
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "description": "Category name (accepts display names like 'Executive Summary')"
+            },
+            "entry_type": {
+              "type": "string",
+              "description": "Entry type (accepts display names like 'Value Proposition')"
+            },
+            "content": {
+              "type": "string",
+              "description": "Entry content"
+            },
+            "title": {
+              "type": "string",
+              "description": "Entry title (optional)"
+            },
+            "status": {
+              "type": "string",
+              "description": "Entry status (optional, accepts display names, uses template default if not provided)"
+            }
+          },
+          "required": ["category", "entry_type", "content"]
+        }
+      llm_alias: CreateDraflingEntry
+      llm_description: Create a new entry in the specified category. Validates that the entry type is allowed in the category according to template rules.
+    source: file://create_entry.lua
+    modules:
+      - ctx
+      - json
+      - security
+    imports:
+      doc_reader: userspace.drafling.persist:doc_reader
+      template_helper: userspace.drafling.traits:template_helper
+      template_registry: userspace.drafling.discovery:template_registry
+      writer: userspace.drafling.persist:writer
+    method: handle
+    
+  # userspace.drafling.traits:delete_entry
+  - name: delete_entry
+    kind: function.lua
+    meta:
+      type: tool
+      title: Delete Entry
+      tags:
+        - drafling
+        - project
+        - delete
+        - entry
+      description: Delete an entry from the project
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "entry_id": {
+              "type": "string",
+              "description": "Entry ID to delete"
+            }
+          },
+          "required": ["entry_id"]
+        }
+      llm_alias: DeleteDraflingEntry
+      llm_description: Delete an entry from the project. This action cannot be undone.
+    source: file://delete_entry.lua
+    modules:
+      - ctx
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handle
+    
+  # userspace.drafling.traits:drafling
+  - name: drafling
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      comment: Adds drafling project management read-only capabilities
+      tags:
+        - drafling
+        - project
+        - management
+        - readonly
+      icon: tabler:file-text
+    prompt: |-
+      You have access to project viewing tools for the current drafling project. Use these tools to view, filter, and analyze project content efficiently. The project context is already loaded and available to your tools.
+    
+      If you need to understand the project template structure and available categories/entry types, use the ViewProjectStructure tool.
+    tools:
+      - userspace.drafling.traits:view_project
+      - userspace.drafling.traits:view_project_structure
+    
+  # userspace.drafling.traits:drafling_editor
+  - name: drafling_editor
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      comment: Adds drafling project management editing capabilities, context specific
+      tags:
+        - drafling
+        - project
+        - management
+        - editor
+        - crud
+      icon: tabler:edit
+    prompt: |-
+      You have access to comprehensive project management tools for the current drafling project. You can view, create, update, and delete project content while respecting template constraints. Use these tools to help manage and organize project content effectively.
+    
+      Important guidelines:
+      - Always use display names when referring to categories, entry types, and statuses
+      - Respect template constraints - only create entry types allowed in each category
+      - When updating entries, you can modify any combination of title, content, status, or content_type
+      - Use text_replace for simple find/replace operations in content
+      - Project metadata is read-only - you cannot modify it
+    
+      If any create/update operations fail or you need to understand the correct template structure, use ViewProjectStructure to see available categories, entry types, and their configurations.
+    tools:
+      - userspace.drafling.traits:view_project
+      - userspace.drafling.traits:view_project_structure
+      - userspace.drafling.traits:create_entry
+      - userspace.drafling.traits:update_entry
+      - userspace.drafling.traits:delete_entry
+      - userspace.drafling.traits:update_project
+    prompt_func_id: userspace.drafling.traits:context_prompt
+    
+  # userspace.drafling.traits:template_helper
+  - name: template_helper
+    kind: library.lua
+    meta:
+      name: Template Helper
+      comment: Helper library for template display name mapping and validation
+      tags:
+        - drafling
+        - template
+        - mapping
+        - helper
+      description: Provides mapping between display names and internal values for templates, plus validation functions
+    source: file://template_helper.lua
+    
+  # userspace.drafling.traits:update_entry
+  - name: update_entry
+    kind: function.lua
+    meta:
+      type: tool
+      title: Update Entry
+      tags:
+        - drafling
+        - project
+        - update
+        - entry
+      description: Update an existing entry's content, title, status, or content type
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "entry_id": {
+              "type": "string",
+              "description": "Entry ID to update"
+            },
+            "title": {
+              "type": "string",
+              "description": "New title (optional)"
+            },
+            "content": {
+              "type": "string",
+              "description": "New content (optional)"
+            },
+            "status": {
+              "type": "string",
+              "description": "New status (optional, accepts display names like 'In Progress')"
+            },
+            "content_type": {
+              "type": "string",
+              "description": "New content type (optional, e.g. 'text/markdown', 'text/plain')"
+            },
+            "text_replace": {
+              "type": "object",
+              "description": "Find and replace in content (optional)",
+              "properties": {
+                "find": {
+                  "type": "string",
+                  "description": "Text to find"
+                },
+                "replace": {
+                  "type": "string",
+                  "description": "Replacement text"
+                }
+              },
+              "required": ["find", "replace"]
+            }
+          },
+          "required": ["entry_id"]
+        }
+      llm_alias: UpdateDraflingEntry
+      llm_description: Update an existing entry. Can modify title, content, status, content type, or perform text replacement. All fields except entry_id are optional.
+    source: file://update_entry.lua
+    modules:
+      - ctx
+      - json
+      - security
+    imports:
+      doc_reader: userspace.drafling.persist:doc_reader
+      template_helper: userspace.drafling.traits:template_helper
+      template_registry: userspace.drafling.discovery:template_registry
+      writer: userspace.drafling.persist:writer
+    method: handle
+    
+  # userspace.drafling.traits:update_project
+  - name: update_project
+    kind: function.lua
+    meta:
+      type: tool
+      title: Update Project
+      tags:
+        - drafling
+        - project
+        - update
+      description: Update project-level information like title, description, or status
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "New project title (optional)"
+            },
+            "description": {
+              "type": "string",
+              "description": "New project description (optional)"
+            },
+            "status": {
+              "type": "string",
+              "description": "New project status (optional)"
+            }
+          }
+        }
+      llm_alias: UpdateProject
+      llm_description: Update project information. All fields are optional - provide only the fields you want to change.
+    source: file://update_project.lua
+    modules:
+      - ctx
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handle
+    
+  # userspace.drafling.traits:view_project
+  - name: view_project
+    kind: function.lua
+    meta:
+      type: tool
+      title: View Project Content
+      tags:
+        - drafling
+        - project
+        - view
+        - filter
+      description: View and filter project content with smart category and status mapping
+      input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"categories\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Filter by category names (accepts display names)\"\n    },\n    \"entry_types\": {\n      \"type\": \"array\", \n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Filter by entry types (accepts display names)\"\n    },\n    \"statuses\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"}, \n      \"description\": \"Filter by entry statuses (accepts display names)\"\n    },\n    \"format\": {\n      \"type\": \"string\",\n      \"enum\": [\"markdown\", \"xml\"],\n      \"description\": \"Output format\",\n      \"default\": \"markdown\"\n    },\n    \"include_metadata\": {\n      \"type\": \"boolean\",\n      \"description\": \"Include metadata in output\",\n      \"default\": false\n    }\n  }\n}\n"
+      llm_alias: ViewProject
+      llm_description: View and filter the current project's content. Supports filtering by categories, entry types, and statuses using display names. Returns formatted project data.
+    source: file://view_project.lua
+    modules:
+      - ctx
+      - json
+      - security
+    imports:
+      doc_reader: userspace.drafling.persist:doc_reader
+      template_helper: userspace.drafling.traits:template_helper
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handle
+    
+  # userspace.drafling.traits:view_project_structure
+  - name: view_project_structure
+    kind: function.lua
+    meta:
+      type: tool
+      title: View Project Structure
+      tags:
+        - drafling
+        - project
+        - template
+        - structure
+      description: View the template structure showing available categories, entry types, and configurations
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": ["markdown", "json"],
+              "description": "Output format",
+              "default": "markdown"
+            },
+            "include_internal_names": {
+              "type": "boolean",
+              "description": "Include internal names alongside display names",
+              "default": false
+            }
+          }
+        }
+      llm_alias: ViewProjectStructure
+      llm_description: View the project template structure including all available categories, entry types, statuses, and their configurations. Use this when you need to understand what entry types are allowed in each category or when create/update operations fail.
+    source: file://view_project_structure.lua
+    modules:
+      - ctx
+      - json
+      - security
+    imports:
+      doc_reader: userspace.drafling.persist:doc_reader
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handle
+    

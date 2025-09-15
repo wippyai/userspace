@@ -1,0 +1,108 @@
+version: "1.0"
+namespace: userspace.scheduler.binding
+
+entries:
+  # userspace.scheduler.binding:create_schedule_func
+  - name: create_schedule_func
+    kind: function.lua
+    meta:
+      comment: Create a new scheduled task
+      tags:
+        - scheduler
+        - create
+      description: Creates a new scheduled task with validation and next run calculation
+    source: file://create_schedule_func.lua
+    modules:
+      - security
+      - time
+    imports:
+      schedule_calculator: userspace.scheduler.interval:schedule_calculator
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: handle
+    
+  # userspace.scheduler.binding:delete_schedule_func
+  - name: delete_schedule_func
+    kind: function.lua
+    meta:
+      comment: Delete a scheduled task
+      tags:
+        - scheduler
+        - delete
+      description: Deletes a scheduled task with access validation
+    source: file://delete_schedule_func.lua
+    modules:
+      - security
+    imports:
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: handle
+    
+  # userspace.scheduler.binding:get_schedule_func
+  - name: get_schedule_func
+    kind: function.lua
+    meta:
+      comment: Get scheduled task details
+      tags:
+        - scheduler
+        - read
+      description: Retrieves scheduled task information with access validation
+    source: file://get_schedule_func.lua
+    modules:
+      - security
+    imports:
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: handle
+    
+  # userspace.scheduler.binding:list_schedules_func
+  - name: list_schedules_func
+    kind: function.lua
+    meta:
+      comment: List scheduled tasks
+      tags:
+        - scheduler
+        - list
+      description: Lists scheduled tasks with filtering and pagination
+    source: file://list_schedules_func.lua
+    modules:
+      - security
+    imports:
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: handle
+    
+  # userspace.scheduler.binding:service
+  - name: service
+    kind: contract.binding
+    meta:
+      comment: Default implementation of scheduler service contract
+      tags:
+        - scheduler
+        - userspace
+        - implementation
+      description: Provides standard implementation of task scheduling service with access control and schedule calculation
+    contracts:
+      - contract: userspace.scheduler:scheduler
+        default: true
+        methods:
+          create_schedule: userspace.scheduler.binding:create_schedule_func
+          delete_schedule: userspace.scheduler.binding:delete_schedule_func
+          get_schedule: userspace.scheduler.binding:get_schedule_func
+          list_schedules: userspace.scheduler.binding:list_schedules_func
+          update_schedule: userspace.scheduler.binding:update_schedule_func
+    
+  # userspace.scheduler.binding:update_schedule_func
+  - name: update_schedule_func
+    kind: function.lua
+    meta:
+      comment: Update scheduled task
+      tags:
+        - scheduler
+        - update
+      description: Updates scheduled task fields with validation and recalculation
+    source: file://update_schedule_func.lua
+    modules:
+      - security
+      - time
+    imports:
+      schedule_calculator: userspace.scheduler.interval:schedule_calculator
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: handle
+    

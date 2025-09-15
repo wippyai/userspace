@@ -1,0 +1,670 @@
+version: "1.0"
+namespace: userspace.kb9
+
+entries:
+  # userspace.kb9:consts
+  - name: consts
+    kind: library.lua
+    meta:
+      comment: KB9 constants
+      tags:
+        - kb9
+        - constants
+    source: file://consts.lua
+    
+  # userspace.kb9:kb9_contract
+  - name: kb9_contract
+    kind: contract.definition
+    meta:
+      comment: Main KB9 knowledge base contract for configuration and operations
+      tags:
+        - kb9
+        - knowledge-base
+        - configurable
+    methods:
+      - name: get_config
+        description: |
+          Get the current configuration of the KB9 knowledge base.
+          Calling: get_config(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {},
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": true},
+                    "embed_contract": {
+                      "type": "object",
+                      "properties": {
+                        "binding_id": {"type": "string"},
+                        "options": {"type": "object"}
+                      },
+                      "required": ["binding_id", "options"]
+                    },
+                    "query_contract": {
+                      "type": "object",
+                      "properties": {
+                        "binding_id": {"type": "string"},
+                        "options": {"type": "object"}
+                      },
+                      "required": ["binding_id", "options"]
+                    }
+                  },
+                  "required": ["success", "embed_contract", "query_contract"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": false},
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {"type": "string"},
+                        "message": {"type": "string"},
+                        "details": {"type": "object"}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["success", "error"]
+                }
+                ]
+              }
+            format: application/schema+json
+      - name: update_config
+        description: |
+          Update the configuration of the KB9 knowledge base.
+          Calling: update_config(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "embed_contract": {
+                    "type": "object",
+                    "properties": {
+                      "binding_id": {"type": "string"},
+                      "options": {"type": "object"}
+                    },
+                    "required": ["binding_id", "options"]
+                  },
+                  "query_contract": {
+                    "type": "object",
+                    "properties": {
+                      "binding_id": {"type": "string"},
+                      "options": {"type": "object"}
+                    },
+                    "required": ["binding_id", "options"]
+                  }
+                }
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": true}
+                  },
+                  "required": ["success"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": false},
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {"type": "string"},
+                        "message": {"type": "string"},
+                        "details": {"type": "object"}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["success", "error"]
+                }
+                ]
+              }
+            format: application/schema+json
+      - name: browse
+        description: |
+          Browse the knowledge base tree structure with filtering and pagination.
+          Returns nodes without content by default for efficient tree navigation.
+          Supports multiple lookup modes: by node ID(s), parent relationships, path filtering, or search.
+          Calling: browse(request_dto)
+        input_schemas:
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"node_id\": {\n      \"type\": \"string\",\n      \"description\": \"Get single node by ID (overrides other filters)\"\n    },\n    \"node_ids\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Get multiple nodes by IDs (overrides other filters)\"\n    },\n    \"parent_id\": {\n      \"type\": \"string\",\n      \"description\": \"Get direct children of this parent node\"\n    },\n    \"path\": {\n      \"type\": \"string\",\n      \"description\": \"Filter nodes under this path (e.g. '00000100' or '00000100.00000200')\"\n    },\n    \"exact_path\": {\n      \"type\": \"string\",\n      \"description\": \"Get node with exact path match\"\n    },\n    \"node_types\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Filter by node types (e.g. ['document', 'summary'])\"\n    },\n    \"search_query\": {\n      \"type\": \"string\",\n      \"description\": \"Full-text search query\"\n    },\n    \"include_content\": {\n      \"type\": \"boolean\",\n      \"default\": false,\n      \"description\": \"Whether to include actual content (expensive)\"\n    },\n    \"include_metadata\": {\n      \"type\": \"boolean\", \n      \"default\": true,\n      \"description\": \"Whether to include node metadata\"\n    },\n    \"with_children_count\": {\n      \"type\": \"boolean\",\n      \"default\": true, \n      \"description\": \"Whether to calculate children counts (slightly expensive)\"\n    },\n    \"limit\": {\n      \"type\": \"integer\",\n      \"default\": 50,\n      \"minimum\": 1,\n      \"maximum\": 500,\n      \"description\": \"Maximum nodes to return\"\n    },\n    \"offset\": {\n      \"type\": \"integer\",\n      \"default\": 0,\n      \"minimum\": 0,\n      \"description\": \"Number of nodes to skip\"\n    },\n    \"order_by\": {\n      \"type\": \"string\",\n      \"enum\": [\"path\", \"created_at\", \"updated_at\", \"node_type\"],\n      \"default\": \"path\",\n      \"description\": \"Sort order for results\"\n    }\n  }\n}\n"
+            format: application/schema+json
+      - name: get_stats
+        description: |
+          Get knowledge base statistics and metadata overview.
+          Returns node counts, type distributions, and basic metrics.
+          Calling: get_stats(request_dto)
+        input_schemas:
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"include_content_size\": {\n      \"type\": \"boolean\", \n      \"default\": false,\n      \"description\": \"Whether to calculate total content and metadata size (expensive)\"\n    }                 \n  },\n  \"default\": {}\n}\n"
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "success": {"type": "boolean", "const": true},
+                      "nodes": {
+                        "type": "object",
+                        "properties": {
+                          "total": {"type": "integer"},
+                          "with_content": {"type": "integer"},
+                          "total_content_size": {
+                            "type": "integer",
+                            "description": "Total character count in content fields (only if include_content_size=true)"
+                          },
+                          "total_metadata_size": {
+                            "type": "integer",
+                            "description": "Total character count in metadata fields (only if include_content_size=true)"
+                          }
+                        },
+                        "required": ["total", "with_content"]
+                      },
+                      "node_types": {
+                        "type": "object",
+                        "additionalProperties": {"type": "integer"},
+                        "description": "Count by node type (dynamic keys)"
+                      },
+                      "date_range": {
+                        "type": "object",
+                        "properties": {
+                          "first_created": {"type": "string", "format": "date-time"},
+                          "last_updated": {"type": "string", "format": "date-time"}
+                        },
+                        "required": ["first_created", "last_updated"]
+                      }
+                    },
+                    "required": ["success", "nodes", "node_types", "date_range"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "success": {"type": "boolean", "const": false},
+                      "error": {
+                        "type": "object",
+                        "properties": {
+                          "code": {"type": "string"},
+                          "message": {"type": "string"},
+                          "details": {"type": "object"}
+                        },
+                        "required": ["code", "message"]
+                      }
+                    },
+                    "required": ["success", "error"]
+                  }
+                ]
+              }
+            format: application/schema+json
+      - name: execute_commands
+        description: |
+          Execute one or more KB9 operations (create, update, delete nodes/edges, etc.).
+          Commands are sent to the KB9 process for transactional execution.
+          Calling: execute_commands(request_dto)
+        input_schemas:
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"commands\": {\n      \"type\": \"array\",\n      \"description\": \"Array of commands to execute\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"type\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"CREATE_NODE\",\n              \"UPDATE_NODE\", \n              \"DELETE_NODE\",\n              \"DELETE_NODES\",\n              \"MOVE_NODE\",\n              \"CREATE_EDGE\",\n              \"UPDATE_EDGE\",\n              \"DELETE_EDGE\", \n              \"DELETE_EDGES\",\n              \"UPSERT_EMBEDDING\",\n              \"DELETE_EMBEDDING\"\n            ]\n          },\n          \"payload\": {\n            \"type\": \"object\",\n            \"additionalProperties\": true\n          }\n        },\n        \"required\": [\"type\", \"payload\"]\n      },\n      \"minItems\": 1\n    }\n  },\n  \"required\": [\"commands\"]\n}\n"
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "success": {"type": "boolean", "const": true},
+                      "ops_executed": {
+                        "type": "integer",
+                        "description": "Total number of operations executed"
+                      }
+                    },
+                    "required": ["success", "ops_executed"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "success": {"type": "boolean", "const": false},
+                      "error": {
+                        "type": "object",
+                        "properties": {
+                          "code": {"type": "string"},
+                          "message": {"type": "string"}
+                        },
+                        "required": ["code", "message"]
+                      }
+                    },
+                    "required": ["success", "error"]
+                  }
+                ]
+              }
+            format: application/schema+json
+    
+  # userspace.kb9:kb9_embed_contract
+  - name: kb9_embed_contract
+    kind: contract.definition
+    meta:
+      comment: Contract for KB9 embed implementations (context required)
+      tags:
+        - kb9
+        - embed
+    methods:
+      - name: embed
+        description: |
+          Process content and return KB operations to persist embeddings.
+          KB ID comes from context. Returns ops compatible with ops.lua handlers.
+          Calling: embed(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "Content to embed"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "description": "MIME type of content"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Embed-specific metadata"
+                  },
+                  "options": {
+                    "type": "object",
+                    "description": "Embed-specific options"
+                  }
+                },
+                "required": ["content", "content_type", "options"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": true},
+                    "ops": {
+                      "type": "array",
+                      "description": "KB operations to execute",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {"type": "string"},
+                          "payload": {"type": "object"}
+                        },
+                        "required": ["type", "payload"]
+                      }
+                    }
+                  },
+                  "required": ["success", "ops"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": false},
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {"type": "string"},
+                        "message": {"type": "string"},
+                        "details": {"type": "object"}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["success", "error"]
+                }
+                ]
+              }
+            format: application/schema+json
+    
+  # userspace.kb9:kb9_init_contract
+  - name: kb9_init_contract
+    kind: contract.definition
+    meta:
+      comment: Contract for plugin initialization (context required)
+      tags:
+        - kb9
+        - initialization
+    methods:
+      - name: init
+        description: |
+          Initialize the plugin for a specific KB instance.
+          KB ID comes from context. Returns ops compatible with ops.lua handlers.
+          Calling: init(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "options": {
+                    "type": "object",
+                    "description": "Initialization options for the plugin"
+                  }
+                },
+                "required": ["options"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": true},
+                    "ops": {
+                      "type": "array",
+                      "description": "KB operations to execute during initialization",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {"type": "string"},
+                          "payload": {"type": "object"}
+                        },
+                        "required": ["type", "payload"]
+                      }
+                    }
+                  },
+                  "required": ["success", "ops"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": false},
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {"type": "string"},
+                        "message": {"type": "string"},
+                        "details": {"type": "object"}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["success", "error"]
+                }
+                ]
+              }
+            format: application/schema+json
+    
+  # userspace.kb9:kb9_query_contract
+  - name: kb9_query_contract
+    kind: contract.definition
+    meta:
+      comment: Contract for KB9 query implementations (context required)
+      tags:
+        - kb9
+        - query
+    methods:
+      - name: query
+        description: |
+          Query the knowledge base using this implementation.
+          KB ID comes from context.
+          Calling: query(request_dto)
+        input_schemas:
+          - definition: |
+              {
+               "type": "object",
+               "properties": {
+                 "query": {
+                   "type": "string",
+                   "description": "Search query"
+                 },
+                 "input_vector": {
+                   "type": "array",
+                   "description": "Query vector embedding (generated by KB process)",
+                   "items": {"type": "number"}
+                 },
+                 "embedding_model": {
+                   "type": "string",
+                   "description": "Name of the embedding model used to generate input_vector"
+                 },
+                 "limit": {
+                   "type": "integer",
+                   "description": "Maximum number of results",
+                   "default": 10
+                 },
+                 "options": {
+                   "type": "object",
+                   "description": "Query-specific options"
+                 }
+               },
+               "required": ["query", "input_vector", "embedding_model", "options"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": true},
+                    "items": {
+                      "type": "array",
+                      "description": "Query results",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {"type": "string"},
+                          "content": {"type": "string"},
+                          "similarity": {
+                            "type": "number",
+                            "description": "Similarity score between 0 and 1",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "node_type": {"type": "string"},
+                          "path": {"type": "string"},
+                          "parent_id": {"type": "string"},
+                          "value": {"type": "string"},
+                          "content_type": {"type": "string"},
+                          "created_at": {"type": "string"},
+                          "updated_at": {"type": "string"},
+                          "metadata": {
+                            "type": "object",
+                            "description": "Node-specific metadata"
+                          },
+                          "vector_distance": {
+                            "type": "number",
+                            "description": "Raw vector distance (for debugging)"
+                          }
+                        },
+                        "required": ["id", "content", "similarity", "node_type", "path"]
+                      }
+                    },
+                    "count": {
+                      "type": "integer",
+                      "description": "Number of results returned"
+                    }
+                  },
+                  "required": ["success", "items", "count"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": false},
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {"type": "string"},
+                        "message": {"type": "string"},
+                        "details": {"type": "object"}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["success", "error"]
+                }
+                ]
+              }
+            format: application/schema+json
+    
+  # userspace.kb9:kb9_validate_contract
+  - name: kb9_validate_contract
+    kind: contract.definition
+    meta:
+      comment: Contract for validating options (no context required)
+      tags:
+        - kb9
+        - validation
+    methods:
+      - name: validate_options
+        description: |
+          Validate options for this implementation.
+          Calling: validate_options(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "options": {
+                    "type": "object",
+                    "description": "Options to validate"
+                  }
+                },
+                "required": ["options"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "valid": {"type": "boolean", "const": true}
+                  },
+                  "required": ["valid"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "valid": {"type": "boolean", "const": false},
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {"type": "string"},
+                        "message": {"type": "string"},
+                        "details": {"type": "object"}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["valid", "error"]
+                }
+                ]
+              }
+            format: application/schema+json
+    
+  # userspace.kb9:kb_service_contract
+  - name: kb_service_contract
+    kind: contract.definition
+    meta:
+      comment: KB9 service contract for creating and managing KB9 instances
+      tags:
+        - kb9
+        - service
+        - create
+        - manage
+    methods:
+      - name: create_kb9
+        description: |
+          Create a new KB9 knowledge base with specified configuration.
+          Calling: create_kb9(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Knowledge base name"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Knowledge base description"
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "embed_contract": {
+                        "type": "object",
+                        "properties": {
+                          "binding_id": {"type": "string"},
+                          "options": {"type": "object"}
+                        },
+                        "required": ["binding_id"]
+                      },
+                      "query_contract": {
+                        "type": "object",
+                        "properties": {
+                          "binding_id": {"type": "string"},
+                          "options": {"type": "object"}
+                        },
+                        "required": ["binding_id"]
+                      }
+                    },
+                    "required": ["embed_contract", "query_contract"]
+                  }
+                },
+                "required": ["name", "config"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": true},
+                    "component_id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "config": {"type": "object"},
+                    "created_at": {"type": "string"}
+                  },
+                  "required": ["success", "component_id"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean", "const": false},
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {"type": "string"},
+                        "message": {"type": "string"},
+                        "details": {"type": "object"}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["success", "error"]
+                }
+                ]
+              }
+            format: application/schema+json
+    

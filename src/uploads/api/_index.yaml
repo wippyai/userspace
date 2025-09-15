@@ -1,0 +1,186 @@
+version: "1.0"
+namespace: userspace.uploads.api
+
+entries:
+  # userspace.uploads.api:complete_handler
+  - name: complete_handler
+    kind: function.lua
+    meta:
+      comment: File upload API handler
+      depends_on:
+        - upload_lib
+    source: file://complete_handler.lua
+    modules:
+      - http
+      - security
+      - json
+    imports:
+      upload_lib: userspace.uploads:upload_lib
+    method: handler
+    pool:
+      size: 5
+    
+  # userspace.uploads.api:complete_handler.endpoint
+  - name: complete_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: File upload endpoint
+      depends_on:
+        - app:api
+      router: app:api
+    method: POST
+    func: complete_handler
+    path: /uploads/complete
+    
+  # userspace.uploads.api:delete_handler
+  - name: delete_handler
+    kind: function.lua
+    meta:
+      comment: Delete upload API handler
+      depends_on:
+        - upload_repo
+    source: file://delete_handler.lua
+    modules:
+      - http
+      - security
+      - json
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+    method: delete_handler
+    pool:
+      size: 2
+    
+  # userspace.uploads.api:delete_handler.endpoint
+  - name: delete_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Delete upload endpoint
+      depends_on:
+        - app:api
+      router: app:api
+    method: DELETE
+    func: delete_handler
+    path: /uploads/{uuid}
+    
+  # userspace.uploads.api:get_handler
+  - name: get_handler
+    kind: function.lua
+    meta:
+      comment: Get file upload API handler
+      depends_on:
+        - upload_repo
+    source: file://get_handler.lua
+    modules:
+      - http
+      - security
+      - json
+      - time
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+    method: get_handler
+    pool:
+      size: 2
+    
+  # userspace.uploads.api:get_handler.endpoint
+  - name: get_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Get file upload endpoint
+      depends_on:
+        - app:api
+      router: app:api
+    method: GET
+    func: get_handler
+    path: /uploads/{uuid}
+    
+  # userspace.uploads.api:list_handler
+  - name: list_handler
+    kind: function.lua
+    meta:
+      comment: List uploads API handler
+      depends_on:
+        - upload_repo
+    source: file://list_handler.lua
+    modules:
+      - http
+      - security
+      - json
+      - time
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+    method: list_handler
+    pool:
+      size: 2
+    
+  # userspace.uploads.api:list_handler.endpoint
+  - name: list_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: List uploads endpoint
+      depends_on:
+        - app:api
+      router: app:api
+    method: GET
+    func: list_handler
+    path: /uploads/list
+    
+  # userspace.uploads.api:presigned_handler
+  - name: presigned_handler
+    kind: function.lua
+    meta:
+      comment: File upload API handler
+      depends_on:
+        - upload_lib
+    source: file://presigned_handler.lua
+    modules:
+      - http
+      - security
+      - json
+    imports:
+      upload_lib: userspace.uploads:upload_lib
+    method: handler
+    pool:
+      size: 5
+    
+  # userspace.uploads.api:presigned_handler.endpoint
+  - name: presigned_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: File upload endpoint
+      depends_on:
+        - app:api
+      router: app:api
+    method: POST
+    func: presigned_handler
+    path: /uploads/presigned
+    
+  # userspace.uploads.api:upload_handler
+  - name: upload_handler
+    kind: function.lua
+    meta:
+      comment: File upload API handler
+      depends_on:
+        - upload_lib
+    source: file://upload_handler.lua
+    modules:
+      - http
+      - security
+      - json
+    imports:
+      upload_lib: userspace.uploads:upload_lib
+    method: handler
+    pool:
+      size: 5
+    
+  # userspace.uploads.api:upload_handler.endpoint
+  - name: upload_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: File upload endpoint
+      depends_on:
+        - app:api
+      router: app:api
+    method: POST
+    func: upload_handler
+    path: /uploads
+    

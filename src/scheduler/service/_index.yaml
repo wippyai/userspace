@@ -1,0 +1,90 @@
+version: "1.0"
+namespace: userspace.scheduler.service
+
+entries:
+  # userspace.scheduler.service:cleanup_worker
+  - name: cleanup_worker
+    kind: process.lua
+    meta:
+      comment: Cleanup worker for background maintenance tasks
+      tags:
+        - scheduler
+        - userspace
+        - cleanup
+        - maintenance
+      description: Background worker that cleans up stuck tasks and removes old completed/failed tasks
+    source: file://cleanup_worker.lua
+    modules:
+      - time
+      - uuid
+      - logger
+    imports:
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: run
+    
+  # userspace.scheduler.service:root
+  - name: root
+    kind: process.lua
+    meta:
+      comment: Root scheduler process managing workers and background tasks
+      tags:
+        - scheduler
+        - userspace
+        - supervisor
+        - background
+      description: Main scheduler supervisor that manages worker lifecycle and runs background GC routines for stuck task cleanup and completed task removal
+    source: file://root.lua
+    modules:
+      - time
+      - uuid
+      - logger
+    imports:
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: run
+    
+  # userspace.scheduler.service:scheduler
+  - name: scheduler
+    kind: process.service
+    meta:
+      comment: Scheduler Root Service
+      tags:
+        - scheduler
+        - service
+        - userspace
+      description: Auto-starting scheduler supervision service
+    host: app:processes
+    lifecycle:
+      depends_on:
+        - app:processes
+        - app:db
+      auto_start: true
+      restart_policy: always
+      security:
+        groups:
+          - wippy.security:process
+    process: root
+    
+  # userspace.scheduler.service:worker
+  - name: worker
+    kind: process.lua
+    meta:
+      comment: Standard scheduler worker for task execution
+      tags:
+        - scheduler
+        - userspace
+        - worker
+        - execution
+      description: Standard worker process that claims and executes scheduled tasks with error handling and retry logic
+    source: file://worker.lua
+    modules:
+      - time
+      - uuid
+      - json
+      - logger
+      - contract
+      - security
+    imports:
+      schedule_calculator: userspace.scheduler.interval:schedule_calculator
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+    method: run
+    

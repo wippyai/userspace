@@ -1,0 +1,763 @@
+{{ extends "common/layout" }}
+
+{* Page title and description *}
+{{ block title() }}Projects{{ end }}
+{{ block metaDescription() }}Manage and create your drafling projects{{ end }}
+
+{{ block mainContent() }}
+<div x-data="projectsApp" x-init="initialize()" class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
+                    <iconify-icon icon="tabler:folder" class="text-white" width="28" height="28"></iconify-icon>
+                </div>
+                <div class="ml-5">
+                    <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Projects</h1>
+                    <p class="mt-1 text-surface-600 dark:text-surface-400">Manage and create your drafling projects</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <!-- Search -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <iconify-icon icon="tabler:search" class="text-surface-400 dark:text-surface-500" width="18" height="18"></iconify-icon>
+                    </div>
+                    <input
+                            type="text"
+                            x-model="searchTerm"
+                            class="block w-64 pl-10 pr-3 py-2.5 border border-surface-200 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="Search projects...">
+                </div>
+
+                <!-- Create New Button -->
+                <button @click="showCreateModal = true" class="flex items-center justify-center h-11 w-11 border border-primary-200 dark:border-primary-600 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors duration-200" title="Create Project">
+                    <iconify-icon icon="tabler:plus" width="20" height="20"></iconify-icon>
+                </button>
+
+                <!-- Project Manager Button -->
+                <button @click="startProjectManagerChat" :disabled="isProjectManagerLoading" class="flex items-center justify-center h-11 w-11 border border-purple-200 dark:border-purple-600 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 disabled:opacity-50 transition-colors duration-200" title="Project Manager">
+                    <template x-if="!isProjectManagerLoading">
+                        <iconify-icon icon="tabler:robot" width="20" height="20"></iconify-icon>
+                    </template>
+                    <template x-if="isProjectManagerLoading">
+                        <iconify-icon icon="tabler:loader-2" class="animate-spin" width="20" height="20"></iconify-icon>
+                    </template>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="mb-8">
+        <div class="border-b border-surface-200 dark:border-surface-600">
+            <nav class="-mb-px flex space-x-8">
+                <button
+                        @click="activeTab = 'projects'"
+                        :class="activeTab === 'projects' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300'"
+                        class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-all duration-200">
+                    <div class="flex items-center">
+                        <iconify-icon icon="tabler:file-text" class="mr-2" width="18" height="18"></iconify-icon>
+                        My Projects
+                        <span class="ml-2 px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200" x-text="projects.length"></span>
+                    </div>
+                </button>
+                <button
+                        @click="activeTab = 'templates'"
+                        :class="activeTab === 'templates' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300'"
+                        class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-all duration-200">
+                    <div class="flex items-center">
+                        <iconify-icon icon="tabler:template" class="mr-2" width="18" height="18"></iconify-icon>
+                        Templates
+                        <span class="ml-2 px-2 py-0.5 rounded-md text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300" x-text="templates.length"></span>
+                    </div>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div>
+        <!-- Projects Tab -->
+        <div x-show="activeTab === 'projects'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-4" x-transition:enter-end="opacity-100 transform translate-y-0">
+            <!-- Loading State -->
+            <div x-show="isLoadingProjects" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:loader-2" class="text-surface-400 dark:text-surface-500 animate-spin" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100">Loading projects...</h3>
+            </div>
+
+            <!-- Error State -->
+            <div x-show="!isLoadingProjects && projectsError" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:alert-circle" class="text-red-500 dark:text-red-400" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load projects</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="projectsError"></p>
+                <button @click="loadProjects()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Retry
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!isLoadingProjects && !projectsError && filteredProjects.length === 0 && projects.length === 0" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:folder-plus" class="text-surface-400 dark:text-surface-500" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No projects yet</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">Create your first project to get started with drafling</p>
+                <button @click="showCreateModal = true" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:plus" class="mr-2" width="20" height="20"></iconify-icon>
+                    Create Project
+                </button>
+            </div>
+
+            <!-- Projects List -->
+            <div x-show="!isLoadingProjects && !projectsError && filteredProjects.length > 0" class="space-y-3">
+                <template x-for="project in filteredProjects" :key="project.project_id">
+                    <div @click="openProject(project)" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4 flex-1 min-w-0">
+                                    <!-- Project Icon -->
+                                    <div class="flex-shrink-0">
+                                        <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
+                                            <iconify-icon :icon="getProjectIcon(project)" class="text-white" width="24" height="24"></iconify-icon>
+                                        </div>
+                                    </div>
+
+                                    <!-- Project Info -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center space-x-3 mb-2">
+                                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 truncate" x-text="project.title || 'Untitled Project'"></h3>
+                                            <span :class="getStatusBadgeClass(project.status)" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium flex-shrink-0">
+                                                <span x-text="getStatusDisplayName(project.status)"></span>
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center space-x-4 text-sm text-surface-500 dark:text-surface-400">
+                                            <span x-text="getProjectTypeName(project.project_type)"></span>
+                                            <span>•</span>
+                                            <span x-text="formatDate(project.updated_at)"></span>
+                                            <span x-show="project.metadata && project.metadata.comment" class="flex-1 truncate" x-text="project.metadata.comment"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex items-center space-x-3 flex-shrink-0">
+                                    <button @click.stop="editProject(project)" class="p-2.5 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 rounded-lg transition-colors duration-200">
+                                        <iconify-icon icon="tabler:edit" width="18" height="18"></iconify-icon>
+                                    </button>
+                                    <button @click.stop="deleteProject(project)" class="p-2.5 text-surface-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-200">
+                                        <iconify-icon icon="tabler:trash" width="18" height="18"></iconify-icon>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Templates Tab -->
+        <div x-show="activeTab === 'templates'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-4" x-transition:enter-end="opacity-100 transform translate-y-0">
+            <!-- Loading State -->
+            <div x-show="isLoadingTemplates" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:loader-2" class="text-surface-400 dark:text-surface-500 animate-spin" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100">Loading templates...</h3>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!isLoadingTemplates && templates.length === 0" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:template-off" class="text-surface-400 dark:text-surface-500" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No templates available</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">There are currently no project templates available.</p>
+                <button @click="loadTemplates()" class="inline-flex items-center px-6 py-3 border border-surface-300 dark:border-surface-600 text-base font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Refresh
+                </button>
+            </div>
+
+            <!-- Templates Grid -->
+            <div x-show="!isLoadingTemplates && templates.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <template x-for="template in filteredTemplates" :key="template.id">
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full">
+                        <div class="p-6 flex flex-col flex-1">
+                            <!-- Header -->
+                            <div class="flex items-start mb-4">
+                                <div class="h-14 w-14 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mr-4 flex-shrink-0 shadow-lg">
+                                    <iconify-icon :icon="template.icon || 'tabler:template'" class="text-white" width="28" height="28"></iconify-icon>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-lg font-bold text-surface-900 dark:text-surface-100 mb-1" x-text="template.name"></h3>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <p class="text-surface-600 dark:text-surface-300 text-sm leading-relaxed mb-4 flex-1" x-text="template.description"></p>
+
+                            <!-- Tags -->
+                            <div class="flex flex-wrap gap-2 mb-6" x-show="template.tags && template.tags.length > 0">
+                                <template x-for="tag in (template.tags || []).slice(0, 3)" :key="tag">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400" x-text="tag"></span>
+                                </template>
+                                <span x-show="(template.tags || []).length > 3" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300" x-text="`+${(template.tags || []).length - 3}`"></span>
+                            </div>
+
+                            <!-- Create Button -->
+                            <button @click="createFromTemplate(template)" class="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 mt-auto">
+                                <iconify-icon icon="tabler:plus" class="mr-2" width="16" height="16"></iconify-icon>
+                                Create Project
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Project Modal -->
+    <div x-show="showCreateModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 z-50 overflow-y-auto" @click.self="showCreateModal = false">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-surface-900 bg-opacity-75 transition-opacity"></div>
+
+            <div x-show="showCreateModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white dark:bg-surface-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white dark:bg-surface-800 px-6 pt-6 pb-4">
+                    <div class="flex items-center mb-6">
+                        <div class="h-10 w-10 rounded-lg bg-primary-100 dark:bg-primary-900 flex items-center justify-center mr-4">
+                            <iconify-icon icon="tabler:plus" class="text-primary-600 dark:text-primary-400" width="20" height="20"></iconify-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Create New Project</h3>
+                    </div>
+
+                    <form @submit.prevent="createProject()">
+                        <!-- Template Selection -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Template</label>
+                            <select x-model="createForm.template_id" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100">
+                                <option value="">Select a template...</option>
+                                <template x-for="template in templates" :key="template.id">
+                                    <option :value="template.id" x-text="template.name"></option>
+                                </template>
+                            </select>
+                        </div>
+
+                        <!-- Project Title -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
+                            <input x-model="createForm.title" type="text" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project title...">
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description (Optional)</label>
+                            <textarea x-model="createForm.description" rows="3" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project description..."></textarea>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-center justify-end space-x-3">
+                            <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100">
+                                Cancel
+                            </button>
+                            <button type="submit" :disabled="isCreating" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
+                                <iconify-icon x-show="isCreating" icon="tabler:loader-2" class="animate-spin mr-2" width="16" height="16"></iconify-icon>
+                                <span x-text="isCreating ? 'Creating...' : 'Create Project'"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Project Modal -->
+    <div x-show="showEditModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 z-50 overflow-y-auto" @click.self="showEditModal = false">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-surface-900 bg-opacity-75 transition-opacity"></div>
+
+            <div x-show="showEditModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white dark:bg-surface-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white dark:bg-surface-800 px-6 pt-6 pb-4">
+                    <div class="flex items-center mb-6">
+                        <div class="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center mr-4">
+                            <iconify-icon icon="tabler:edit" class="text-blue-600 dark:text-blue-400" width="20" height="20"></iconify-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Edit Project</h3>
+                    </div>
+
+                    <form @submit.prevent="updateProject()">
+                        <!-- Project Title -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
+                            <input x-model="editForm.title" type="text" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project title...">
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description</label>
+                            <textarea x-model="editForm.description" rows="3" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project description..."></textarea>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
+                            <select x-model="editForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100">
+                                <option value="draft">Draft</option>
+                                <option value="active">Active</option>
+                                <option value="published">Published</option>
+                                <option value="archived">Archived</option>
+                            </select>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-center justify-end space-x-3">
+                            <button type="button" @click="showEditModal = false" class="px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100">
+                                Cancel
+                            </button>
+                            <button type="submit" :disabled="isUpdating" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50">
+                                <iconify-icon x-show="isUpdating" icon="tabler:loader-2" class="animate-spin mr-2" width="16" height="16"></iconify-icon>
+                                <span x-text="isUpdating ? 'Updating...' : 'Update Project'"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div x-show="statusMessage.show" x-transition:enter="transform ease-out duration-300 transition" x-transition:enter-start="translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0" class="fixed bottom-4 right-4 max-w-md z-50">
+        <div class="flex items-center p-4 rounded-xl shadow-lg border" :class="{
+            'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800': statusMessage.type === 'success',
+            'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800': statusMessage.type === 'error',
+            'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800': statusMessage.type === 'info'
+        }">
+            <div class="flex-shrink-0 mr-3">
+                <template x-if="statusMessage.type === 'success'">
+                    <iconify-icon icon="tabler:check-circle" class="h-6 w-6 text-green-600 dark:text-green-400" width="24" height="24"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'error'">
+                    <iconify-icon icon="tabler:alert-circle" class="h-6 w-6 text-red-600 dark:text-red-400" width="24" height="24"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'info'">
+                    <iconify-icon icon="tabler:info-circle" class="h-6 w-6 text-blue-600 dark:text-blue-400" width="24" height="24"></iconify-icon>
+                </template>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium" :class="{
+                    'text-green-800 dark:text-green-100': statusMessage.type === 'success',
+                    'text-red-800 dark:text-red-100': statusMessage.type === 'error',
+                    'text-blue-800 dark:text-blue-100': statusMessage.type === 'info'
+                }" x-text="statusMessage.text"></p>
+            </div>
+            <div class="flex-shrink-0 ml-3">
+                <button @click="hideStatusMessage" class="inline-flex text-surface-400 hover:text-surface-600 focus:outline-none transition-colors duration-200">
+                    <iconify-icon icon="tabler:x" class="h-5 w-5" width="20" height="20"></iconify-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ block customJs() }}
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('projectsApp', () => ({
+            // State
+            activeTab: 'projects',
+            searchTerm: '',
+            wippyApi: null,
+
+            // Loading states
+            isLoadingProjects: false,
+            isLoadingTemplates: false,
+            isCreating: false,
+            isUpdating: false,
+            isProjectManagerLoading: false,
+
+            // Error states
+            projectsError: null,
+            templatesError: null,
+
+            // Data
+            projects: [],
+            templates: [],
+            templateMap: {},
+
+            // Modal state
+            showCreateModal: false,
+            showEditModal: false,
+            createForm: {
+                template_id: '',
+                title: '',
+                description: ''
+            },
+            editForm: {
+                project_id: '',
+                title: '',
+                description: '',
+                status: 'draft'
+            },
+
+            // Status message
+            statusMessage: {
+                show: false,
+                type: 'info',
+                text: '',
+                timeout: null
+            },
+
+            // Computed
+            get filteredProjects() {
+                if (!this.searchTerm) return this.projects;
+                const term = this.searchTerm.toLowerCase();
+                return this.projects.filter(project =>
+                    (project.title || '').toLowerCase().includes(term) ||
+                    (project.project_type || '').toLowerCase().includes(term) ||
+                    (project.metadata?.comment || '').toLowerCase().includes(term)
+                );
+            },
+
+            get filteredTemplates() {
+                if (!this.searchTerm) return this.templates;
+                const term = this.searchTerm.toLowerCase();
+                return this.templates.filter(template =>
+                    template.name.toLowerCase().includes(term) ||
+                    template.description.toLowerCase().includes(term) ||
+                    (template.tags && template.tags.some(tag => tag.toLowerCase().includes(term)))
+                );
+            },
+
+            async initialize() {
+                try {
+                    this.wippyApi = await window.initWippyApi();
+                    console.log('Projects page initialized');
+
+                    // Subscribe to WebSocket events for real-time updates
+                    this.setupEventListeners();
+
+                    // Load templates first to build icon mapping
+                    await this.loadTemplates();
+                    await this.loadProjects();
+                } catch (error) {
+                    console.error('Failed to initialize:', error);
+                    this.showStatus('error', 'Failed to initialize page');
+                }
+            },
+
+            setupEventListeners() {
+                // Subscribe to registry version changes to reload templates
+                this.wippyApi.on('registry:version', ({ message }) => {
+                    console.log('Registry version changed, reloading templates:', message);
+                    this.loadTemplates();
+                });
+
+                // Subscribe to drafling-specific events to reload projects
+                this.wippyApi.on('project:*', ({ message }) => {
+                    console.log('Drafling event received, reloading projects:', message);
+                    this.loadProjects();
+                });
+
+                // General message listener for debugging
+                this.wippyApi.on('@message', ({ message }) => {
+                    if (message.topic && message.topic.startsWith('drafling')) {
+                        console.log('Drafling WebSocket event:', message);
+                    }
+                });
+            },
+
+            async startProjectManagerChat() {
+                try {
+                    this.isProjectManagerLoading = true;
+
+                    // Get the start token for the drafling project manager
+                    const response = await this.wippyApi.api.get('/api/v1/keeper/agents/start-agent', {
+                        params: { agent: 'userspace.drafling.agents:project_manager' }
+                    });
+
+                    if (!response.data.success || !response.data.start_token) {
+                        throw new Error(response.data.error || 'Failed to get project manager start token');
+                    }
+
+                    // Start chat with Drafling Project Manager
+                    console.log('Starting chat with Drafling Project Manager');
+
+                    if (!this.wippyApi.iframe || typeof this.wippyApi.iframe.startChat !== 'function') {
+                        throw new Error('Chat API not available');
+                    }
+
+                    await this.wippyApi.iframe.startChat(response.data.start_token, true); // true to open in sidebar
+                    console.log('Drafling Project Manager chat started');
+                } catch (err) {
+                    console.error('Failed to start chat with Drafling Project Manager:', err);
+                    this.showStatus('error', `Failed to start Project Manager: ${err.message}`);
+                } finally {
+                    this.isProjectManagerLoading = false;
+                }
+            },
+
+            async loadTemplates() {
+                this.isLoadingTemplates = true;
+                this.templatesError = null;
+
+                try {
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/drafling/templates');
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load templates');
+                    }
+
+                    this.templates = response.data.templates || [];
+
+                    // Build template map for quick lookups
+                    this.templateMap = {};
+                    this.templates.forEach(template => {
+                        this.templateMap[template.id] = template;
+                    });
+
+                    console.log(`Loaded ${this.templates.length} templates`);
+                } catch (error) {
+                    console.error('Error loading templates:', error);
+                    this.templatesError = error.message;
+                    this.templates = [];
+                } finally {
+                    this.isLoadingTemplates = false;
+                }
+            },
+
+            async loadProjects() {
+                this.isLoadingProjects = true;
+                this.projectsError = null;
+
+                try {
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/drafling/projects');
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load projects');
+                    }
+
+                    this.projects = response.data.projects || [];
+                    console.log(`Loaded ${this.projects.length} projects`);
+                } catch (error) {
+                    console.error('Error loading projects:', error);
+                    this.projectsError = error.message;
+                    this.projects = [];
+                } finally {
+                    this.isLoadingProjects = false;
+                }
+            },
+
+            async createProject() {
+                if (!this.createForm.template_id || !this.createForm.title) {
+                    this.showStatus('error', 'Please fill in all required fields');
+                    return;
+                }
+
+                this.isCreating = true;
+
+                try {
+                    const response = await this.wippyApi.api.post('/api/v1/userspace/drafling/projects', {
+                        template_id: this.createForm.template_id,
+                        title: this.createForm.title,
+                        description: this.createForm.description || ''
+                    });
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to create project');
+                    }
+
+                    this.showStatus('success', `Project "${this.createForm.title}" created successfully`);
+                    this.showCreateModal = false;
+                    this.createForm = { template_id: '', title: '', description: '' };
+
+                    // Reload projects
+                    await this.loadProjects();
+
+                    // Switch to projects tab
+                    this.activeTab = 'projects';
+
+                } catch (error) {
+                    console.error('Failed to create project:', error);
+                    this.showStatus('error', `Failed to create project: ${error.message}`);
+                } finally {
+                    this.isCreating = false;
+                }
+            },
+
+            createFromTemplate(template) {
+                this.createForm.template_id = template.id;
+                this.showCreateModal = true;
+            },
+
+            async editProject(project) {
+                this.editForm.project_id = project.project_id;
+                this.editForm.title = project.title || '';
+                this.editForm.description = project.metadata?.comment || '';
+                this.editForm.status = project.status || 'draft';
+                this.showEditModal = true;
+            },
+
+            async updateProject() {
+                if (!this.editForm.title) {
+                    this.showStatus('error', 'Project title is required');
+                    return;
+                }
+
+                this.isUpdating = true;
+
+                try {
+                    const response = await this.wippyApi.api.put(`/api/v1/userspace/drafling/projects/${this.editForm.project_id}`, {
+                        title: this.editForm.title,
+                        description: this.editForm.description,
+                        status: this.editForm.status
+                    });
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to update project');
+                    }
+
+                    this.showStatus('success', 'Project updated successfully');
+                    this.showEditModal = false;
+
+                    // Update the project in the local list
+                    const projectIndex = this.projects.findIndex(p => p.project_id === this.editForm.project_id);
+                    if (projectIndex !== -1) {
+                        this.projects[projectIndex] = {
+                            ...this.projects[projectIndex],
+                            title: this.editForm.title,
+                            status: this.editForm.status,
+                            metadata: {
+                                ...this.projects[projectIndex].metadata,
+                                comment: this.editForm.description
+                            },
+                            updated_at: new Date().toISOString()
+                        };
+                    }
+
+                } catch (error) {
+                    console.error('Failed to update project:', error);
+                    this.showStatus('error', `Failed to update project: ${error.message}`);
+                } finally {
+                    this.isUpdating = false;
+                }
+            },
+
+            openProject(project) {
+                this.wippyApi.iframe.navigate(`userspace.drafling.views:editor/${project.project_id}`);
+            },
+
+            async deleteProject(project) {
+                try {
+                    const confirmed = await this.wippyApi.iframe.confirm({
+                        message: `Are you sure you want to delete "${project.title}"? This action cannot be undone.`,
+                        header: 'Confirm Deletion',
+                        icon: 'tabler:trash',
+                        acceptLabel: 'Delete',
+                        rejectLabel: 'Cancel',
+                        acceptClass: 'p-button-danger',
+                        rejectClass: 'p-button-secondary'
+                    });
+
+                    if (!confirmed) return;
+
+                    const response = await this.wippyApi.api.delete(`/api/v1/userspace/drafling/projects/${project.project_id}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to delete project');
+                    }
+
+                    this.projects = this.projects.filter(p => p.project_id !== project.project_id);
+                    this.showStatus('success', `${project.title} has been deleted`);
+
+                } catch (error) {
+                    console.error('Failed to delete project:', error);
+                    this.showStatus('error', `Failed to delete: ${error.message}`);
+                }
+            },
+
+            getProjectIcon(project) {
+                const template = this.templateMap[project.project_type] ||
+                    this.templateMap[project.metadata?.template_id];
+                return template?.icon || 'tabler:file-text';
+            },
+
+            getProjectTypeName(projectType) {
+                const template = this.templateMap[projectType];
+                if (template) return template.name;
+
+                if (projectType && projectType.includes(':')) {
+                    const parts = projectType.split(':');
+                    const templateName = parts[parts.length - 1];
+                    return templateName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                }
+                return projectType || 'Unknown';
+            },
+
+            getStatusBadgeClass(status) {
+                const classMap = {
+                    'draft': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                    'active': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                    'published': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+                    'archived': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                };
+                return classMap[status] || classMap['draft'];
+            },
+
+            getStatusDisplayName(status) {
+                const nameMap = {
+                    'draft': 'Draft',
+                    'active': 'Active',
+                    'published': 'Published',
+                    'archived': 'Archived'
+                };
+                return nameMap[status] || status;
+            },
+
+            formatDate(dateString) {
+                if (!dateString) return 'N/A';
+                try {
+                    return new Date(dateString).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return dateString;
+                }
+            },
+
+            // Status message helpers
+            showStatus(type, text, duration = 5000) {
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                }
+
+                this.statusMessage.type = type;
+                this.statusMessage.text = text;
+                this.statusMessage.show = true;
+
+                this.statusMessage.timeout = setTimeout(() => {
+                    this.hideStatusMessage();
+                }, duration);
+            },
+
+            hideStatusMessage() {
+                this.statusMessage.show = false;
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                    this.statusMessage.timeout = null;
+                }
+            }
+        }));
+    });
+</script>
+{{ end }}

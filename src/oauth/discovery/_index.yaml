@@ -1,0 +1,351 @@
+version: "1.0"
+namespace: userspace.oauth.discovery
+
+entries:
+  # userspace.oauth.discovery:get_component_contract_func
+  - name: get_component_contract_func
+    kind: function.lua
+    meta:
+      comment: Get component contract ID for OAuth component registration
+      tags:
+        - oauth
+        - providers
+        - discovery
+        - component
+        - contract
+    source: file://get_component_contract_func.lua
+    modules:
+      - registry
+    imports:
+      provider_registry: userspace.oauth.discovery:provider_registry
+    method: handle
+    
+  # userspace.oauth.discovery:get_connector_contract_func
+  - name: get_connector_contract_func
+    kind: function.lua
+    meta:
+      comment: Get connector contract implementation and context for a provider
+      tags:
+        - oauth
+        - providers
+        - discovery
+        - connector
+        - contract
+    source: file://get_connector_contract_func.lua
+    modules:
+      - registry
+    imports:
+      provider_registry: userspace.oauth.discovery:provider_registry
+    method: handle
+    
+  # userspace.oauth.discovery:get_provider_info_func
+  - name: get_provider_info_func
+    kind: function.lua
+    meta:
+      comment: Get detailed information about a specific OAuth provider
+      tags:
+        - oauth
+        - providers
+        - discovery
+        - registry
+    source: file://get_provider_info_func.lua
+    modules:
+      - registry
+    imports:
+      provider_registry: userspace.oauth.discovery:provider_registry
+    method: handle
+    
+  # userspace.oauth.discovery:list_available_providers_func
+  - name: list_available_providers_func
+    kind: function.lua
+    meta:
+      comment: List all available OAuth providers for connection
+      tags:
+        - oauth
+        - providers
+        - discovery
+        - registry
+    source: file://list_available_providers_func.lua
+    modules:
+      - registry
+      - json
+    imports:
+      provider_registry: userspace.oauth.discovery:provider_registry
+    method: handle
+    
+  # userspace.oauth.discovery:provider_discovery
+  - name: provider_discovery
+    kind: contract.definition
+    meta:
+      comment: OAuth provider discovery service contract
+      tags:
+        - oauth
+        - providers
+        - discovery
+        - registry
+      description: Discovers available OAuth providers from registry and provides configuration data
+    methods:
+      - name: list_available_providers
+        description: |
+          List all available OAuth providers that can be connected.
+          Scans registry for registry.entry entries with meta.oauth_provider.
+          Returns scopes from root level, no contract implementation details.
+          Calling: list_available_providers(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "filters": {
+                    "type": "object",
+                    "properties": {
+                      "classes": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter by provider classes (e.g., email_provider, storage_provider)"
+                      }
+                    }
+                  }
+                },
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "providers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {"type": "string"},
+                        "name": {"type": "string"},
+                        "title": {"type": "string"},
+                        "description": {"type": "string"},
+                        "icon": {"type": "string"},
+                        "oauth_provider": {"type": "string"},
+                        "classes": {
+                          "type": "array",
+                          "items": {"type": "string"}
+                        },
+                        "namespace": {"type": "string"},
+                        "create_ui_id": {"type": "string"},
+                        "manage_ui_id": {"type": "string"},
+                        "default_scopes": {
+                          "type": "array",
+                          "items": {"type": "string"}
+                        },
+                        "available_scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "scope": {"type": "string"},
+                              "name": {"type": "string"},
+                              "description": {"type": "string"}
+                            }
+                          }
+                        }
+                      },
+                      "required": ["id", "name", "title", "oauth_provider", "namespace", "default_scopes", "available_scopes"]
+                    }
+                  },
+                  "total_count": {"type": "integer"},
+                  "available_classes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "All available provider classes for filtering"
+                  }
+                },
+                "required": ["providers", "total_count", "available_classes"]
+              }
+            format: application/schema+json
+      - name: get_provider_info
+        description: |
+          Get detailed information about a specific OAuth provider.
+          Can lookup by provider ID or by oauth_provider field value.
+          Returns scopes from root level, no contract implementation details.
+          Calling: get_provider_info(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string",
+                    "description": "Provider registry ID to get info for"
+                  },
+                  "oauth_provider": {
+                    "type": "string",
+                    "description": "OAuth provider name (e.g., 'google') to lookup by meta.oauth_provider"
+                  }
+                },
+                "anyOf": [
+                  {"required": ["provider_id"]},
+                  {"required": ["oauth_provider"]}
+                ]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "id": {"type": "string"},
+                  "name": {"type": "string"},
+                  "title": {"type": "string"},
+                  "description": {"type": "string"},
+                  "icon": {"type": "string"},
+                  "oauth_provider": {"type": "string"},
+                  "classes": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                  },
+                  "namespace": {"type": "string"},
+                  "create_ui_id": {"type": "string"},
+                  "manage_ui_id": {"type": "string"},
+                  "default_scopes": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                  },
+                  "available_scopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "scope": {"type": "string"},
+                        "name": {"type": "string"},
+                        "description": {"type": "string"}
+                      },
+                      "required": ["scope", "name", "description"]
+                    }
+                  }
+                },
+                "required": ["id", "name", "title", "oauth_provider", "namespace", "default_scopes", "available_scopes"]
+              }
+            format: application/schema+json
+      - name: get_connector_contract
+        description: |
+          Get the connector contract implementation and context values for a provider.
+          Similar to component service access context, returns implementation details for execution.
+          Calling: get_connector_contract(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string",
+                    "description": "Provider registry ID to get connector contract for"
+                  },
+                  "oauth_provider": {
+                    "type": "string",
+                    "description": "OAuth provider name (e.g., 'google') to lookup by meta.oauth_provider"
+                  }
+                },
+                "anyOf": [
+                  {"required": ["provider_id"]},
+                  {"required": ["oauth_provider"]}
+                ]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "provider_id": {"type": "string"},
+                  "oauth_provider": {"type": "string"},
+                  "implementation_id": {"type": "string"},
+                  "context_values": {
+                    "type": "object",
+                    "description": "OAuth context values for the connector implementation",
+                    "additionalProperties": true
+                  }
+                },
+                "required": ["provider_id", "oauth_provider", "implementation_id", "context_values"]
+              }
+            format: application/schema+json
+      - name: get_component_contract
+        description: |
+          Get the component contract ID for registering OAuth connection components.
+          Returns the contract ID that should be used for component registration.
+          Calling: get_component_contract(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string",
+                    "description": "Provider registry ID to get component contract for"
+                  },
+                  "oauth_provider": {
+                    "type": "string",
+                    "description": "OAuth provider name (e.g., 'google') to lookup by meta.oauth_provider"
+                  }
+                },
+                "anyOf": [
+                  {"required": ["provider_id"]},
+                  {"required": ["oauth_provider"]}
+                ]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_contract_id": {
+                    "type": "string",
+                    "description": "Contract ID to use for component registration (defaults to userspace.oauth:oauth_connection)"
+                  },
+                  "provider_id": {
+                    "type": "string",
+                    "description": "Provider registry entry ID"
+                  },
+                  "oauth_provider": {
+                    "type": "string",
+                    "description": "OAuth provider name"
+                  }
+                },
+                "required": ["component_contract_id", "provider_id", "oauth_provider"]
+              }
+            format: application/schema+json
+    
+  # userspace.oauth.discovery:provider_discovery_impl
+  - name: provider_discovery_impl
+    kind: contract.binding
+    meta:
+      comment: Default implementation of OAuth provider discovery contract
+      tags:
+        - oauth
+        - providers
+        - discovery
+        - implementation
+    contracts:
+      - contract: userspace.oauth.discovery:provider_discovery
+        default: true
+        methods:
+          get_component_contract: userspace.oauth.discovery:get_component_contract_func
+          get_connector_contract: userspace.oauth.discovery:get_connector_contract_func
+          get_provider_info: userspace.oauth.discovery:get_provider_info_func
+          list_available_providers: userspace.oauth.discovery:list_available_providers_func
+    
+  # userspace.oauth.discovery:provider_registry
+  - name: provider_registry
+    kind: library.lua
+    meta:
+      comment: OAuth provider registry library for discovering available OAuth providers
+      tags:
+        - oauth
+        - providers
+        - discovery
+        - registry
+    source: file://provider_registry.lua
+    modules:
+      - registry
+      - json
+    

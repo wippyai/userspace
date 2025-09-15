@@ -1,0 +1,63 @@
+version: "1.0"
+namespace: userspace.oauth.process
+
+entries:
+  # userspace.oauth.process:connection_negotiator
+  - name: connection_negotiator
+    kind: process.lua
+    meta:
+      comment: OAuth connection negotiation process
+      tags:
+        - oauth
+        - process
+        - connection
+        - negotiation
+      description: Handles OAuth state and token exchange for individual connections
+    source: file://connection_negotiator.lua
+    modules:
+      - time
+      - contract
+      - uuid
+    imports:
+      oauth_repo: userspace.oauth.persist:oauth_repo
+    method: run
+    
+  # userspace.oauth.process:token_refresh
+  - name: token_refresh
+    kind: process.lua
+    meta:
+      comment: Token refresh for a connection
+      tags:
+        - oauth
+        - token
+        - refresh
+        - execute
+      description: Handles scheduled execution of OAuth token refresh for a specific connection
+      default_host: app:processes
+    source: file://token_refresh.lua
+    modules:
+      - json
+      - time
+      - contract
+      - security
+      - logger
+    imports:
+      oauth_repo: userspace.oauth.persist:oauth_repo
+    method: handle
+    
+  # userspace.oauth.process:token_refresh_scheduler
+  - name: token_refresh_scheduler
+    kind: contract.binding
+    meta:
+      comment: OAuth token refresh process that implements schedulable contract
+      tags:
+        - oauth
+        - token
+        - refresh
+        - schedulable
+      description: Scheduled process to refresh OAuth tokens when they are near expiration
+    contracts:
+      - contract: userspace.scheduler:schedulable
+        methods:
+          execute: userspace.oauth.process:token_refresh
+    

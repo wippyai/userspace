@@ -1,0 +1,60 @@
+version: "1.0"
+namespace: userspace.scheduler.api
+
+entries:
+  # userspace.scheduler.api:delete_schedule
+  - name: delete_schedule
+    kind: function.lua
+    meta:
+      comment: Deletes a user schedule
+      depends_on:
+        - app:api
+    source: file://delete_schedule.lua
+    modules:
+      - http
+      - json
+      - contract
+    method: handler
+    pool:
+      size: 4
+    
+  # userspace.scheduler.api:delete_schedule.endpoint
+  - name: delete_schedule.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint that deletes a user schedule
+      depends_on:
+        - app:api
+      router: app:api
+    method: DELETE
+    func: delete_schedule
+    path: /userspace/schedules/{task_id}
+    
+  # userspace.scheduler.api:list_schedules
+  - name: list_schedules
+    kind: function.lua
+    meta:
+      comment: Lists user schedules with filtering and pagination
+      depends_on:
+        - app:api
+    source: file://list_schedules.lua
+    modules:
+      - http
+      - json
+      - contract
+    method: handler
+    pool:
+      size: 4
+    
+  # userspace.scheduler.api:list_schedules.endpoint
+  - name: list_schedules.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint that lists user schedules
+      depends_on:
+        - app:api
+      router: app:api
+    method: GET
+    func: list_schedules
+    path: /userspace/schedules
+    

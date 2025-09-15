@@ -1,0 +1,167 @@
+version: "1.0"
+namespace: userspace.knowledge
+
+entries:
+  # userspace.knowledge:embeddable
+  - name: embeddable
+    kind: contract.definition
+    meta:
+      comment: Universal embeddable interface for knowledge processing
+      tags:
+        - embed
+        - knowledge
+        - processing
+        - universal
+      description: Standard interface for embedding content into knowledge systems
+    methods:
+      - name: embed_content
+        description: |
+          Process and embed content into the knowledge system.
+          Calling: embed_content(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "Content to embed"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "description": "MIME type of content"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Additional metadata for the content"
+                  }
+                },
+                "required": ["content", "content_type"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Indicates if embedding was successful"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+      - name: embed_reference
+        description: |
+          Embed content from external reference via content provider.
+          Calling: embed_reference(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "reference": {
+                    "type": "object",
+                    "description": "Content provider reference",
+                    "properties": {
+                      "component_id": {
+                        "type": "string",
+                        "description": "Content provider component ID"
+                      },
+                      "context": {
+                        "type": "object",
+                        "description": "Context for content provider"
+                      }
+                    },
+                    "required": ["component_id"]
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Additional metadata for the content"
+                  }
+                },
+                "required": ["reference"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Indicates if embedding was successful"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+    
+  # userspace.knowledge:queryable
+  - name: queryable
+    kind: contract.definition
+    meta:
+      comment: Universal queryable interface for knowledge sources
+      tags:
+        - query
+        - search
+        - queryable
+        - knowledge
+      description: Standard interface for queryable knowledge components
+    methods:
+      - name: query
+        description: |
+          Universal query method for search and retrieval.
+    
+          Examples:
+          - { "query": "hello world" }
+          - { "query": "hello", "limit": 10 }
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "Search query string"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of results to return"
+                  }
+                },
+                "required": ["query"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Indicates if query was successful"
+                  },
+                  "items": {
+                    "type": "array",
+                    "description": "Found items",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "content": { "type": "string" },
+                        "meta": { "type": "object" }
+                      },
+                      "required": ["id", "content", "meta"]
+                    }
+                  },
+                  "count": {
+                    "type": "integer",
+                    "description": "Number of items returned"
+                  }
+                },
+                "required": ["success", "items", "count"]
+              }
+            format: application/schema+json
+    

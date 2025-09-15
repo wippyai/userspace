@@ -1,0 +1,35 @@
+version: "1.0"
+namespace: userspace.shared.api
+
+entries:
+  # userspace.shared.api:list_models
+  - name: list_models
+    kind: function.lua
+    meta:
+      comment: Lists all available models with optional capability filtering
+      depends_on:
+        - ns:app
+        - ns:wippy.llm
+      router: app:api
+    source: file://list_models.lua
+    modules:
+      - http
+      - json
+    imports:
+      models: wippy.llm.discovery:models
+    method: handler
+    pool:
+      size: 2
+    
+  # userspace.shared.api:list_models.endpoint
+  - name: list_models.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint that provides list of models with optional capability filtering
+      depends_on:
+        - ns:app
+      router: app:api
+    method: GET
+    func: list_models
+    path: /userspace/models/list
+    

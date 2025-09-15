@@ -1,0 +1,39 @@
+version: "1.0"
+namespace: userspace.mcp
+
+entries:
+  # userspace.mcp:client
+  - name: client
+    kind: library.lua
+    meta:
+      comment: MCP client communication library
+      tags:
+        - mcp
+        - client
+        - communication
+    source: file://client.lua
+    modules:
+      - json
+      - time
+      - logger
+      - uuid
+      - security
+    imports:
+      mcp_consts: userspace.mcp:consts
+    
+  # userspace.mcp:consts
+  - name: consts
+    kind: library.lua
+    meta:
+      comment: MCP system constants and configuration management
+    source: file://consts.lua
+    modules:
+      - env
+    
+  # userspace.mcp:executor
+  - name: executor
+    kind: exec.native
+    meta:
+      comment: MCP process execution service (for local MCP)
+    default_work_dir: ""
+    

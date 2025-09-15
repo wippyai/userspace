@@ -1,0 +1,259 @@
+version: "1.0"
+namespace: userspace.kb9.binding
+
+entries:
+  # userspace.kb9.binding:browse_func
+  - name: browse_func
+    kind: function.lua
+    meta:
+      comment: Browse KB9 knowledge base tree structure
+      tags:
+        - kb9
+        - browse
+        - tree
+    source: file://browse_func.lua
+    modules:
+      - ctx
+      - json
+      - sql
+    imports:
+      reader: userspace.kb9.persist:reader
+    method: handle
+    
+  # userspace.kb9.binding:create_kb9_func
+  - name: create_kb9_func
+    kind: function.lua
+    meta:
+      comment: Creates a new KB9 knowledge base component
+      tags:
+        - kb9
+        - create
+        - service
+    source: file://create_kb9_func.lua
+    modules:
+      - ctx
+      - json
+      - uuid
+    imports:
+      component: userspace.component:component
+      consts: userspace.kb9:consts
+      store: userspace.kb9.persist:store
+    method: handle
+    
+  # userspace.kb9.binding:delete_func
+  - name: delete_func
+    kind: function.lua
+    meta:
+      comment: Deletes KB9 component and all data
+      tags:
+        - kb9
+        - delete
+    source: file://delete_func.lua
+    modules:
+      - ctx
+      - sql
+    imports:
+      consts: userspace.kb9:consts
+      store: userspace.kb9.persist:store
+    method: handle
+    
+  # userspace.kb9.binding:embed_content_func
+  - name: embed_content_func
+    kind: function.lua
+    meta:
+      comment: Embeds content into KB9 (universal embeddable interface)
+      tags:
+        - kb9
+        - embed
+    source: file://embed_content_func.lua
+    modules:
+      - ctx
+      - json
+      - time
+    imports:
+      consts: userspace.kb9:consts
+    method: handle
+    
+  # userspace.kb9.binding:embed_reference_func
+  - name: embed_reference_func
+    kind: function.lua
+    meta:
+      comment: Embeds content from reference (universal embeddable interface)
+      tags:
+        - kb9
+        - embed
+        - reference
+    source: file://embed_reference_func.lua
+    modules:
+      - ctx
+      - json
+      - time
+    imports:
+      consts: userspace.kb9:consts
+    method: handle
+    
+  # userspace.kb9.binding:execute_commands_func
+  - name: execute_commands_func
+    kind: function.lua
+    meta:
+      comment: Executes KB9 commands via the KB process
+      tags:
+        - kb9
+        - commands
+        - execute
+    source: file://execute_commands_func.lua
+    modules:
+      - ctx
+      - json
+      - time
+    imports:
+      consts: userspace.kb9:consts
+    method: handle
+    
+  # userspace.kb9.binding:get_config_func
+  - name: get_config_func
+    kind: function.lua
+    meta:
+      comment: Gets KB9 configuration
+      tags:
+        - kb9
+        - config
+    source: file://get_config_func.lua
+    modules:
+      - ctx
+      - json
+    imports:
+      store: userspace.kb9.persist:store
+    method: handle
+    
+  # userspace.kb9.binding:get_stats_func
+  - name: get_stats_func
+    kind: function.lua
+    meta:
+      comment: Gets KB9 knowledge base statistics and overview
+      tags:
+        - kb9
+        - stats
+        - analytics
+    source: file://get_stats_func.lua
+    modules:
+      - ctx
+      - json
+      - sql
+    method: handle
+    
+  # userspace.kb9.binding:get_status_func
+  - name: get_status_func
+    kind: function.lua
+    meta:
+      comment: Gets KB9 component status
+      tags:
+        - kb9
+        - status
+    source: file://get_status_func.lua
+    modules:
+      - ctx
+      - time
+    imports:
+      consts: userspace.kb9:consts
+      store: userspace.kb9.persist:store
+    method: handle
+    
+  # userspace.kb9.binding:kb9_component
+  - name: kb9_component
+    kind: contract.binding
+    meta:
+      name: Standard Knowledge Base
+      type: component
+      comment: Configurable knowledge base with pluggable embed and query implementations
+      tags:
+        - kb9
+        - component
+        - configurable
+      class: knowledge_base
+      component:
+        icon: tabler:database-import
+        create_ui_id: userspace.kb9.views:create
+        manage_ui_id: userspace.kb9.views:manage
+    contracts:
+      - contract: userspace.contract:component
+        context_required:
+          - component_id
+        methods:
+          get_status: userspace.kb9.binding:get_status_func
+      - contract: userspace.contract:deletable
+        context_required:
+          - component_id
+        methods:
+          delete: userspace.kb9.binding:delete_func
+      - contract: userspace.knowledge:queryable
+        context_required:
+          - component_id
+        methods:
+          query: userspace.kb9.binding:query_func
+      - contract: userspace.knowledge:embeddable
+        context_required:
+          - component_id
+        methods:
+          embed_content: userspace.kb9.binding:embed_content_func
+          embed_reference: userspace.kb9.binding:embed_reference_func
+      - contract: userspace.kb9:kb9_contract
+        context_required:
+          - component_id
+        methods:
+          browse: userspace.kb9.binding:browse_func
+          execute_commands: userspace.kb9.binding:execute_commands_func
+          get_config: userspace.kb9.binding:get_config_func
+          get_stats: userspace.kb9.binding:get_stats_func
+          update_config: userspace.kb9.binding:update_config_func
+    
+  # userspace.kb9.binding:kb_service
+  - name: kb_service
+    kind: contract.binding
+    meta:
+      comment: KB9 service implementation for creating and managing KB9 instances
+      tags:
+        - kb9
+        - service
+    contracts:
+      - contract: userspace.kb9:kb_service_contract
+        default: true
+        methods:
+          create_kb9: userspace.kb9.binding:create_kb9_func
+    
+  # userspace.kb9.binding:query_func
+  - name: query_func
+    kind: function.lua
+    meta:
+      comment: Queries KB9 knowledge base (universal queryable interface)
+      tags:
+        - kb9
+        - query
+    source: file://query_func.lua
+    modules:
+      - ctx
+      - json
+      - contract
+    imports:
+      consts: userspace.kb9:consts
+      llm: wippy.llm:llm
+      store: userspace.kb9.persist:store
+    method: handle
+    
+  # userspace.kb9.binding:update_config_func
+  - name: update_config_func
+    kind: function.lua
+    meta:
+      comment: Updates KB9 configuration
+      tags:
+        - kb9
+        - config
+    source: file://update_config_func.lua
+    modules:
+      - ctx
+      - json
+    imports:
+      consts: userspace.kb9:consts
+      store: userspace.kb9.persist:store
+    method: handle
+    

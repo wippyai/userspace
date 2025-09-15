@@ -1,0 +1,307 @@
+version: "1.0"
+namespace: userspace.drafling.api
+
+entries:
+  # userspace.drafling.api:create_entry
+  - name: create_entry
+    kind: function.lua
+    meta:
+      comment: Create new entry in project category
+    source: file://create_entry.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.api:create_entry.endpoint
+  - name: create_entry.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: create_entry
+    path: /userspace/drafling/projects/{project_id}/entries
+    
+  # userspace.drafling.api:create_project
+  - name: create_project
+    kind: function.lua
+    meta:
+      comment: Create new project from template
+    source: file://create_project.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      template_registry: userspace.drafling.discovery:template_registry
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.api:create_project.endpoint
+  - name: create_project.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: create_project
+    path: /userspace/drafling/projects
+    
+  # userspace.drafling.api:delete_entry
+  - name: delete_entry
+    kind: function.lua
+    meta:
+      comment: Delete entry from project
+    source: file://delete_entry.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.api:delete_entry.endpoint
+  - name: delete_entry.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: DELETE
+    func: delete_entry
+    path: /userspace/drafling/projects/{project_id}/entries/{entry_id}
+    
+  # userspace.drafling.api:delete_project
+  - name: delete_project
+    kind: function.lua
+    meta:
+      comment: Delete project
+    source: file://delete_project.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.api:delete_project.endpoint
+  - name: delete_project.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: DELETE
+    func: delete_project
+    path: /userspace/drafling/projects/{id}
+    
+  # userspace.drafling.api:get_chat_token
+  - name: get_chat_token
+    kind: function.lua
+    meta:
+      comment: Generate start token for drafling agent with project context
+    source: file://get_chat_token.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      agent_registry: wippy.agent.discovery:registry
+      doc_repo: userspace.drafling.persist:doc_repo
+      start_tokens: wippy.session:start_tokens
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handler
+    
+  # userspace.drafling.api:get_chat_token.endpoint
+  - name: get_chat_token.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: get_chat_token
+    path: /userspace/drafling/projects/{project_id}/chat-token
+    
+  # userspace.drafling.api:get_project
+  - name: get_project
+    kind: function.lua
+    meta:
+      comment: Get single project by ID
+    source: file://get_project.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      doc_repo: userspace.drafling.persist:doc_repo
+    method: handler
+    
+  # userspace.drafling.api:get_project.endpoint
+  - name: get_project.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: get_project
+    path: /userspace/drafling/projects/{id}
+    
+  # userspace.drafling.api:get_project_history
+  - name: get_project_history
+    kind: function.lua
+    meta:
+      comment: Get history for project entries
+    source: file://get_project_history.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      doc_repo: userspace.drafling.persist:doc_repo
+      history_repo: userspace.drafling.persist:history_repo
+    method: handler
+    
+  # userspace.drafling.api:get_project_history.endpoint
+  - name: get_project_history.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: get_project_history
+    path: /userspace/drafling/projects/{project_id}/history
+    
+  # userspace.drafling.api:get_project_state
+  - name: get_project_state
+    kind: function.lua
+    meta:
+      comment: Get project with template info and categories
+    source: file://get_project_state.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      doc_reader: userspace.drafling.persist:doc_reader
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handler
+    
+  # userspace.drafling.api:get_project_state.endpoint
+  - name: get_project_state.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: get_project_state
+    path: /userspace/drafling/projects/{id}/state
+    
+  # userspace.drafling.api:get_template
+  - name: get_template
+    kind: function.lua
+    meta:
+      comment: Get single template by ID
+    source: file://get_template.lua
+    modules:
+      - http
+      - json
+    imports:
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handler
+    
+  # userspace.drafling.api:get_template.endpoint
+  - name: get_template.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: get_template
+    path: /userspace/drafling/templates/{template_id}
+    
+  # userspace.drafling.api:list_projects
+  - name: list_projects
+    kind: function.lua
+    meta:
+      comment: List user's projects
+    source: file://list_projects.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      doc_repo: userspace.drafling.persist:doc_repo
+    method: handler
+    
+  # userspace.drafling.api:list_projects.endpoint
+  - name: list_projects.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: list_projects
+    path: /userspace/drafling/projects
+    
+  # userspace.drafling.api:list_templates
+  - name: list_templates
+    kind: function.lua
+    meta:
+      comment: List available templates
+    source: file://list_templates.lua
+    modules:
+      - http
+      - json
+    imports:
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handler
+    
+  # userspace.drafling.api:list_templates.endpoint
+  - name: list_templates.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: list_templates
+    path: /userspace/drafling/templates
+    
+  # userspace.drafling.api:update_entry
+  - name: update_entry
+    kind: function.lua
+    meta:
+      comment: Update entry content and metadata
+    source: file://update_entry.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.api:update_entry.endpoint
+  - name: update_entry.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: PUT
+    func: update_entry
+    path: /userspace/drafling/projects/{project_id}/entries/{entry_id}
+    
+  # userspace.drafling.api:update_project
+  - name: update_project
+    kind: function.lua
+    meta:
+      comment: Update project title/description
+    source: file://update_project.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.api:update_project.endpoint
+  - name: update_project.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: PUT
+    func: update_project
+    path: /userspace/drafling/projects/{id}
+    

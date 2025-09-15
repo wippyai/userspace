@@ -1,0 +1,65 @@
+version: "1.0"
+namespace: userspace.oauth.api.public
+
+entries:
+  # userspace.oauth.api.public:oauth_callback_handler
+  - name: oauth_callback_handler
+    kind: function.lua
+    meta:
+      comment: OAuth callback API handler
+      description: Processes OAuth callback requests
+      depends_on:
+        - app:api.public
+    source: file://oauth_callback_handler.lua
+    modules:
+      - http
+      - json
+      - time
+    method: handler
+    pool:
+      size: 4
+    
+  # userspace.oauth.api.public:oauth_callback_handler.endpoint
+  - name: oauth_callback_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: OAuth callback API endpoint
+      description: Processes OAuth callback requests
+      depends_on:
+        - app:api.public
+      router: app:api.public
+    method: POST
+    func: oauth_callback_handler
+    path: /userspace/oauth/callback
+    
+  # userspace.oauth.api.public:oauth_callback_page
+  - name: oauth_callback_page
+    kind: function.lua
+    meta:
+      comment: OAuth callback page handler
+      description: Serves the OAuth callback page using renderer
+      depends_on:
+        - app:api.public
+    source: file://oauth_callback_page.lua
+    modules:
+      - http
+      - json
+    imports:
+      renderer: wippy.views:renderer
+    method: handler
+    pool:
+      size: 4
+    
+  # userspace.oauth.api.public:oauth_callback_page.endpoint
+  - name: oauth_callback_page.endpoint
+    kind: http.endpoint
+    meta:
+      comment: OAuth callback page endpoint
+      description: Serves the OAuth callback page
+      depends_on:
+        - app:api.public
+      router: app:api.public
+    method: GET
+    func: oauth_callback_page
+    path: /userspace/oauth/callback
+    

@@ -1,0 +1,612 @@
+version: "1.0"
+namespace: userspace.scheduler
+
+entries:
+  # userspace.scheduler:schedulable
+  - name: schedulable
+    kind: contract.definition
+    meta:
+      comment: Contract for tasks that can be scheduled for execution
+      tags:
+        - scheduler
+        - tasks
+        - userspace
+        - execution
+      description: Standard interface for schedulable tasks with execution context and history
+    methods:
+      - name: execute
+        description: |
+          Execute a scheduled task with context and history information.
+    
+          This method is called by the scheduler when a task is ready to run.
+          The implementation receives scheduling context and can access previous run history.
+    
+          Examples:
+          - { "schedule_id": "550e8400-e29b-41d4-a716-446655440000", "previous_runs": {...}, "args": { "user_id": 123, "action": "backup" } }
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "schedule_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the scheduled task"
+                  },
+                  "previous_runs": {
+                    "type": "object",
+                    "properties": {
+                      "last_run_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the task last executed"
+                      },
+                      "consecutive_failures": {
+                        "type": "integer",
+                        "description": "Number of consecutive failures"
+                      },
+                      "retry_count": {
+                        "type": "integer",
+                        "description": "Current retry attempt number"
+                      },
+                      "last_error": {
+                        "type": "string",
+                        "description": "Last error message if previous run failed"
+                      }
+                    },
+                    "description": "Information about previous execution attempts"
+                  },
+                  "args": {
+                    "type": "object",
+                    "description": "Task-specific arguments and data payload"
+                  }
+                },
+                "required": ["schedule_id", "args"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Whether the task executed successfully"
+                  },
+                  "error": {
+                    "type": "string",
+                    "description": "Error message if task failed"
+                  },
+                  "retriable": {
+                    "type": "boolean",
+                    "description": "Whether this failure should be retried",
+                    "default": true
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+    
+  # userspace.scheduler:scheduler
+  - name: scheduler
+    kind: contract.definition
+    meta:
+      comment: Scheduler service contract for task scheduling and management
+      tags:
+        - scheduler
+        - tasks
+        - userspace
+      description: Contract for scheduling and managing tasks with external schedule calculation
+    methods:
+      - name: create_schedule
+        description: |
+          Create a new scheduled task.
+          Schedule calculation is deferred to external functions.
+    
+          Examples:
+          - { "task_implementation_id": "app:backup", "schedule_type": "interval", "schedule_expression": "86400", "description": "Daily backup" }
+          - { "task_implementation_id": "notification:email", "schedule_type": "once", "schedule_expression": "2025-06-19T18:00:00Z" }
+          - { "task_implementation_id": "monitor:ping", "schedule_type": "cron", "schedule_expression": "*/5 * * * *" }
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "description": "Optional task identifier (auto-generated if not provided)"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Optional description of the task"
+                  },
+                  "class": {
+                    "type": "string",
+                    "description": "Task classification (user, system, component)",
+                    "default": "user"
+                  },
+                  "schedule_type": {
+                    "type": "string",
+                    "description": "Type of schedule (interval, once, cron, ticker)"
+                  },
+                  "schedule_expression": {
+                    "type": "string",
+                    "description": "Schedule expression (duration for interval/ticker, ISO datetime for once, cron pattern for cron)"
+                  },
+                  "task_implementation_id": {
+                    "type": "string",
+                    "description": "Implementation ID that will handle task execution"
+                  },
+                  "task_context": {
+                    "type": "object",
+                    "description": "Context data for the task implementation",
+                    "default": {}
+                  },
+                  "task_args": {
+                    "type": "object",
+                    "description": "Arguments data for the task execution",
+                    "default": {}
+                  },
+                  "timeout_seconds": {
+                    "type": "integer",
+                    "description": "Task execution timeout in seconds",
+                    "default": 3600
+                  },
+                  "max_retries": {
+                    "type": "integer",
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the task is enabled",
+                    "default": true
+                  }
+                },
+                "required": ["schedule_type", "schedule_expression", "task_implementation_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Whether the task was scheduled successfully"
+                  },
+                  "task_id": {
+                    "type": "string",
+                    "description": "Unique identifier for the scheduled task"
+                  },
+                  "next_run_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the task will next execute"
+                  },
+                  "error": {
+                    "type": "string",
+                    "description": "Error message if scheduling failed"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+      - name: delete_schedule
+        description: |
+          Delete a scheduled task by ID.
+    
+          Examples:
+          - { "task_id": "550e8400-e29b-41d4-a716-446655440000" }
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "description": "Unique task identifier"
+                  }
+                },
+                "required": ["task_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Whether the task was deleted successfully"
+                  },
+                  "task_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the deleted task"
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "description": "Whether the task was actually removed"
+                  },
+                  "error": {
+                    "type": "string",
+                    "description": "Error message if deletion failed"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+      - name: get_schedule
+        description: |
+          Get the status and details of a scheduled task.
+    
+          Examples:
+          - { "task_id": "550e8400-e29b-41d4-a716-446655440000" }
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "description": "Unique task identifier"
+                  }
+                },
+                "required": ["task_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Whether the task was found"
+                  },
+                  "task_id": {
+                    "type": "string",
+                    "description": "Unique identifier for the task"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Task description"
+                  },
+                  "class": {
+                    "type": "string",
+                    "description": "Task classification (user, system, component)"
+                  },
+                  "schedule_type": {
+                    "type": "string",
+                    "description": "Type of schedule (interval, once, cron, ticker)"
+                  },
+                  "schedule_expression": {
+                    "type": "string",
+                    "description": "Schedule expression used for timing calculations"
+                  },
+                  "task_implementation_id": {
+                    "type": "string",
+                    "description": "Implementation ID that handles task execution"
+                  },
+                  "task_context": {
+                    "type": "object",
+                    "description": "Context data for the task implementation"
+                  },
+                  "task_args": {
+                    "type": "object",
+                    "description": "Arguments data for task execution"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Current task status (scheduled, executing, completed, failed, disabled)"
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the task is enabled for execution"
+                  },
+                  "next_run_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the task will next execute"
+                  },
+                  "last_run_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the task last executed"
+                  },
+                  "retry_count": {
+                    "type": "integer",
+                    "description": "Number of times this task has been retried"
+                  },
+                  "max_retries": {
+                    "type": "integer",
+                    "description": "Maximum number of retry attempts allowed"
+                  },
+                  "consecutive_failures": {
+                    "type": "integer",
+                    "description": "Number of consecutive failures"
+                  },
+                  "last_error": {
+                    "type": "string",
+                    "description": "Last error message if task failed"
+                  },
+                  "timeout_seconds": {
+                    "type": "integer",
+                    "description": "Task execution timeout in seconds"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the task was created"
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the task was last updated"
+                  },
+                  "error": {
+                    "type": "string",
+                    "description": "Error message if task not found"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+      - name: list_schedules
+        description: |
+          List scheduled tasks with optional filtering and pagination.
+    
+          Examples:
+          - { "filters": { "status": "scheduled", "class": "user" }, "pagination": { "limit": 10 } }
+          - { "filters": { "enabled": true, "task_implementation_id": "app:backup" } }
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "filters": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "description": "Filter by task status"
+                      },
+                      "enabled": {
+                        "type": "boolean",
+                        "description": "Filter by enabled state"
+                      },
+                      "class": {
+                        "type": "string",
+                        "description": "Filter by task class (user, system, component)"
+                      },
+                      "task_implementation_id": {
+                        "type": "string",
+                        "description": "Filter by task implementation ID"
+                      },
+                      "schedule_type": {
+                        "type": "string",
+                        "description": "Filter by schedule type"
+                      }
+                    },
+                    "description": "Filters to apply to the task list",
+                    "default": {}
+                  },
+                  "pagination": {
+                    "type": "object",
+                    "properties": {
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "default": 50,
+                        "description": "Maximum number of tasks to return"
+                      },
+                      "offset": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0,
+                        "description": "Number of tasks to skip"
+                      }
+                    },
+                    "description": "Pagination options for the task list",
+                    "default": {}
+                  },
+                  "ordering": {
+                    "type": "object",
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "enum": ["created_at", "updated_at", "next_run_at"],
+                        "default": "created_at",
+                        "description": "Field to order by"
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": ["ASC", "DESC"],
+                        "default": "DESC",
+                        "description": "Sort direction"
+                      }
+                    },
+                    "description": "Ordering options for the task list",
+                    "default": {}
+                  }
+                },
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Whether the request was successful"
+                  },
+                  "schedules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "task_id": {
+                          "type": "string",
+                          "description": "Unique identifier for the task"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Task description"
+                        },
+                        "class": {
+                          "type": "string",
+                          "description": "Task classification (user, system, component)"
+                        },
+                        "schedule_type": {
+                          "type": "string",
+                          "description": "Type of schedule"
+                        },
+                        "schedule_expression": {
+                          "type": "string",
+                          "description": "Schedule expression"
+                        },
+                        "task_implementation_id": {
+                          "type": "string",
+                          "description": "Implementation ID that handles execution"
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "Current task status"
+                        },
+                        "enabled": {
+                          "type": "boolean",
+                          "description": "Whether the task is enabled"
+                        },
+                        "next_run_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "When the task will next execute"
+                        },
+                        "last_run_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "When the task last executed"
+                        },
+                        "retry_count": {
+                          "type": "integer",
+                          "description": "Number of retries attempted"
+                        },
+                        "consecutive_failures": {
+                          "type": "integer",
+                          "description": "Number of consecutive failures"
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "When the task was created"
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "When the task was last updated"
+                        }
+                      }
+                    },
+                    "description": "List of tasks matching the filters"
+                  },
+                  "total_count": {
+                    "type": "integer",
+                    "description": "Total number of tasks matching filters"
+                  },
+                  "has_more": {
+                    "type": "boolean",
+                    "description": "Whether there are more results available"
+                  },
+                  "error": {
+                    "type": "string",
+                    "description": "Error message if request failed"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+      - name: update_schedule
+        description: |
+          Update an existing scheduled task. Only provided fields will be updated.
+    
+          Examples:
+          - { "task_id": "550e8400-e29b-41d4-a716-446655440000", "enabled": false }
+          - { "task_id": "550e8400-e29b-41d4-a716-446655440000", "schedule_expression": "43200", "description": "Updated backup schedule" }
+          - { "task_id": "550e8400-e29b-41d4-a716-446655440000", "task_args": {"target": "database"}, "timeout_seconds": 7200 }
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "description": "Unique task identifier"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Updated task description"
+                  },
+                  "schedule_expression": {
+                    "type": "string",
+                    "description": "Updated schedule expression (duration for interval/ticker, ISO datetime for once, cron pattern for cron)"
+                  },
+                  "task_context": {
+                    "type": "object",
+                    "description": "Updated context data for the task implementation"
+                  },
+                  "task_args": {
+                    "type": "object",
+                    "description": "Updated arguments data for task execution"
+                  },
+                  "timeout_seconds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Updated task execution timeout in seconds"
+                  },
+                  "max_retries": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Updated maximum retry count"
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the task should be enabled or disabled"
+                  }
+                },
+                "required": ["task_id"],
+                "additionalProperties": false
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Whether the task was updated successfully"
+                  },
+                  "task_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the updated task"
+                  },
+                  "changes_made": {
+                    "type": "boolean",
+                    "description": "Whether any changes were actually made"
+                  },
+                  "next_run_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Updated next run time (if schedule changed)"
+                  },
+                  "error": {
+                    "type": "string",
+                    "description": "Error message if update failed"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+    

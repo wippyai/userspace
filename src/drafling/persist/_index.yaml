@@ -1,0 +1,251 @@
+version: "1.0"
+namespace: userspace.drafling.persist
+
+entries:
+  # userspace.drafling.persist:doc_reader
+  - name: doc_reader
+    kind: library.lua
+    meta:
+      name: Document Reader
+      comment: Comprehensive fluent API for reading projects with related data
+      tags:
+        - drafling
+        - projects
+        - query
+        - reader
+        - fluent
+      description: |-
+        Provides a fluent, immutable API for reading projects with categories and entries.
+        Supports complex filtering, joining, and fetching options.
+    source: file://doc_reader.lua
+    modules:
+      - sql
+      - json
+    imports:
+      drafling_consts: userspace.drafling:consts
+    
+  # userspace.drafling.persist:doc_reader_test
+  - name: doc_reader_test
+    kind: function.lua
+    meta:
+      name: Document Reader Tests
+      type: test
+      comment: Unit tests for the project reader fluent API
+      group: Components / Drafling
+      tags:
+        - drafling
+        - projects
+        - reader
+        - tests
+      description: Tests the fluent API for reading projects with complex filtering and joining
+    source: file://doc_reader_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      doc_reader: userspace.drafling.persist:doc_reader
+      drafling_consts: userspace.drafling:consts
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.drafling.persist:doc_repo
+  - name: doc_repo
+    kind: library.lua
+    meta:
+      name: Document Repository
+      comment: High-level project operations and business logic
+      tags:
+        - drafling
+        - projects
+        - repository
+        - categories
+        - analytics
+      description: Document CRUD operations with business logic, category management, and analytics like unique categories and entry types across user projects
+    source: file://doc_repo.lua
+    modules:
+      - sql
+      - json
+      - time
+      - uuid
+    imports:
+      drafling_consts: userspace.drafling:consts
+    
+  # userspace.drafling.persist:doc_repo_test
+  - name: doc_repo_test
+    kind: function.lua
+    meta:
+      name: Document Repository Tests
+      type: test
+      comment: Unit tests for the project repository
+      group: Components / Drafling
+      tags:
+        - drafling
+        - projects
+        - repository
+        - tests
+      description: Tests project CRUD operations, category management, and analytics functions
+    source: file://doc_repo_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      doc_repo: userspace.drafling.persist:doc_repo
+      drafling_consts: userspace.drafling:consts
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.drafling.persist:history_repo
+  - name: history_repo
+    kind: library.lua
+    meta:
+      name: History Repository
+      comment: Repository for querying entry history and change tracking
+      tags:
+        - drafling
+        - history
+        - repository
+        - audit
+        - tracking
+      description: |-
+        Provides comprehensive querying of entry history records with filtering by entry,
+        project, user, and operation types. Includes analytics and recent activity views.
+    source: file://history_repo.lua
+    modules:
+      - sql
+      - json
+    imports:
+      drafling_consts: userspace.drafling:consts
+    
+  # userspace.drafling.persist:history_repo_test
+  - name: history_repo_test
+    kind: function.lua
+    meta:
+      name: History Repository Tests
+      type: test
+      comment: Unit tests for the history repository
+      group: Components / Drafling
+      tags:
+        - drafling
+        - history
+        - repository
+        - tests
+      description: Tests history querying, filtering, and analytics functions
+    source: file://history_repo_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      drafling_consts: userspace.drafling:consts
+      history_repo: userspace.drafling.persist:history_repo
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.drafling.persist:ops
+  - name: ops
+    kind: library.lua
+    meta:
+      name: Drafling Operations
+      comment: CQRS command handlers for all drafling entities
+      tags:
+        - drafling
+        - operations
+        - commands
+        - cqrs
+        - history
+      description: |-
+        Command handlers for projects, categories, and entries. Creates history records
+        automatically and handles all business logic for state changes.
+    source: file://ops.lua
+    modules:
+      - sql
+      - json
+      - time
+      - uuid
+    imports:
+      drafling_consts: userspace.drafling:consts
+    
+  # userspace.drafling.persist:ops_test
+  - name: ops_test
+    kind: function.lua
+    meta:
+      name: Drafling Operations Tests
+      type: test
+      comment: Unit tests for CQRS command handlers
+      group: Components / Drafling
+      tags:
+        - drafling
+        - operations
+        - commands
+        - tests
+      description: Tests all command handlers and history creation logic
+    source: file://ops_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      drafling_consts: userspace.drafling:consts
+      ops: userspace.drafling.persist:ops
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.drafling.persist:writer
+  - name: writer
+    kind: library.lua
+    meta:
+      name: Drafling Writer
+      comment: Transaction management and real-time publishing for drafling operations
+      tags:
+        - drafling
+        - writer
+        - transactions
+        - publishing
+        - realtime
+      description: |-
+        Manages transactions for drafling operations, executes commands via ops handlers,
+        and publishes real-time updates to user-specific topics.
+    source: file://writer.lua
+    modules:
+      - sql
+      - json
+      - uuid
+      - time
+      - process
+    imports:
+      drafling_consts: userspace.drafling:consts
+      ops: userspace.drafling.persist:ops
+    
+  # userspace.drafling.persist:writer_test
+  - name: writer_test
+    kind: function.lua
+    meta:
+      name: Document Writer Tests
+      type: test
+      comment: Unit tests for transaction management and publishing
+      group: Components / Drafling
+      tags:
+        - drafling
+        - writer
+        - transactions
+        - tests
+      description: Tests transaction handling, command execution, and real-time publishing
+    source: file://writer_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      drafling_consts: userspace.drafling:consts
+      ops: userspace.drafling.persist:ops
+      test: wippy.test:test
+      writer: userspace.drafling.persist:writer
+    method: run_tests
+    

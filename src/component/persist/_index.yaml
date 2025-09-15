@@ -1,0 +1,67 @@
+version: "1.0"
+namespace: userspace.component.persist
+
+entries:
+  # userspace.component.persist:component_reader
+  - name: component_reader
+    kind: library.lua
+    meta:
+      comment: Flexible component query reader with immutable API
+      tags:
+        - components
+        - userspace
+        - query
+        - reader
+      description: Provides fluent, immutable API for reading components with filtering by user, metadata, and access permissions
+    source: file://component_reader.lua
+    modules:
+      - sql
+      - json
+    
+  # userspace.component.persist:component_reader_test
+  - name: component_reader_test
+    kind: function.lua
+    meta:
+      name: Component Reader Test
+      type: test
+      comment: Tests the component reader functionality for querying components with filtering and access control
+      group: Components
+      tags:
+        - components
+        - database
+        - query
+        - tests
+        - reader
+      description: Comprehensive tests for the component reader library covering filtering, pagination, access control, and edge cases
+      depends_on:
+        - ns:wippy.sql
+    source: file://component_reader_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      component_reader: userspace.component.persist:component_reader
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.component.persist:ops
+  - name: ops
+    kind: library.lua
+    meta:
+      comment: Component operation constants and command handlers
+      tags:
+        - components
+        - userspace
+        - operations
+        - commands
+        - access
+      description: Defines constants for access control and command types, plus transaction-safe handlers for component operations
+    source: file://ops.lua
+    modules:
+      - sql
+      - time
+      - uuid
+      - json
+    

@@ -1,0 +1,23 @@
+version: "1.0"
+namespace: userspace.scheduler.persist
+
+entries:
+  # userspace.scheduler.persist:schedule_repo
+  - name: schedule_repo
+    kind: library.lua
+    meta:
+      comment: Schedule repository for task persistence and worker coordination
+      tags:
+        - scheduler
+        - userspace
+        - persistence
+        - tasks
+        - workers
+      description: Provides database operations for schedule CRUD, worker task claiming with database-specific locking, and execution state management
+    source: file://schedule_repo.lua
+    modules:
+      - sql
+      - json
+      - time
+      - uuid
+    

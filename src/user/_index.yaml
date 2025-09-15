@@ -1,0 +1,23 @@
+version: "1.0"
+namespace: userspace.user
+
+entries:
+  # userspace.user:__dependency.wippy.migration
+  - version: '>=v0.0.1'
+    name: __dependency.wippy.migration
+    kind: ns.dependency
+    meta:
+      description: Migration system dependency
+    component: wippy/migration
+    
+  # userspace.user:consts
+  - name: consts
+    kind: library.lua
+    meta:
+      comment: Userspace user system constants and configuration
+      description: Environment variable handling, status constants, error codes, and configuration defaults for userspace user management
+    source: file://consts.lua
+    modules:
+      - env
+    method: consts
+    

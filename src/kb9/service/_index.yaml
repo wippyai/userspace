@@ -1,0 +1,82 @@
+version: "1.0"
+namespace: userspace.kb9.service
+
+entries:
+  # userspace.kb9.service:embed_lib
+  - name: embed_lib
+    kind: library.lua
+    meta:
+      comment: KB9 embedding processing library
+      tags:
+        - kb9
+        - embedding
+        - library
+      description: Handles embed contract operations and vector generation for KB9 processes
+    source: file://embed_lib.lua
+    modules:
+      - contract
+      - json
+    imports:
+      consts: userspace.kb9:consts
+      llm: wippy.llm:llm
+    
+  # userspace.kb9.service:kb_process
+  - name: kb_process
+    kind: process.lua
+    meta:
+      comment: Individual KB9 knowledge base process
+      tags:
+        - kb9
+        - process
+        - knowledge-base
+    source: file://kb_process.lua
+    modules:
+      - time
+      - logger
+      - contract
+    imports:
+      consts: userspace.kb9:consts
+      embed_lib: userspace.kb9.service:embed_lib
+      store: userspace.kb9.persist:store
+    method: run
+    
+  # userspace.kb9.service:root
+  - name: root
+    kind: process.lua
+    meta:
+      comment: KB9 root service coordinator
+      tags:
+        - kb9
+        - service
+        - root
+    source: file://root.lua
+    modules:
+      - time
+      - uuid
+      - logger
+    imports:
+      consts: userspace.kb9:consts
+    method: run
+    
+  # userspace.kb9.service:service
+  - name: service
+    kind: process.service
+    meta:
+      comment: KB9 Knowledge Base Service
+      tags:
+        - kb9
+        - service
+        - knowledge_base
+      description: Auto-starting KB9 knowledge base service
+    host: app:processes
+    lifecycle:
+      depends_on:
+        - app:processes
+        - app:db
+      auto_start: true
+      restart_policy: always
+      security:
+        groups:
+          - wippy.security:process
+    process: root
+    

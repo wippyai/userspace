@@ -1,0 +1,152 @@
+version: "1.0"
+namespace: userspace.connections.traits
+
+entries:
+  # userspace.connections.traits:connection_drivers
+  - name: connection_drivers
+    kind: function.lua
+    meta:
+      type: tool
+      title: List Connection Drivers
+      tags:
+        - connections
+        - drivers
+        - discovery
+        - providers
+      description: List available connection drivers and providers using service discovery
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "driver_type": {
+              "type": "string",
+              "enum": ["all", "oauth", "credentials"],
+              "description": "Filter by driver type",
+              "default": "all"
+            }
+          }
+        }
+      llm_alias: ListConnectionDrivers
+      llm_description: Lists available connection drivers and providers that can be used to create new connections using service discovery contracts.
+    source: file://connection_drivers.lua
+    modules:
+      - contract
+      - security
+    method: handle
+    
+  # userspace.connections.traits:connection_info
+  - name: connection_info
+    kind: function.lua
+    meta:
+      type: tool
+      title: Connection Info
+      tags:
+        - connections
+        - oauth
+        - credentials
+        - status
+      description: Get detailed information about a specific connection using service contracts
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "component_id": {
+              "type": "string",
+              "description": "Component ID of the connection"
+            },
+            "connection_type": {
+              "type": "string",
+              "enum": ["auto", "oauth", "credentials"],
+              "description": "Type of connection (auto-detect if not specified)",
+              "default": "auto"
+            }
+          },
+          "required": ["component_id"]
+        }
+      llm_alias: ConnectionInfo
+      llm_description: Gets comprehensive information about a specific connection including status, configuration, and metadata using service contracts.
+    source: file://connection_info.lua
+    modules:
+      - contract
+      - security
+    method: handle
+    
+  # userspace.connections.traits:connection_list
+  - name: connection_list
+    kind: function.lua
+    meta:
+      type: tool
+      title: List Connections
+      tags:
+        - connections
+        - oauth
+        - credentials
+        - listing
+      description: List user's current connections using service contracts
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "connection_type": {
+              "type": "string",
+              "enum": ["all", "oauth", "credentials"],
+              "description": "Filter by connection type",
+              "default": "all"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Maximum number of connections to return",
+              "default": 50
+            }
+          }
+        }
+      llm_alias: ListConnections
+      llm_description: Lists all user connections from both OAuth and credential systems with status information using service contracts.
+    source: file://connection_list.lua
+    modules:
+      - contract
+      - security
+    method: handle
+    
+  # userspace.connections.traits:connection_manager
+  - name: connection_manager
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      comment: Connection management suite using service contracts
+      tags:
+        - connections
+        - oauth
+        - credentials
+        - management
+        - trait
+      icon: tabler:plug-connected
+    prompt: |-
+      You have access to connection management tools that work with both OAuth and credential-based connections using service contracts.
+    
+      **Available capabilities:**
+      - List all user connections with metadata and status
+      - Get detailed connection information including health status
+      - Discover available connection drivers for creating new connections
+      - Access connections through service contracts (no HTTP calls)
+      - Unified view of both OAuth and credential connection types
+    
+      **Key features:**
+      - Uses service contracts for all operations
+      - Gets real connection data from component registry
+      - Provides accurate status and metadata
+      - Follows Wippy service patterns
+      - Driver discovery for connection creation
+    
+      **Guidelines:**
+      - Users can only access their own connections
+      - Provide clear status information about connection health
+      - Use component IDs to access specific connection details
+      - Guide users to appropriate connection creation flows when needed
+    tools:
+      - userspace.connections.traits:connection_list
+      - userspace.connections.traits:connection_info
+      - userspace.connections.traits:connection_drivers
+    

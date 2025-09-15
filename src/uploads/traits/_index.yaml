@@ -1,0 +1,139 @@
+version: "1.0"
+namespace: userspace.uploads.traits
+
+entries:
+  # userspace.uploads.traits:count_files
+  - name: count_files
+    kind: function.lua
+    meta:
+      type: tool
+      title: Count Files
+      tags:
+        - uploads
+        - files
+        - counting
+        - statistics
+      description: Count user's uploaded files matching specific criteria
+      input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"content_types\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Filter by content types (e.g., ['image/*', 'text/*'])\"\n    },\n    \"created_after\": {\n      \"type\": \"string\",\n      \"format\": \"date-time\", \n      \"description\": \"Count files created after this date\"\n    },\n    \"created_before\": {\n      \"type\": \"string\",\n      \"format\": \"date-time\",\n      \"description\": \"Count files created before this date\"\n    }\n  }\n}\n"
+      llm_alias: CountFiles
+      llm_description: Get the total count of user's uploaded files matching the specified criteria. Useful for showing statistics like 'You have 45 images' or 'You uploaded 12 files this week'.
+    source: file://count_files.lua
+    modules:
+      - security
+      - contract
+    method: handle
+    
+  # userspace.uploads.traits:file_manager
+  - name: file_manager
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      comment: Adds file listing and viewing capabilities for uploaded content with chunked reading
+      tags:
+        - uploads
+        - files
+        - management
+        - content
+        - trait
+        - chunked-reading
+      icon: tabler:files
+    prompt: |-
+      You have access to file management tools for uploaded content. Use these tools to help users find, list, and view their uploaded files efficiently.
+    
+      **Available capabilities:**
+      - List user's uploaded files with filtering and pagination
+      - View file content with chunked reading support - never fails, always returns content when possible
+      - Count files matching specific criteria
+      - Read large files in chunks using offset and limit parameters
+    
+      **Important guidelines:**
+      - Always respect user ownership - users can only access their own files
+      - ViewFiles always returns content when possible, never just fails with "too large"
+      - For large files, tool automatically provides next reading instructions
+      - Support various content types: text, images, documents
+      - Use appropriate response formats based on content type
+      - Tool provides clear guidance for continuing file reading
+    tools:
+      - userspace.uploads.traits:*
+    
+  # userspace.uploads.traits:list_files
+  - name: list_files
+    kind: function.lua
+    meta:
+      type: tool
+      title: List Files
+      tags:
+        - uploads
+        - files
+        - listing
+        - pagination
+      description: List user's uploaded files with filtering and cursor-based pagination
+      input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"after_file_id\": {\n      \"type\": \"string\",\n      \"description\": \"Return files after this file ID (for pagination)\"\n    },\n    \"limit\": {\n      \"type\": \"integer\",\n      \"description\": \"Maximum number of files to return (1-50)\",\n      \"default\": 20,\n      \"minimum\": 1,\n      \"maximum\": 50\n    },\n    \"content_types\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Filter by content types (e.g., ['image/*', 'text/plain', 'application/pdf'])\"\n    },\n    \"created_after\": {\n      \"type\": \"string\",\n      \"format\": \"date-time\",\n      \"description\": \"Show files created after this date (ISO format)\"\n    },\n    \"created_before\": {\n      \"type\": \"string\", \n      \"format\": \"date-time\",\n      \"description\": \"Show files created before this date (ISO format)\"\n    },\n    \"sort\": {\n      \"type\": \"string\",\n      \"enum\": [\"created_at\", \"size\"],\n      \"description\": \"Sort field\",\n      \"default\": \"created_at\"\n    },\n    \"sort_order\": {\n      \"type\": \"string\",\n      \"enum\": [\"asc\", \"desc\"],\n      \"description\": \"Sort order\", \n      \"default\": \"desc\"\n    }\n  }\n}\n"
+      llm_alias: ListFiles
+      llm_description: List the user's uploaded files with optional filtering by content type and date range. Supports pagination for large file collections. Returns file metadata including names, sizes, and creation dates.
+    source: file://list_files.lua
+    modules:
+      - security
+      - contract
+    method: handle
+    
+  # userspace.uploads.traits:view_files
+  - name: view_files
+    kind: function.lua
+    meta:
+      type: tool
+      title: View Files
+      tags:
+        - uploads
+        - files
+        - viewing
+        - content
+        - chunked-reading
+      description: View uploaded file content with chunked reading support - always returns content when possible
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "upload_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Array of upload IDs (UUIDs) to view",
+              "minItems": 1,
+              "maxItems": 10
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Byte offset to start reading from (0-based). Default 0 reads from beginning.",
+              "minimum": 0,
+              "default": 0
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of bytes to read from offset. Default 64KB.",
+              "minimum": 1,
+              "maximum": 1048576,
+              "default": 65536
+            },
+            "format": {
+              "type": "string",
+              "enum": ["auto", "text", "base64"],
+              "description": "Force specific format for all files (auto-detects by default)",
+              "default": "auto"
+            }
+          },
+          "required": ["upload_ids"]
+        }
+      llm_alias: ViewFiles
+      llm_description: View file content using chunked reading. Always returns some content when possible, never just fails with "file too large". Automatically reads first 64KB and provides exact instructions for reading more if needed. Tool response includes reading_status and next_call guidance for continuing large files.
+    source: file://view_files.lua
+    modules:
+      - security
+      - contract
+      - ctx
+      - fs
+      - base64
+      - json
+    method: handle
+    

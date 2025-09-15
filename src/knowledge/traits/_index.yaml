@@ -1,0 +1,219 @@
+version: "1.0"
+namespace: userspace.knowledge.traits
+
+entries:
+  # userspace.knowledge.traits:discover_knowledge_bases
+  - name: discover_knowledge_bases
+    kind: function.lua
+    meta:
+      type: tool
+      title: Discover Knowledge Bases
+      tags:
+        - tool
+        - knowledge
+        - discovery
+      description: Discovers user's knowledge bases
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Max results (default: 20)"
+            }
+          }
+        }
+      llm_alias: DiscoverKnowledgeBases
+      llm_description: Lists all knowledge bases accessible to the user
+    source: file://discover_knowledge_bases.lua
+    modules:
+      - json
+    imports:
+      component: userspace.component:component
+    method: handle
+    
+  # userspace.knowledge.traits:embed_content
+  - name: embed_content
+    kind: function.lua
+    meta:
+      type: tool
+      title: Embed Content
+      comment: Embeds content into knowledge base using kb_id from context
+      tags:
+        - tool
+        - knowledge
+        - embed
+        - context-locked
+      description: Embeds content into the knowledge base, context locked
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string",
+              "description": "Content to embed"
+            },
+            "content_type": {
+              "type": "string",
+              "description": "MIME type of content (default: text/plain)"
+            },
+            "metadata": {
+              "type": "object",
+              "description": "Additional metadata for the content"
+            }
+          },
+          "required": ["content"]
+        }
+      llm_alias: EmbedContent
+      llm_description: Embeds content into your knowledge base for future retrieval
+    source: file://embed_content.lua
+    modules:
+      - json
+      - ctx
+    imports:
+      component: userspace.component:component
+    method: handle
+    
+  # userspace.knowledge.traits:kb_operations
+  - name: kb_operations
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      comment: Universal knowledge base operations - discovery and querying across knowledge bases
+      tags:
+        - knowledge
+        - operations
+        - universal
+        - discovery
+        - query
+      icon: tabler:database-search
+    prompt: |-
+      You have access to knowledge base operations:
+    
+      **Discovery & Querying:**
+      - Discover and list all accessible knowledge bases
+      - Query any specific knowledge base by ID for information
+      - Search across distributed knowledge sources
+    
+      Use these tools to access and work with knowledge bases effectively.
+    tools:
+      - userspace.knowledge.traits:discover_knowledge_bases
+      - userspace.knowledge.traits:query_knowledge_base
+    
+  # userspace.knowledge.traits:kb_query
+  - name: kb_query
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      comment: KB query access for context-locked agents. Requires kb_id in context - agent tools automatically use it.
+      tags:
+        - knowledge
+        - query
+        - context-locked
+      icon: tabler:search
+    prompt: |-
+      You have access to query your knowledge base. Use the query tool to search for information
+      and provide helpful answers based on the knowledge base contents.
+    tools:
+      - userspace.knowledge.traits:query_kb
+    
+  # userspace.knowledge.traits:kb_writer
+  - name: kb_writer
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      comment: KB write access for context-locked agents. Requires kb_id in context - agent tools automatically use it.
+      tags:
+        - knowledge
+        - embed
+        - write
+        - context-locked
+      icon: tabler:pencil-plus
+    prompt: "You have access to embed content into your knowledge base. Use the embed tool to \nstore information and build up the knowledge base contents."
+    tools:
+      - userspace.knowledge.traits:embed_content
+    
+  # userspace.knowledge.traits:query_kb
+  - name: query_kb
+    kind: function.lua
+    meta:
+      type: tool
+      title: Query Knowledge Base
+      comment: Queries knowledge base using kb_id from context
+      tags:
+        - tool
+        - knowledge
+        - query
+        - context-locked
+      description: Queries the knowledge base for the agent, context locked
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search query"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Max results (default: 10)"
+            }
+          },
+          "required": ["query"]
+        }
+      llm_alias: QueryKnowledgeBase
+      llm_description: Searches within your knowledge base using natural language query
+    source: file://query_kb.lua
+    modules:
+      - json
+      - ctx
+    imports:
+      component: userspace.component:component
+    method: handle
+    
+  # userspace.knowledge.traits:query_knowledge_base
+  - name: query_knowledge_base
+    kind: function.lua
+    meta:
+      type: tool
+      title: Query Knowledge Base
+      tags:
+        - tool
+        - knowledge
+        - query
+        - search
+      description: Queries a specific knowledge base
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "kb_id": {
+              "type": "string",
+              "description": "Knowledge base component UUID"
+            },
+            "query": {
+              "type": "string",
+              "description": "Search query"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Max results (default: 10)"
+            }
+          },
+          "required": ["kb_id", "query"]
+        }
+      llm_alias: QuerySpecificKnowledgeBase
+      llm_description: Searches within a specific knowledge base using natural language query
+    source: file://query_knowledge_base.lua
+    modules:
+      - json
+    imports:
+      component: userspace.component:component
+    method: handle
+    

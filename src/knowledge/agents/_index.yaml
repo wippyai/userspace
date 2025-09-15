@@ -1,0 +1,226 @@
+version: "1.0"
+namespace: userspace.knowledge.agents
+
+entries:
+  # userspace.knowledge.agents:embed_file
+  - name: embed_file
+    kind: function.lua
+    meta:
+      type: tool
+      title: Embed File
+      tags:
+        - tool
+        - knowledge
+        - embed
+        - file
+        - upload
+      description: Embeds an uploaded file into the knowledge base by upload UUID
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "upload_uuid": {
+              "type": "string",
+              "description": "Upload UUID of the file to embed into the knowledge base"
+            },
+            "metadata": {
+              "type": "object",
+              "description": "Optional metadata to associate with the embedded content"
+            }
+          },
+          "required": ["upload_uuid"]
+        }
+      llm_alias: EmbedFile
+      llm_description: Embeds an uploaded file into your knowledge base using the file's upload UUID. Use this to add documents, images, or other files to the knowledge base for future retrieval.
+    source: file://embed_file.lua
+    modules:
+      - json
+      - ctx
+    imports:
+      component: userspace.component:component
+    method: handle
+    
+  # userspace.knowledge.agents:kb_specialist
+  - name: kb_specialist
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Knowledge Base Specialist
+      comment: KB-specific agent for focused operations within a single knowledge base with file management
+      group: Knowledge
+      tags:
+        - knowledge
+        - specialist
+        - context-locked
+        - kb-specific
+        - files
+      icon: tabler:database
+      class:
+        - contextual
+    prompt: |-
+      You are a Knowledge Base Specialist focused on operations within your assigned knowledge base.
+    
+      You have access to comprehensive knowledge base and file management capabilities:
+      - Query the knowledge base to find information
+      - Embed new content to expand the knowledge base
+      - Analyze and organize knowledge base contents
+      - List, view, and manage uploaded files
+      - Process files for knowledge base integration
+    
+      Your kb_id is automatically determined from your context - you don't need to specify it.
+      Focus on providing comprehensive assistance within your assigned knowledge base scope, including helping users work with their uploaded files.
+    model: gpt-4.1
+    temperature: 0.2
+    max_tokens: 3072
+    tools:
+      - userspace.knowledge.agents:embed_file
+    traits:
+      - userspace.knowledge.traits:kb_query
+      - userspace.knowledge.traits:kb_writer
+      - userspace.uploads.traits:file_manager
+    
+  # userspace.knowledge.agents:knowledge_manager
+  - name: knowledge_manager
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Knowledge Manager
+      comment: Universal knowledge base manager with discovery, cross-KB capabilities, and KB creation orchestration
+      group: Knowledge
+      tags:
+        - knowledge
+        - manager
+        - discovery
+        - cross-kb
+        - creation
+      icon: tabler:brain
+      class:
+        - public
+    prompt: |-
+      You are a Knowledge Manager with comprehensive knowledge base capabilities.
+    
+      ## Your Capabilities
+    
+      **Knowledge Base Discovery & Querying:**
+      - List all accessible knowledge bases
+      - Query any knowledge base by ID for information
+      - Help users find relevant information across their knowledge sources
+    
+      **KB-Specific Operations:**
+      - Redirect users to work directly with specific KB specialists for focused work
+    
+      **Knowledge Base Creation:**
+      - Discover available KB creator types by finding agents with "knowledge_base_creator" class
+      - Help users choose appropriate KB types based on their needs
+      - Redirect users to specific KB creators for new KB creation
+    
+      **Cross-KB Intelligence:**
+      - Search across multiple knowledge bases simultaneously
+      - Compare information between different knowledge sources
+      - Provide unified answers from distributed knowledge
+    
+      When users ask questions, first determine if they need:
+      1. General KB discovery/listing
+      2. Cross-KB querying for information
+      3. KB-specific operations (redirect to specialist)
+      4. New KB creation (redirect to creator)
+    
+      For any focused work within a specific knowledge base, redirect users to the KB specialist rather than trying to handle it yourself.
+    model: gpt-4.1
+    temperature: 0.3
+    max_tokens: 4096
+    tools:
+      - userspace.knowledge.agents:redirect_to_kb_specialist
+      - userspace.knowledge.agents:list_kb_creators
+      - userspace.knowledge.agents:redirect_to_kb_creator
+    traits:
+      - userspace.knowledge.traits:kb_operations
+    
+  # userspace.knowledge.agents:list_kb_creators
+  - name: list_kb_creators
+    kind: function.lua
+    meta:
+      type: tool
+      title: List KB Creators
+      tags:
+        - tool
+        - knowledge
+        - creators
+        - discovery
+      description: Lists available knowledge base creator agents
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {}
+        }
+      llm_alias: ListKBCreators
+      llm_description: Lists all available knowledge base creator agents that can create new knowledge bases
+    source: file://list_kb_creators.lua
+    modules:
+      - registry
+      - json
+    method: handle
+    
+  # userspace.knowledge.agents:redirect_to_kb_creator
+  - name: redirect_to_kb_creator
+    kind: function.lua
+    meta:
+      type: tool
+      title: Start KB Creation
+      tags:
+        - tool
+        - knowledge
+        - creator
+        - redirect
+      description: Redirects user to a specific knowledge base creator
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "creator_id": {
+              "type": "string",
+              "description": "KB creator agent ID"
+            }
+          },
+          "required": ["creator_id"]
+        }
+      llm_alias: RedirectToKBCreator
+      llm_description: Redirects the user to a specific knowledge base creator agent
+      private: true
+    source: file://redirect_to_kb_creator.lua
+    modules:
+      - registry
+      - json
+    method: handle
+    
+  # userspace.knowledge.agents:redirect_to_kb_specialist
+  - name: redirect_to_kb_specialist
+    kind: function.lua
+    meta:
+      type: tool
+      title: Redirect to KB Specialist
+      tags:
+        - tool
+        - redirect
+        - kb-specialist
+      description: Redirects user to work directly with a specific KB specialist agent
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "kb_id": {
+              "type": "string",
+              "description": "Knowledge base component UUID to work with"
+            }
+          },
+          "required": ["kb_id"]
+        }
+      llm_alias: RedirectToKBSpecialist
+      llm_description: Redirects the user to work directly with the KB specialist for focused work within a specific knowledge base. Use when user wants to work with a specific KB.
+    source: file://redirect_to_kb_specialist.lua
+    modules:
+      - json
+    imports:
+      component: userspace.component:component
+    method: handle
+    

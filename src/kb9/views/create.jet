@@ -1,0 +1,637 @@
+{{ extends "common/layout" }}
+
+{* Page title and description *}
+{{ block title() }}Create Custom Knowledge Base{{ end }}
+{{ block metaDescription() }}Create a new configurable knowledge base with modular components{{ end }}
+
+{{ block mainContent() }}
+<div x-data="createKbApp" x-init="initialize()" class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center mb-4">
+            <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg mr-4">
+                <iconify-icon icon="tabler:database-import" class="text-white" width="24" height="24"></iconify-icon>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Create Custom Knowledge Base</h1>
+                <p class="text-surface-600 dark:text-surface-400">Configure embedding model and processing components</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center py-12">
+        <iconify-icon icon="tabler:loader-2" class="animate-spin text-primary-500 mx-auto mb-4" width="32" height="32"></iconify-icon>
+        <p class="text-surface-600 dark:text-surface-400">Loading components...</p>
+    </div>
+
+    <!-- Form -->
+    <form @submit.prevent="handleSubmit" x-show="!loading" class="space-y-6">
+        <!-- Basic Info -->
+        <div class="bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4">Basic Information</h3>
+            <div class="space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Name</label>
+                    <input
+                            type="text"
+                            id="name"
+                            x-model="formData.name"
+                            required
+                            placeholder="My Knowledge Base"
+                            class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label for="description" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Description</label>
+                    <textarea
+                            id="description"
+                            x-model="formData.description"
+                            rows="2"
+                            placeholder="What will this knowledge base contain?"
+                            class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Embedding Model -->
+        <div class="bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center mb-4">
+                <iconify-icon icon="tabler:cpu" class="text-blue-500 mr-3" width="20" height="20"></iconify-icon>
+                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Embedding Model</h3>
+            </div>
+            <p class="text-sm text-surface-600 dark:text-surface-400 mb-4">Global model used for all content embeddings in this knowledge base</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="embedding_model" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Select Model</label>
+                    <select
+                            id="embedding_model"
+                            x-model="formData.embeddingModel"
+                            required
+                            class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Select embedding model...</option>
+                        <template x-for="model in availableModels.embedding" :key="model.name">
+                            <option :value="model.name" x-text="model.title"></option>
+                        </template>
+                    </select>
+                    <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">This model will generate vector embeddings for all content in your knowledge base</p>
+                </div>
+
+                <!-- Model info display -->
+                <div x-show="selectedEmbeddingModel" x-transition class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div class="flex items-center">
+                        <iconify-icon icon="tabler:info-circle" class="text-blue-600 dark:text-blue-400 mr-2" width="16" height="16"></iconify-icon>
+                        <div>
+                            <h4 class="text-sm font-medium text-blue-900 dark:text-blue-100" x-text="selectedEmbeddingModel?.title"></h4>
+                            <p class="text-xs text-blue-700 dark:text-blue-300">
+                                <span x-text="selectedEmbeddingModel?.provider"></span>
+                                <span x-show="selectedEmbeddingModel?.dimensions"> • <span x-text="selectedEmbeddingModel?.dimensions"></span> dimensions</span>
+                                <span x-show="selectedEmbeddingModel?.context_length"> • <span x-text="selectedEmbeddingModel?.context_length"></span> context</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Processing Engine -->
+        <div class="bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center mb-4">
+                <iconify-icon icon="tabler:file-text" class="text-purple-500 mr-3" width="20" height="20"></iconify-icon>
+                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Content Processing</h3>
+            </div>
+            <p class="text-sm text-surface-600 dark:text-surface-400 mb-4">How content will be processed, chunked, and prepared for embedding</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Select Processor</label>
+                    <div class="space-y-2">
+                        <template x-for="impl in availableImplementations.embed" :key="impl.id">
+                            <label class="flex items-start p-3 border border-surface-300 dark:border-surface-600 rounded-lg cursor-pointer hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors"
+                                   :class="formData.embed.implementation === impl.id ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20' : ''">
+                                <input
+                                        type="radio"
+                                        :value="impl.id"
+                                        x-model="formData.embed.implementation"
+                                        @change="loadImplementationOptions('embed')"
+                                        class="mt-1 mr-3 text-purple-500 focus:ring-purple-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center">
+                                        <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100" x-text="impl.name"></h4>
+                                        <span class="ml-2 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 rounded-full text-purple-700 dark:text-purple-300" x-text="impl.provider"></span>
+                                    </div>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400 mt-1" x-text="impl.description"></p>
+                                    <div x-show="impl.capabilities && impl.capabilities.length > 0" class="flex flex-wrap gap-1 mt-2">
+                                        <template x-for="capability in impl.capabilities" :key="capability">
+                                            <span class="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full" x-text="capability"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Content Processing Options -->
+                <div x-show="formData.embed.implementation && getImplementationOptions('embed').length > 0" x-transition class="mt-4 p-4 bg-surface-50 dark:bg-surface-900 rounded-lg">
+                    <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Processing Configuration</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <template x-for="option in getImplementationOptions('embed')" :key="option.key">
+                            <div>
+                                <label :for="'embed-' + option.key" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1" x-text="option.title"></label>
+
+                                <!-- Model selector -->
+                                <template x-if="option.widget === 'model_select'">
+                                    <select
+                                            :id="'embed-' + option.key"
+                                            x-model="formData.embed.options[option.key]"
+                                            :required="option.required"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        <option value="">Select model...</option>
+                                        <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                            <option :value="model.name" x-text="model.title"></option>
+                                        </template>
+                                    </select>
+                                </template>
+
+                                <!-- Boolean checkbox -->
+                                <template x-if="option.widget === 'checkbox'">
+                                    <label class="flex items-center">
+                                        <input
+                                                :id="'embed-' + option.key"
+                                                type="checkbox"
+                                                x-model="formData.embed.options[option.key]"
+                                                class="mr-2 text-purple-500 focus:ring-purple-500">
+                                        <span class="text-sm text-surface-700 dark:text-surface-300">Enable</span>
+                                    </label>
+                                </template>
+
+                                <!-- Number input -->
+                                <template x-if="option.widget === 'number' || option.type === 'number' || option.type === 'integer'">
+                                    <input
+                                            :id="'embed-' + option.key"
+                                            :type="option.type === 'integer' ? 'number' : 'number'"
+                                            :min="option.minimum"
+                                            :max="option.maximum"
+                                            :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
+                                            :placeholder="option.default"
+                                            x-model.number="formData.embed.options[option.key]"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                </template>
+
+                                <!-- Textarea input -->
+                                <template x-if="option.widget === 'textarea'">
+                                    <textarea
+                                            :id="'embed-' + option.key"
+                                            :placeholder="option.default"
+                                            x-model="formData.embed.options[option.key]"
+                                            rows="3"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-vertical"></textarea>
+                                </template>
+
+                                <!-- Text input (default) -->
+                                <template x-if="!option.widget && option.type === 'string'">
+                                    <input
+                                            :id="'embed-' + option.key"
+                                            type="text"
+                                            :placeholder="option.default"
+                                            x-model="formData.embed.options[option.key]"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                </template>
+
+                                <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Query Engine -->
+        <div class="bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center mb-4">
+                <iconify-icon icon="tabler:search" class="text-green-500 mr-3" width="20" height="20"></iconify-icon>
+                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Search Engine</h3>
+            </div>
+            <p class="text-sm text-surface-600 dark:text-surface-400 mb-4">How users will search and retrieve information from the knowledge base</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Select Engine</label>
+                    <div class="space-y-2">
+                        <template x-for="impl in availableImplementations.query" :key="impl.id">
+                            <label class="flex items-start p-3 border border-surface-300 dark:border-surface-600 rounded-lg cursor-pointer hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors"
+                                   :class="formData.query.implementation === impl.id ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-900/20' : ''">
+                                <input
+                                        type="radio"
+                                        :value="impl.id"
+                                        x-model="formData.query.implementation"
+                                        @change="loadImplementationOptions('query')"
+                                        class="mt-1 mr-3 text-green-500 focus:ring-green-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center">
+                                        <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100" x-text="impl.name"></h4>
+                                        <span class="ml-2 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/50 rounded-full text-green-700 dark:text-green-300" x-text="impl.provider"></span>
+                                    </div>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400 mt-1" x-text="impl.description"></p>
+                                    <div x-show="impl.capabilities && impl.capabilities.length > 0" class="flex flex-wrap gap-1 mt-2">
+                                        <template x-for="capability in impl.capabilities" :key="capability">
+                                            <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full" x-text="capability"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Query Options -->
+                <div x-show="formData.query.implementation && getImplementationOptions('query').length > 0" x-transition class="mt-4 p-4 bg-surface-50 dark:bg-surface-900 rounded-lg">
+                    <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Search Configuration</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <template x-for="option in getImplementationOptions('query')" :key="option.key">
+                            <div>
+                                <label :for="'query-' + option.key" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1" x-text="option.title"></label>
+
+                                <!-- Model selector -->
+                                <template x-if="option.widget === 'model_select'">
+                                    <select
+                                            :id="'query-' + option.key"
+                                            x-model="formData.query.options[option.key]"
+                                            :required="option.required"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                        <option value="">Select model...</option>
+                                        <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                            <option :value="model.name" x-text="model.title"></option>
+                                        </template>
+                                    </select>
+                                </template>
+
+                                <!-- Boolean checkbox -->
+                                <template x-if="option.widget === 'checkbox'">
+                                    <label class="flex items-center">
+                                        <input
+                                                :id="'query-' + option.key"
+                                                type="checkbox"
+                                                x-model="formData.query.options[option.key]"
+                                                class="mr-2 text-green-500 focus:ring-green-500">
+                                        <span class="text-sm text-surface-700 dark:text-surface-300">Enable</span>
+                                    </label>
+                                </template>
+
+                                <!-- Number input -->
+                                <template x-if="option.widget === 'number' || option.type === 'number' || option.type === 'integer'">
+                                    <input
+                                            :id="'query-' + option.key"
+                                            :type="option.type === 'integer' ? 'number' : 'number'"
+                                            :min="option.minimum"
+                                            :max="option.maximum"
+                                            :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
+                                            :placeholder="option.default"
+                                            x-model.number="formData.query.options[option.key]"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                </template>
+
+                                <!-- Textarea input -->
+                                <template x-if="option.widget === 'textarea'">
+                                    <textarea
+                                            :id="'query-' + option.key"
+                                            :placeholder="option.default"
+                                            x-model="formData.query.options[option.key]"
+                                            rows="3"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"></textarea>
+                                </template>
+
+                                <!-- Text input (default) -->
+                                <template x-if="!option.widget && option.type === 'string'">
+                                    <input
+                                            :id="'query-' + option.key"
+                                            type="text"
+                                            :placeholder="option.default"
+                                            x-model="formData.query.options[option.key]"
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                </template>
+
+                                <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div x-show="errorMessage" x-transition class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <div class="flex">
+                <iconify-icon icon="tabler:alert-circle" class="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <div class="ml-3">
+                    <p class="text-sm text-red-800 dark:text-red-100" x-text="errorMessage"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex space-x-4">
+            <button
+                    type="submit"
+                    :disabled="isSubmitting"
+                    :class="{'opacity-50 cursor-not-allowed': isSubmitting}"
+                    class="flex-1 inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all duration-200">
+                <iconify-icon :icon="isSubmitting ? 'tabler:loader-2' : 'tabler:plus'" :class="{'animate-spin': isSubmitting}" class="mr-2" width="18" height="18"></iconify-icon>
+                <span x-text="isSubmitting ? 'Creating...' : 'Create Knowledge Base'"></span>
+            </button>
+            <button
+                    type="button"
+                    @click="handleCancel"
+                    :disabled="isSubmitting"
+                    class="px-4 py-3 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>
+{{ end }}
+
+{{ block customJs() }}
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('createKbApp', () => ({
+            // State
+            wippyApi: null,
+            loading: true,
+            isSubmitting: false,
+            errorMessage: '',
+
+            // Available implementations (loaded from API)
+            availableImplementations: {
+                embed: [],
+                query: []
+            },
+
+            // Available models (loaded from API based on model_category)
+            availableModels: {
+                embedding: [],
+                generate: []
+            },
+
+            // Form data
+            formData: {
+                name: '',
+                description: '',
+                embeddingModel: '', // Global embedding model
+                embed: {
+                    implementation: '',
+                    options: {}
+                },
+                query: {
+                    implementation: '',
+                    options: {}
+                }
+            },
+
+            // Computed
+            get selectedEmbeddingModel() {
+                if (!this.formData.embeddingModel) return null;
+                return this.availableModels.embedding.find(m => m.name === this.formData.embeddingModel);
+            },
+
+            // Methods
+            async initialize() {
+                try {
+                    this.wippyApi = await window.getWippyApi();
+                    console.log('Custom knowledge base creation page initialized');
+
+                    // Load implementations and embedding models
+                    await Promise.all([
+                        this.loadImplementations(),
+                        this.loadModels('embedding')
+                    ]);
+
+                    this.loading = false;
+                } catch (error) {
+                    console.error('Failed to initialize:', error);
+                    this.errorMessage = 'Failed to initialize page: ' + error.message;
+                    this.loading = false;
+                }
+            },
+
+            async loadImplementations() {
+                try {
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/kb/kb9/implementations');
+
+                    if (response.data && response.data.success) {
+                        this.availableImplementations = response.data.implementations;
+                        console.log('Loaded implementations:', this.availableImplementations);
+                    } else {
+                        throw new Error('Invalid response from implementations API');
+                    }
+                } catch (error) {
+                    console.error('Failed to load implementations:', error);
+                    this.errorMessage = 'Failed to load available implementations: ' + error.message;
+                }
+            },
+
+            async loadModels(category) {
+                if (this.availableModels[category] && this.availableModels[category].length > 0) {
+                    return; // Already loaded
+                }
+
+                try {
+                    const response = await this.wippyApi.api.get(`/api/v1/userspace/models/list?capability=${category}`);
+
+                    if (response.data && response.data.success && response.data.models) {
+                        this.availableModels[category] = response.data.models;
+                        console.log(`Loaded ${category} models:`, this.availableModels[category]);
+                    } else {
+                        console.warn(`No ${category} models available`);
+                        this.availableModels[category] = [];
+                    }
+                } catch (error) {
+                    console.error(`Failed to load ${category} models:`, error);
+                    this.availableModels[category] = [];
+                }
+            },
+
+            getImplementationOptions(type) {
+                const implementation = this.formData[type].implementation;
+                if (!implementation) return [];
+
+                const impl = this.availableImplementations[type].find(i => i.id === implementation);
+                if (!impl || !impl.options_schema || !impl.options_schema.properties) return [];
+
+                // Convert JSON Schema format to our expected format
+                const options = [];
+                const properties = impl.options_schema.properties;
+                const required = impl.options_schema.required || [];
+
+                for (const [key, schema] of Object.entries(properties)) {
+                    const option = {
+                        key: key,
+                        title: schema.title || key,
+                        description: schema.description,
+                        type: schema.type,
+                        default: schema.default,
+                        required: required.includes(key),
+                        minimum: schema.minimum,
+                        maximum: schema.maximum,
+                        multipleOf: schema.multipleOf,
+                        widget: schema['x-widget'],
+                        modelCategory: schema['x-model-category'],
+                        order: schema['x-order'] || 999 // Default order for fields without explicit order
+                    };
+
+                    // Set default values in form data
+                    if (schema.default !== undefined && this.formData[type].options[key] === undefined) {
+                        this.formData[type].options[key] = schema.default;
+                    }
+
+                    options.push(option);
+                }
+
+                // Sort by order first, then by key
+                return options.sort((a, b) => {
+                    if (a.order !== b.order) {
+                        return a.order - b.order;
+                    }
+                    return a.key.localeCompare(b.key);
+                });
+            },
+
+            async loadImplementationOptions(type) {
+                const implementation = this.formData[type].implementation;
+                if (!implementation) return;
+
+                const impl = this.availableImplementations[type].find(i => i.id === implementation);
+                if (!impl || !impl.options_schema) return;
+
+                // Reset options when implementation changes
+                this.formData[type].options = {};
+
+                // Load models for any model_select options
+                const modelCategories = new Set();
+                const properties = impl.options_schema.properties || {};
+
+                for (const [key, schema] of Object.entries(properties)) {
+                    if (schema['x-widget'] === 'model_select' && schema['x-model-category']) {
+                        modelCategories.add(schema['x-model-category']);
+                    }
+
+                    // Set default values
+                    if (schema.default !== undefined) {
+                        this.formData[type].options[key] = schema.default;
+                    }
+                }
+
+                // Load all required model categories
+                for (const category of modelCategories) {
+                    await this.loadModels(category);
+                }
+
+                console.log(`Loaded options for ${type} implementation:`, impl.options_schema);
+            },
+
+            async handleSubmit() {
+                this.isSubmitting = true;
+                this.errorMessage = '';
+
+                try {
+                    // Validate required fields
+                    if (!this.formData.name.trim()) {
+                        throw new Error('Knowledge base name is required');
+                    }
+
+                    if (!this.formData.embeddingModel) {
+                        throw new Error('Embedding model is required');
+                    }
+
+                    if (!this.formData.embed.implementation) {
+                        throw new Error('Content processing engine is required');
+                    }
+
+                    if (!this.formData.query.implementation) {
+                        throw new Error('Search engine is required');
+                    }
+
+                    // Validate required options
+                    const embedOptions = this.getImplementationOptions('embed');
+                    const queryOptions = this.getImplementationOptions('query');
+
+                    for (const option of embedOptions) {
+                        if (option.required && !this.formData.embed.options[option.key]) {
+                            throw new Error(`${option.title} is required for the selected content processor`);
+                        }
+                    }
+
+                    for (const option of queryOptions) {
+                        if (option.required && !this.formData.query.options[option.key]) {
+                            throw new Error(`${option.title} is required for the selected search engine`);
+                        }
+                    }
+
+                    // Clean up options - remove empty values and derived metadata
+                    const cleanOptions = (options) => {
+                        const cleaned = {};
+                        for (const [key, value] of Object.entries(options)) {
+                            // Skip empty values and derived metadata
+                            if (value !== '' && value !== null && value !== undefined) {
+                                // Skip fields that can be derived or are internal metadata
+                                if (!key.includes('_stats') && !key.includes('_size') && !key.includes('_tokens')) {
+                                    cleaned[key] = value;
+                                }
+                            }
+                        }
+                        return cleaned;
+                    };
+
+                    // Prepare request payload
+                    const payload = {
+                        name: this.formData.name.trim(),
+                        description: this.formData.description.trim(),
+                        embedding_model: this.formData.embeddingModel,
+                        config: {
+                            embed_contract: {
+                                binding_id: this.formData.embed.implementation,
+                                options: cleanOptions(this.formData.embed.options)
+                            },
+                            query_contract: {
+                                binding_id: this.formData.query.implementation,
+                                options: cleanOptions(this.formData.query.options)
+                            }
+                        }
+                    };
+
+                    console.log('Creating custom knowledge base with payload:', payload);
+
+                    // Make API call to create custom knowledge base
+                    const response = await this.wippyApi.api.post('/api/v1/userspace/kb/kb9/create', payload);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to create knowledge base');
+                    }
+
+                    // Show success toast
+                    await this.wippyApi.iframe.toast({
+                        severity: 'success',
+                        summary: 'Success',
+                        detail: `Knowledge base "${this.formData.name}" created successfully!`
+                    });
+
+                    // Navigate back to knowledge bases page
+                    this.wippyApi.iframe.navigate('/c/userspace.knowledge.views:dashboard');
+
+                } catch (error) {
+                    console.error('Failed to create knowledge base:', error);
+                    this.errorMessage = error.response?.data?.error || error.message || 'Failed to create knowledge base';
+                } finally {
+                    this.isSubmitting = false;
+                }
+            },
+
+            handleCancel() {
+                // Navigate back to knowledge bases page
+                this.wippyApi.iframe.navigate('/c/userspace.knowledge.views:dashboard');
+            }
+        }));
+    });
+</script>
+{{ end }}

@@ -1,0 +1,208 @@
+version: "1.0"
+namespace: userspace.uploads
+
+entries:
+  # userspace.uploads:content_provider
+  - name: content_provider
+    kind: contract.binding
+    meta:
+      comment: Combined contract implementation for uploads (content provider + resource registry)
+      tags:
+        - content
+        - provider
+        - resource
+        - registry
+        - uploads
+        - binding
+      description: Provides both content access and resource listing via combined contract interface
+    contracts:
+      - contract: userspace.contract:content_provider
+        context_required:
+          - upload_id
+        methods:
+          get_content: userspace.uploads:get_content_func
+          get_info: userspace.uploads:get_info_func
+      - contract: userspace.contract:resource_registry
+        methods:
+          count_resources: userspace.uploads:count_resources_func
+          list_resources: userspace.uploads:list_resources_func
+    
+  # userspace.uploads:content_repo
+  - name: content_repo
+    kind: library.lua
+    meta:
+      comment: Repository for managing upload content records
+    source: file://content_repo.lua
+    modules:
+      - sql
+      - json
+      - time
+      - uuid
+    
+  # userspace.uploads:count_resources_func
+  - name: count_resources_func
+    kind: function.lua
+    meta:
+      comment: Function that implements count_resources for resource registry contract
+      tags:
+        - resource
+        - registry
+        - counting
+    source: file://count_resources_func.lua
+    modules:
+      - security
+      - json
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+    method: handle
+    
+  # userspace.uploads:get_content_func
+  - name: get_content_func
+    kind: function.lua
+    meta:
+      comment: Function that implements get_content for content provider contract
+      tags:
+        - content
+        - contract
+        - provider
+    source: file://get_content_func.lua
+    modules:
+      - security
+      - ctx
+    imports:
+      content_repo: userspace.uploads:content_repo
+      upload_repo: userspace.uploads:upload_repo
+    method: handle
+    
+  # userspace.uploads:get_info_func
+  - name: get_info_func
+    kind: function.lua
+    meta:
+      comment: Function that implements get_info for content provider contract
+      tags:
+        - content
+        - contract
+        - provider
+    source: file://get_info_func.lua
+    modules:
+      - security
+      - ctx
+    imports:
+      content_repo: userspace.uploads:content_repo
+      upload_repo: userspace.uploads:upload_repo
+    method: handle
+    
+  # userspace.uploads:list_resources_func
+  - name: list_resources_func
+    kind: function.lua
+    meta:
+      comment: Function that implements list_resources for resource registry contract
+      tags:
+        - resource
+        - registry
+        - listing
+        - pagination
+    source: file://list_resources_func.lua
+    modules:
+      - security
+      - json
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+    method: handle
+    
+  # userspace.uploads:pipeline
+  - name: pipeline
+    kind: process.lua
+    meta:
+      comment: Process that manages upload processing pipeline
+      depends_on:
+        - upload_repo
+        - upload_lib
+        - upload_type
+        - content_repo
+        - pipeline_lib
+    source: file://pipeline.lua
+    modules:
+      - time
+      - logger
+    imports:
+      content_repo: userspace.uploads:content_repo
+      pipeline_lib: userspace.uploads:pipeline_lib
+      upload_lib: userspace.uploads:upload_lib
+      upload_repo: userspace.uploads:upload_repo
+      upload_type: userspace.uploads:upload_type
+    method: run
+    
+  # userspace.uploads:pipeline.service
+  - name: pipeline.service
+    kind: process.service
+    meta:
+      comment: Upload Processing Pipeline Service
+    host: app:processes
+    lifecycle:
+      depends_on:
+        - app:processes
+      auto_start: true
+      security:
+        groups:
+          - wippy.security:process
+    process: pipeline
+    
+  # userspace.uploads:pipeline_lib
+  - name: pipeline_lib
+    kind: library.lua
+    meta:
+      comment: Library for upload processing pipeline functions
+      depends_on:
+        - upload_repo
+        - upload_type
+    source: file://pipeline_lib.lua
+    modules:
+      - time
+      - funcs
+      - security
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+      upload_type: userspace.uploads:upload_type
+    
+  # userspace.uploads:upload_lib
+  - name: upload_lib
+    kind: library.lua
+    meta:
+      comment: Library for handling file uploads to various storage backends
+      depends_on:
+        - upload_repo
+        - upload_type
+    source: file://upload_lib.lua
+    modules:
+      - fs
+      - uuid
+      - json
+      - cloudstorage
+      - env
+      - time
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+      upload_type: userspace.uploads:upload_type
+    
+  # userspace.uploads:upload_repo
+  - name: upload_repo
+    kind: library.lua
+    meta:
+      comment: Repository for managing file uploads
+    source: file://upload_repo.lua
+    modules:
+      - sql
+      - json
+      - time
+    
+  # userspace.uploads:upload_type
+  - name: upload_type
+    kind: library.lua
+    meta:
+      comment: Library for managing upload types
+    source: file://upload_type.lua
+    modules:
+      - registry
+      - time
+    

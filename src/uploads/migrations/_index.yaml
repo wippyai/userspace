@@ -1,0 +1,53 @@
+version: "1.0"
+namespace: userspace.uploads.migrations
+
+entries:
+  # userspace.uploads.migrations:01_create_uploads_table
+  - name: 01_create_uploads_table
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - uploads
+        - database
+      description: Create uploads table for file storage and tracking
+      target_db: app:db
+      timestamp: "2025-03-31T10:00:00Z"
+    source: file://01_create_uploads_table.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    
+  # userspace.uploads.migrations:02_add_type_id_to_uploads
+  - name: 02_add_type_id_to_uploads
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - uploads
+        - database
+      description: Add type_id column to uploads table
+      target_db: app:db
+      timestamp: "2025-04-01T09:00:00Z"
+    source: file://02_add_type_id_to_uploads.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    
+  # userspace.uploads.migrations:03_create_content_table
+  - name: 03_create_content_table
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - uploads
+        - content
+        - database
+      description: Create upload_content table for content storage
+      target_db: app:db
+      timestamp: "2025-04-01T10:00:00Z"
+    source: file://03_create_content_table.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    

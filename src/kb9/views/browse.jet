@@ -1,0 +1,1015 @@
+{{ extends "common/layout" }}
+
+{{ block title() }}Browse KB Content{{ end }}
+{{ block metaDescription() }}Browse knowledge base content in hierarchical tree structure with smart filtering{{ end }}
+
+{{ block mainContent() }}
+<div x-data="kbTreeApp" x-init="initialize()" class="max-w-7xl mx-auto" x-cloak>
+    <!-- Header with KB Info -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                    </svg>
+                </div>
+                <div class="ml-5">
+                    <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-100" x-text="kbInfo.name || 'Browse KB Content'"></h1>
+                    <div class="mt-1 text-surface-600 dark:text-surface-400">
+                        <div x-show="stats" class="flex items-center space-x-1 text-sm">
+                            <span x-text="stats?.nodes?.total || 0"></span>
+                            <span>nodes</span>
+                            <span x-show="stats?.nodes?.total_content_size">•</span>
+                            <span x-show="stats?.nodes?.total_content_size" x-text="formatContentSize(stats?.nodes?.total_content_size)"></span>
+                            <span x-show="stats?.edges?.total">•</span>
+                            <span x-show="stats?.edges?.total" x-text="(stats?.edges?.total || 0) + ' edges'"></span>
+                            <span x-show="!isLoading && pagination.total > 0">•</span>
+                            <span x-show="!isLoading && pagination.total > 0">Showing</span>
+                            <span x-show="!isLoading && pagination.total > 0" x-text="visibleNodes.length"></span>
+                            <span x-show="!isLoading && pagination.total > 0">visible</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button @click="showFilters = !showFilters"
+                        class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"/>
+                    </svg>
+                    Filters
+                    <span x-show="hasActiveFilters()" class="ml-2 w-2 h-2 bg-blue-500 rounded-full"></span>
+                </button>
+
+                <button @click="expandAll"
+                        :disabled="isLoading"
+                        class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                    Expand All
+                </button>
+
+                <button @click="collapseAll"
+                        :disabled="isLoading"
+                        class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                    Collapse All
+                </button>
+
+                <button @click="goBackToMain"
+                        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:arrow-left" class="mr-2" width="18" height="18"></iconify-icon>
+                    Back to Manage
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Filters Panel -->
+    <div x-show="showFilters"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform -translate-y-2"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 transform translate-y-0"
+         x-transition:leave-end="opacity-0 transform -translate-y-2"
+         class="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-6 mb-6 shadow-sm">
+
+        <div class="space-y-6">
+            <!-- Search -->
+            <div>
+                <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Search Content</label>
+                <input type="text"
+                       x-model="searchQuery"
+                       @input.debounce.500ms="performSearch"
+                       placeholder="Simple keyword search over content"
+                       class="w-full px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors">
+            </div>
+
+            <!-- Dynamic Node Types from Stats -->
+            <div x-show="stats?.node_types && Object.keys(stats.node_types).length > 0">
+                <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Content Types</label>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="(count, type) in stats?.node_types || {}" :key="type">
+                        <button @click="toggleNodeType(type)"
+                                :class="{
+                                    'ring-2 ring-primary-500 bg-primary-50 dark:bg-primary-900/30': selectedNodeTypes.includes(type),
+                                    'hover:bg-surface-50 dark:hover:bg-surface-700': !selectedNodeTypes.includes(type)
+                                }"
+                                class="flex items-center px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 transition-all duration-200 text-xs space-x-2">
+                            <div class="w-4 h-4 rounded flex items-center justify-center"
+                                 :class="getNodeIconBg(type)">
+                                <svg class="w-3 h-3" :class="getNodeIconColor(type)" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-html="getNodeIcon(type)">
+                                </svg>
+                            </div>
+                            <span class="font-medium text-surface-900 dark:text-surface-100 capitalize" x-text="type"></span>
+                            <span class="text-surface-500 dark:text-surface-400 text-xs" x-text="'(' + count + ')'"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Settings Row -->
+            <div class="flex flex-wrap items-end gap-6">
+                <!-- Sort Order -->
+                <div class="flex-1 min-w-48">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Sort By</label>
+                    <select x-model="orderBy"
+                            @change="refreshTree"
+                            class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-primary-500">
+                        <option value="path">Path</option>
+                        <option value="created_at">Created Date</option>
+                        <option value="updated_at">Updated Date</option>
+                        <option value="node_type">Content Type</option>
+                    </select>
+                </div>
+
+                <!-- Items Per Page -->
+                <div class="flex-1 min-w-32">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Items Per Page</label>
+                    <select x-model="pagination.limit"
+                            @change="refreshTree"
+                            class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-primary-500">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+
+                <!-- Clear Filters -->
+                <div class="flex-shrink-0">
+                    <button x-show="hasActiveFilters()" @click="clearFilters"
+                            class="px-4 py-2 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                        Clear All Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-red-200 dark:border-red-800 p-6 mb-8" x-transition>
+        <div class="flex items-center">
+            <svg class="w-6 h-6 text-red-600 dark:text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+                <h3 class="text-lg font-medium text-red-800 dark:text-red-200">Error Loading Tree</h3>
+                <p class="text-red-600 dark:text-red-400" x-text="error"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tree Browser -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
+        <!-- Header -->
+        <div class="border-b border-surface-200 dark:border-surface-600 px-4 py-3">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-medium text-surface-900 dark:text-surface-100">Content Tree</h2>
+                <div class="text-sm text-surface-500 dark:text-surface-400">
+                    <span x-text="pagination.total || 0"></span> total items
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div x-show="isLoading && visibleNodes.length === 0" class="flex justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+            <span class="ml-3 text-surface-700 dark:text-surface-300">Loading tree...</span>
+        </div>
+
+        <!-- Tree Content -->
+        <div x-show="!isLoading || visibleNodes.length > 0">
+            <template x-if="visibleNodes.length === 0 && !isLoading">
+                <div class="flex flex-col items-center justify-center py-12 text-surface-500 dark:text-surface-400">
+                    <svg class="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6"/>
+                    </svg>
+                    <p>No content found</p>
+                    <p class="text-xs mt-1">Try adjusting your filters</p>
+                </div>
+            </template>
+
+            <template x-if="visibleNodes.length > 0">
+                <div>
+                    <template x-for="(node, index) in visibleNodes" :key="node.id">
+                        <div class="relative hover:bg-surface-100/50 dark:hover:bg-surface-600/50 transition-colors duration-200 border-b border-surface-200/50 dark:border-surface-600/50 last:border-b-0 cursor-pointer"
+                             @click="handleNodeClick(node)"
+                             :class="{
+                                 'bg-surface-50/30 dark:bg-surface-800/30': index % 2 === 0,
+                                 'bg-white dark:bg-surface-900': index % 2 === 1
+                             }">
+
+                            <div class="px-4 py-3">
+                                <div class="flex items-center">
+                                    <!-- Indentation & Tree Lines -->
+                                    <div class="flex-shrink-0 flex items-center" :style="'width:' + (getNodeDepth(node) * 24 + 28) + 'px; margin-right: 12px; position: relative;'">
+                                        <!-- Vertical lines for hierarchy -->
+                                        <template x-for="parentLevel in getNodeDepth(node)" :key="'line-' + parentLevel">
+                                            <div class="absolute border-l border-surface-300/40 dark:border-surface-600/40"
+                                                 :style="'left:' + ((parentLevel - 1) * 24 + 14) + 'px; top: -50%; bottom: 50%; height: 200%;'">
+                                            </div>
+                                        </template>
+
+                                        <!-- Expand/Collapse Button -->
+                                        <div class="absolute flex items-center justify-center" :style="'left:' + (getNodeDepth(node) * 24 + 6) + 'px; width: 20px; height: 20px;'">
+                                            <template x-if="node.has_children">
+                                                <button @click.stop="toggleNode(node)"
+                                                        :disabled="loadingNodes[node.id]"
+                                                        class="w-5 h-5 rounded border border-surface-400/60 dark:border-surface-500/60 bg-white dark:bg-surface-800 hover:bg-surface-100/80 dark:hover:bg-surface-700/80 flex items-center justify-center text-surface-700 dark:text-surface-300 disabled:opacity-50 transition-colors">
+                                                    <template x-if="loadingNodes[node.id]">
+                                                        <svg class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                    </template>
+                                                    <template x-if="!loadingNodes[node.id]">
+                                                        <svg class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path x-show="!expandedNodes[node.id]" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                            <path x-show="expandedNodes[node.id]" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M18 12H6"/>
+                                                        </svg>
+                                                    </template>
+                                                </button>
+                                            </template>
+                                            <template x-if="!node.has_children">
+                                                <div class="w-2 h-2 rounded-full bg-surface-400 dark:bg-surface-500"></div>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Node Icon -->
+                                    <div class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mr-3"
+                                         :class="getNodeIconBg(node.node_type)">
+                                        <svg class="w-4 h-4" :class="getNodeIconColor(node.node_type)" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-html="getNodeIcon(node.node_type)">
+                                        </svg>
+                                    </div>
+
+                                    <!-- Node Content -->
+                                    <div class="flex-1 min-w-0 flex items-center">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate mb-1"
+                                                 x-text="getNodeTitle(node)"></div>
+
+                                            <div class="flex items-center gap-4 text-xs text-surface-500 dark:text-surface-400">
+                                                <!-- Path -->
+                                                <span class="font-mono" x-text="node.path"></span>
+
+                                                <!-- Type with icon -->
+                                                <div class="flex items-center">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                                    </svg>
+                                                    <span class="capitalize" x-text="node.node_type"></span>
+                                                </div>
+
+                                                <!-- Children with icon -->
+                                                <template x-if="node.has_children && node.children_count">
+                                                    <div class="flex items-center">
+                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                                        </svg>
+                                                        <span x-text="node.children_count + ' children'"></span>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Date -->
+                                                <span x-text="formatDateCompact(node.created_at)"></span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Actions -->
+                                        <div class="flex-shrink-0 ml-4 flex items-center space-x-2">
+                                            <button @click.stop="viewNodeContent(node)" title="View Content"
+                                                    class="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                </svg>
+                                            </button>
+                                            <button @click.stop="navigateToNode(node.id)" title="Go to Node"
+                                                    class="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                                </svg>
+                                            </button>
+                                            <button @click.stop="deleteNode(node)" title="Delete"
+                                                    class="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <!-- Pagination -->
+        <div x-show="pagination.total > pagination.limit" class="border-t border-surface-200 dark:border-surface-600 px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="text-sm text-surface-700 dark:text-surface-300">
+                    Showing <span x-text="Math.min(pagination.offset + 1, pagination.total)"></span> -
+                    <span x-text="Math.min(pagination.offset + pagination.limit, pagination.total)"></span> of
+                    <span x-text="pagination.total"></span> items
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button @click="loadPreviousPage"
+                            :disabled="pagination.offset === 0 || isLoading"
+                            class="px-2 py-1 text-sm text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded hover:bg-surface-50 dark:hover:bg-surface-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+
+                    <button @click="loadNextPage"
+                            :disabled="!pagination.has_more || isLoading"
+                            class="px-2 py-1 text-sm text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded hover:bg-surface-50 dark:hover:bg-surface-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Popup Modal -->
+    <div x-show="showContentPopup"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
+         @click="showContentPopup = false">
+
+        <div @click.stop
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform scale-95"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform scale-100"
+             x-transition:leave-end="opacity-0 transform scale-95"
+             class="bg-white dark:bg-surface-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-surface-200 dark:border-surface-600 flex-shrink-0">
+                <div class="flex items-center">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3"
+                         :class="getNodeIconBg(selectedNode?.node_type)">
+                        <svg class="w-5 h-5" :class="getNodeIconColor(selectedNode?.node_type)" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-html="getNodeIcon(selectedNode?.node_type)">
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100" x-text="getNodeTitle(selectedNode)"></h3>
+                        <div class="flex items-center gap-2 mt-1 text-xs text-surface-500 dark:text-surface-400">
+                            <span class="capitalize" x-text="selectedNode?.node_type"></span>
+                            <span>•</span>
+                            <span x-text="selectedNode?.path"></span>
+                        </div>
+                    </div>
+                </div>
+                <button @click="showContentPopup = false"
+                        class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-1 overflow-hidden flex flex-col">
+                <template x-if="selectedNode">
+                    <div class="p-6 overflow-y-auto flex-1">
+                        <!-- Node Details Grid -->
+                        <div class="grid grid-cols-1 gap-4 text-sm mb-6">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-surface-500 dark:text-surface-400">ID:</span>
+                                <div class="flex items-center gap-2">
+                                    <button @click="navigateToNode(selectedNode.id)" class="font-mono text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer" x-text="selectedNode.id"></button>
+                                    <button @click="copyToClipboard(selectedNode.id)" title="Copy ID"
+                                            class="p-1 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-surface-500 dark:text-surface-400">Created:</span>
+                                <span class="text-surface-900 dark:text-surface-100" x-text="formatDate(selectedNode.created_at)"></span>
+                            </div>
+                            <div x-show="selectedNode.parent_id && selectedNode.parent_id !== selectedNode.id" class="flex items-center justify-between">
+                                <span class="font-medium text-surface-500 dark:text-surface-400">Parent ID:</span>
+                                <div class="flex items-center gap-2">
+                                    <button @click="navigateToNode(selectedNode.parent_id)"
+                                            class="font-mono text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                                            x-text="selectedNode.parent_id"></button>
+                                    <button @click="copyToClipboard(selectedNode.parent_id)" title="Copy Parent ID"
+                                            class="p-1 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div>
+                            <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-3">Content:</h4>
+                            <div class="bg-surface-50 dark:bg-surface-900 rounded-lg p-4 mb-6">
+                                <pre class="text-sm text-surface-900 dark:text-surface-100 whitespace-pre-wrap leading-relaxed"
+                                     x-text="selectedNode.content || 'No content available'"></pre>
+                            </div>
+                        </div>
+
+                        <!-- Metadata -->
+                        <div x-show="selectedNode.metadata && typeof selectedNode.metadata === 'object' && Object.keys(selectedNode.metadata).length > 0">
+                            <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-3">Metadata:</h4>
+                            <div class="bg-surface-50 dark:bg-surface-900 rounded-lg p-4 relative">
+                                <button @click="copyToClipboard(JSON.stringify(selectedNode.metadata, null, 2))" title="Copy Metadata"
+                                        class="absolute top-2 right-2 p-1 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 rounded transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                </button>
+                                <pre class="text-xs text-surface-900 dark:text-surface-100 font-mono whitespace-pre-wrap pr-8" x-text="JSON.stringify(selectedNode.metadata, null, 2)"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('kbTreeApp', () => ({
+            // State
+            allNodes: [],
+            expandedNodes: {},
+            loadedPaths: {},
+            loadingNodes: {},
+            showContentPopup: false,
+            selectedNode: null,
+            isLoading: false,
+            error: null,
+            stats: {
+                nodes: { total: 0 },
+                node_types: {},
+                edges: { total: 0 }
+            },
+            kbInfo: {},
+            showFilters: false,
+            currentNodeId: null,
+
+            // Filters
+            searchQuery: '',
+            selectedNodeTypes: [],
+            orderBy: 'path',
+
+            // API
+            componentId: '',
+            api: null,
+            wippyApi: null,
+
+            // Pagination
+            pagination: {
+                total: 0,
+                limit: 20,
+                offset: 0,
+                has_more: false
+            },
+
+            // Computed properties
+            get rootNodes() {
+                return this.allNodes.filter(node => !node.parent_id);
+            },
+
+            get visibleNodes() {
+                // If we loaded a specific node, show it regardless of other filters
+                if (this.currentNodeId && this.allNodes.length === 1) {
+                    return this.allNodes;
+                }
+
+                // If we have type filters, show all matching nodes as flat list
+                if (this.selectedNodeTypes.length > 0) {
+                    return this.allNodes.filter(node => this.selectedNodeTypes.includes(node.node_type));
+                }
+
+                // Otherwise show tree structure
+                const result = [];
+                const rootNodes = this.rootNodes.sort((a, b) => a.path.localeCompare(b.path));
+                rootNodes.forEach(root => {
+                    result.push(root);
+                    if (this.expandedNodes[root.id]) {
+                        this.addChildrenToVisible(root.id, result);
+                    }
+                });
+                return result;
+            },
+
+            // Methods
+            async initialize() {
+                try {
+                    this.wippyApi = await window.getWippyApi();
+                    this.api = this.wippyApi.api;
+
+                    // Extract componentId from path, handling both "componentId" and "componentId/nodeId" formats
+                    const configPath = this.wippyApi.config?.path?.replace(/^\//, '') || '';
+                    console.log('Config path:', configPath);
+
+                    if (configPath.includes('/')) {
+                        const parts = configPath.split('/');
+                        this.componentId = parts[0];
+                        this.currentNodeId = parts[1];
+                    } else {
+                        this.componentId = configPath;
+                        this.currentNodeId = null;
+                    }
+
+                    console.log('Component ID:', this.componentId);
+                    console.log('Node ID:', this.currentNodeId);
+
+                    if (!this.componentId) {
+                        throw new Error('No component ID found');
+                    }
+
+                    await this.loadKBInfo();
+                    await this.loadStats();
+
+                    if (this.currentNodeId) {
+                        await this.loadSpecificNode(this.currentNodeId);
+                    } else {
+                        await this.loadRootNodes();
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize:', error);
+                    this.error = error.message || 'Failed to initialize';
+                }
+            },
+
+            async loadSpecificNode(nodeId) {
+                this.isLoading = true;
+                this.error = null;
+
+                try {
+                    const params = new URLSearchParams({
+                        node_id: nodeId,
+                        include_content: 'true',
+                        include_metadata: 'true',
+                        with_children_count: 'true'
+                    });
+
+                    const response = await this.api.get(`/api/v1/userspace/kb/kb9/${this.componentId}/browse?${params}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load node');
+                    }
+
+                    if (!response.data.nodes || response.data.nodes.length === 0) {
+                        throw new Error('Node not found');
+                    }
+
+                    // Load the node in the table instead of popup
+                    this.allNodes = response.data.nodes;
+                    this.pagination = response.data.pagination;
+
+                } catch (error) {
+                    console.error('Failed to load specific node:', error);
+                    this.error = error.response?.data?.error || error.message;
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            async loadKBInfo() {
+                try {
+                    const response = await this.api.get(`/api/v1/userspace/kb/kb9/${this.componentId}/info`);
+                    const data = response.data;
+
+                    if (data.success) {
+                        this.kbInfo = data;
+                    }
+                } catch (error) {
+                    console.error('Failed to load KB info:', error);
+                }
+            },
+
+            async loadStats() {
+                try {
+                    const params = new URLSearchParams({
+                        include_content_size: 'true',
+                        include_edges: 'true',
+                        include_tree_depths: 'true'
+                    });
+
+                    const response = await this.api.get(`/api/v1/userspace/kb/kb9/${this.componentId}/stats?${params}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load stats');
+                    }
+
+                    this.stats = response.data;
+                } catch (error) {
+                    console.error('Failed to load stats:', error);
+                }
+            },
+
+            async loadRootNodes(offset = 0, replace = true) {
+                this.isLoading = true;
+                this.error = null;
+
+                try {
+                    const params = new URLSearchParams({
+                        include_content: 'true',
+                        include_metadata: 'true',
+                        with_children_count: 'true',
+                        limit: this.pagination.limit.toString(),
+                        offset: offset.toString(),
+                        order_by: this.orderBy
+                    });
+
+                    if (this.selectedNodeTypes.length > 0) {
+                        params.set('node_types', this.selectedNodeTypes.join(','));
+                    }
+
+                    if (this.searchQuery.trim()) {
+                        params.set('search_query', this.searchQuery.trim());
+                    }
+
+                    const response = await this.api.get(`/api/v1/userspace/kb/kb9/${this.componentId}/browse?${params}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load tree data');
+                    }
+
+                    if (replace) {
+                        this.allNodes = this.allNodes.filter(node => node.parent_id);
+                        this.allNodes.push(...response.data.nodes);
+                    } else {
+                        this.allNodes = this.allNodes.filter(node => node.parent_id);
+                        this.allNodes.push(...response.data.nodes);
+                    }
+
+                    this.pagination = response.data.pagination;
+
+                } catch (error) {
+                    console.error('Failed to load root nodes:', error);
+                    this.error = error.response?.data?.error || error.message;
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            handleNodeClick(node) {
+                if (node.has_children && !this.selectedNodeTypes.length) {
+                    this.toggleNode(node);
+                } else {
+                    this.viewNodeContent(node);
+                }
+            },
+
+            async toggleNode(node) {
+                if (!node.has_children) return;
+
+                if (this.expandedNodes[node.id]) {
+                    this.expandedNodes[node.id] = false;
+                } else {
+                    if (!this.loadedPaths[node.path]) {
+                        await this.loadNodeChildren(node);
+                    }
+                    this.expandedNodes[node.id] = true;
+                }
+            },
+
+            async loadNodeChildren(parentNode) {
+                if (this.loadingNodes[parentNode.id] || this.loadedPaths[parentNode.path]) return;
+
+                this.loadingNodes[parentNode.id] = true;
+
+                try {
+                    const params = new URLSearchParams({
+                        parent_id: parentNode.id,
+                        include_content: 'true',
+                        include_metadata: 'true',
+                        with_children_count: 'true',
+                        limit: '100',
+                        order_by: this.orderBy
+                    });
+
+                    const response = await this.api.get(`/api/v1/userspace/kb/kb9/${this.componentId}/browse?${params}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load children');
+                    }
+
+                    response.data.nodes.forEach(child => {
+                        if (!this.allNodes.find(n => n.id === child.id)) {
+                            this.allNodes.push(child);
+                        }
+                    });
+
+                    this.loadedPaths[parentNode.path] = true;
+
+                } catch (error) {
+                    console.error('Failed to load children:', error);
+                    this.error = error.response?.data?.error || error.message;
+                } finally {
+                    this.loadingNodes[parentNode.id] = false;
+                }
+            },
+
+            addChildrenToVisible(parentId, result) {
+                const children = this.allNodes
+                    .filter(node => node.parent_id === parentId)
+                    .sort((a, b) => a.path.localeCompare(b.path));
+
+                children.forEach(child => {
+                    result.push(child);
+                    if (this.expandedNodes[child.id]) {
+                        this.addChildrenToVisible(child.id, result);
+                    }
+                });
+            },
+
+            async expandAll() {
+                const nodesToExpand = this.allNodes.filter(node => node.has_children);
+
+                for (const node of nodesToExpand) {
+                    if (!this.loadedPaths[node.path]) {
+                        await this.loadNodeChildren(node);
+                    }
+                    this.expandedNodes[node.id] = true;
+                }
+            },
+
+            collapseAll() {
+                this.expandedNodes = {};
+            },
+
+            async refreshTree() {
+                this.allNodes = [];
+                this.expandedNodes = {};
+                this.loadedPaths = {};
+                this.loadingNodes = {};
+                this.pagination.offset = 0;
+                await this.loadRootNodes();
+            },
+
+            async performSearch() {
+                await this.refreshTree();
+            },
+
+            async applyFilters() {
+                await this.refreshTree();
+            },
+
+            toggleNodeType(type) {
+                const index = this.selectedNodeTypes.indexOf(type);
+                if (index > -1) {
+                    this.selectedNodeTypes.splice(index, 1);
+                } else {
+                    this.selectedNodeTypes.push(type);
+                }
+                this.applyFilters();
+            },
+
+            hasActiveFilters() {
+                return this.searchQuery.trim() !== '' ||
+                    this.selectedNodeTypes.length > 0;
+            },
+
+            clearFilters() {
+                this.searchQuery = '';
+                this.selectedNodeTypes = [];
+                this.refreshTree();
+            },
+
+            goBackToMain() {
+                const mainUrl = `/c/userspace.kb9.views:manage/${this.componentId}`;
+                this.wippyApi.iframe.navigate(mainUrl);
+            },
+
+            async loadNextPage() {
+                if (this.pagination.has_more && !this.isLoading) {
+                    const newOffset = this.pagination.offset + this.pagination.limit;
+                    await this.loadRootNodes(newOffset, false);
+                }
+            },
+
+            async loadPreviousPage() {
+                if (this.pagination.offset > 0 && !this.isLoading) {
+                    const newOffset = Math.max(0, this.pagination.offset - this.pagination.limit);
+                    await this.loadRootNodes(newOffset, true);
+                }
+            },
+
+            async viewNodeContent(node) {
+                this.selectedNode = {...node};
+                this.showContentPopup = true;
+            },
+
+            navigateToNode(nodeId) {
+                const nodeUrl = `/c/userspace.kb9.views:browse/${this.componentId}/${nodeId}`;
+                console.log('Navigating to:', nodeUrl);
+                this.wippyApi.iframe.navigate(nodeUrl);
+            },
+
+            async deleteNode(node) {
+                try {
+                    const confirmed = await this.wippyApi.iframe.confirm({
+                        message: `Are you sure you want to delete this ${node.node_type}?\n\nPath: ${node.path}\n\nThis action cannot be undone.`,
+                        header: 'Confirm Deletion',
+                        icon: 'tabler:trash',
+                        acceptLabel: 'Delete',
+                        rejectLabel: 'Cancel',
+                        acceptClass: 'p-button-danger',
+                        rejectClass: 'p-button-secondary'
+                    });
+
+                    if (!confirmed) return;
+
+                    // Make actual API call to delete the node
+                    console.log('Deleting node:', node.id, 'type:', node.node_type);
+                    const response = await this.api.delete(`/api/v1/userspace/kb/kb9/${this.componentId}/node/${node.id}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to delete node');
+                    }
+
+                    // Remove from local state
+                    this.allNodes = this.allNodes.filter(n => n.id !== node.id);
+
+                    this.wippyApi.iframe.toast({
+                        severity: 'success',
+                        summary: 'Deleted',
+                        detail: `${node.node_type.charAt(0).toUpperCase() + node.node_type.slice(1)} has been deleted successfully.`
+                    });
+                } catch (error) {
+                    console.error('Failed to delete node:', error);
+                    this.wippyApi.iframe.toast({
+                        severity: 'error',
+                        summary: 'Delete Failed',
+                        detail: error.response?.data?.error || error.message || 'Failed to delete the node. Please try again.'
+                    });
+                }
+            },
+
+            getNodeDepth(node) {
+                // For filtered non-root nodes, calculate depth from path
+                if (this.selectedNodeTypes.length > 0) {
+                    if (!node.path) return 0;
+                    return node.path.split('.').length - 1;
+                }
+
+                // For tree view, calculate based on parent relationships
+                let depth = 0;
+                let current = node;
+                while (current && current.parent_id) {
+                    depth++;
+                    current = this.allNodes.find(n => n.id === current.parent_id);
+                    if (depth > 10) break; // Prevent infinite loops
+                }
+                return depth;
+            },
+
+            getNodeIconBg(nodeType) {
+                const backgrounds = {
+                    'document': 'bg-blue-500/10 dark:bg-blue-400/20',
+                    'chunk': 'bg-green-500/10 dark:bg-green-400/20',
+                    'subchunk': 'bg-yellow-500/10 dark:bg-yellow-400/20',
+                    'summary': 'bg-purple-500/10 dark:bg-purple-400/20',
+                    'code': 'bg-gray-500/10 dark:bg-gray-400/20',
+                    'category': 'bg-indigo-500/10 dark:bg-indigo-400/20',
+                    'categories': 'bg-indigo-500/10 dark:bg-indigo-400/20',
+                    'tag': 'bg-pink-500/10 dark:bg-pink-400/20',
+                    'tags': 'bg-pink-500/10 dark:bg-pink-400/20',
+                    'section': 'bg-orange-500/10 dark:bg-orange-400/20',
+                    'heading': 'bg-teal-500/10 dark:bg-teal-400/20',
+                    'paragraph': 'bg-slate-500/10 dark:bg-slate-400/20'
+                };
+                return backgrounds[nodeType] || 'bg-surface-500/10 dark:bg-surface-400/20';
+            },
+
+            getNodeIconColor(nodeType) {
+                const colors = {
+                    'document': 'text-blue-600 dark:text-blue-400',
+                    'chunk': 'text-green-600 dark:text-green-400',
+                    'subchunk': 'text-yellow-600 dark:text-yellow-400',
+                    'summary': 'text-purple-600 dark:text-purple-400',
+                    'code': 'text-gray-600 dark:text-gray-400',
+                    'category': 'text-indigo-600 dark:text-indigo-400',
+                    'categories': 'text-indigo-600 dark:text-indigo-400',
+                    'tag': 'text-pink-600 dark:text-pink-400',
+                    'tags': 'text-pink-600 dark:text-pink-400',
+                    'section': 'text-orange-600 dark:text-orange-400',
+                    'heading': 'text-teal-600 dark:text-teal-400',
+                    'paragraph': 'text-slate-600 dark:text-slate-400'
+                };
+                return colors[nodeType] || 'text-surface-600 dark:text-surface-400';
+            },
+
+            getNodeIcon(nodeType) {
+                const icons = {
+                    'document': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>',
+                    'chunk': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>',
+                    'subchunk': '<circle cx="12" cy="7" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="17" r="1" fill="currentColor"/>',
+                    'summary': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>',
+                    'code': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>',
+                    'category': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>',
+                    'categories': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>',
+                    'tag': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>',
+                    'tags': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>',
+                    'section': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
+                    'heading': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>',
+                    'paragraph': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"/>'
+                };
+                return icons[nodeType] || '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>';
+            },
+
+            getNodeTitle(node) {
+                if (!node) return '';
+
+                if (node.metadata?.title) {
+                    return node.metadata.title;
+                }
+
+                if (node.content && node.content.trim()) {
+                    const content = node.content.trim();
+                    if (content.length > 50) {
+                        return content.substring(0, 50) + '...';
+                    }
+                    return content;
+                }
+
+                return `${node.node_type} (${node.path})`;
+            },
+
+            formatContentSize(size) {
+                if (!size || size === 0) return '';
+                if (size < 1000) return size + ' chars';
+                if (size < 1000000) return Math.round(size / 1000) + 'K';
+                if (size < 1000000000) return Math.round(size / 1000000) + 'M';
+                return Math.round(size / 1000000000) + 'G';
+            },
+
+            formatDate(dateString) {
+                if (!dateString) return 'N/A';
+                try {
+                    return new Date(dateString).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return dateString;
+                }
+            },
+
+            formatDateCompact(dateString) {
+                if (!dateString) return 'N/A';
+                try {
+                    const date = new Date(dateString);
+                    return `${date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })} ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+                } catch (e) {
+                    return dateString;
+                }
+            },
+
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.wippyApi.iframe.toast({
+                        severity: 'success',
+                        summary: 'Copied',
+                        detail: 'Copied to clipboard'
+                    });
+                }).catch(() => {
+                    this.wippyApi.iframe.toast({
+                        severity: 'error',
+                        summary: 'Copy Failed',
+                        detail: 'Failed to copy to clipboard'
+                    });
+                });
+            }
+        }));
+    });
+</script>
+{{ end }}

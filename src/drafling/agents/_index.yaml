@@ -1,0 +1,656 @@
+version: "1.0"
+namespace: userspace.drafling.agents
+
+entries:
+  # userspace.drafling.agents:create_project
+  - name: create_project
+    kind: function.lua
+    meta:
+      type: tool
+      title: Create Project
+      comment: Create a new project from a template
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "template_id": {
+              "type": "string",
+              "description": "Template ID to use for the project"
+            },
+            "title": {
+              "type": "string",
+              "description": "Project title"
+            },
+            "description": {
+              "type": "string",
+              "description": "Project description (optional)"
+            }
+          },
+          "required": ["template_id", "title"]
+        }
+      llm_alias: CreateProject
+      llm_description: Create a new project from a template with the specified title and optional description.
+    source: file://create_project.lua
+    modules:
+      - json
+      - security
+    imports:
+      template_registry: userspace.drafling.discovery:template_registry
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.agents:create_template
+  - name: create_template
+    kind: function.lua
+    meta:
+      type: tool
+      title: Create Template
+      comment: Create a new drafling template with structured validation
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "template_id": {
+              "type": "string",
+              "description": "Template ID (will add app.drafling.{topic}: prefix if no namespace provided)"
+            },
+            "topic": {
+              "type": "string",
+              "description": "Topic/domain for namespace (e.g., 'web_research', 'business_intel') - used if template_id has no namespace"
+            },
+            "name": {
+              "type": "string",
+              "description": "Human-readable template name"
+            },
+            "description": {
+              "type": "string",
+              "description": "Template description"
+            },
+            "icon": {
+              "type": "string",
+              "description": "Template icon (tabler icon name, e.g., 'tabler:folder')"
+            },
+            "tags": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Template tags for categorization"
+            },
+            "agent_id": {
+              "type": "string",
+              "description": "Associated agent ID (optional, will be set after agent creation)"
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_]+$",
+                    "description": "Internal category name (lowercase, underscores)"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "Human-readable category name"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "description": "Category icon (tabler icon name, defaults to tabler:folder)"
+                  },
+                  "entry_types": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Allowed entry types in this category"
+                  }
+                },
+                "required": ["name", "display_name", "entry_types"]
+              },
+              "description": "Template categories"
+            },
+            "entry_types": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-z0-9_]+$": {
+                  "type": "object",
+                  "properties": {
+                    "display_name": {
+                      "type": "string",
+                      "description": "Human-readable entry type name"
+                    },
+                    "icon": {
+                      "type": "string",
+                      "description": "Entry type icon (tabler icon name, defaults to tabler:file-text)"
+                    },
+                    "content_type": {
+                      "type": "string",
+                      "enum": ["text/markdown", "text/plain"],
+                      "default": "text/markdown",
+                      "description": "Default content type"
+                    },
+                    "color": {
+                      "type": "string",
+                      "description": "Color theme for entry type (defaults to blue)"
+                    },
+                    "default_status": {
+                      "type": "string",
+                      "description": "Default status for new entries (defaults to draft)"
+                    },
+                    "statuses": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": {
+                            "type": "string",
+                            "description": "Internal status value"
+                          },
+                          "display_name": {
+                            "type": "string",
+                            "description": "Human-readable status name"
+                          },
+                          "color": {
+                            "type": "string",
+                            "description": "Status color"
+                          }
+                        },
+                        "required": ["value", "display_name"]
+                      },
+                      "description": "Available statuses for this entry type (defaults to draft/in_progress/complete)"
+                    }
+                  },
+                  "required": ["display_name"]
+                }
+              },
+              "description": "Entry type definitions"
+            }
+          },
+          "required": ["template_id", "name", "description", "categories", "entry_types"]
+        }
+      llm_alias: CreateTemplate
+      llm_description: Create a new drafling template with categories, entry types, and validation rules. Uses app.drafling.{topic} namespace by default.
+    source: file://create_template.lua
+    modules:
+      - json
+      - registry
+    imports:
+      governance_client: keeper.gov:client
+    method: handler
+    
+  # userspace.drafling.agents:drafling_agent
+  - name: drafling_agent
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Project Management Assistant
+      comment: AI assistant for managing drafling projects with full CRUD capabilities
+      group: Productivity
+      tags:
+        - drafling
+        - project
+        - management
+        - documents
+      icon: tabler:file-text
+      class:
+        - contextual
+        - research
+    prompt: |-
+      You are a Drafling Project Assistant, an AI helper specialized in managing projects and their content.
+    
+      You have access to comprehensive project management tools that allow you to:
+      - View and update project details (title, description, status)
+      - Create, read, update, and delete project entries
+      - Organize content into categories with different entry types
+      - Track project history and changes
+    
+      ## TEMPLATE SYSTEM KNOWLEDGE
+    
+      **Icons**: All icons use Tabler icon format (e.g., "tabler:file-text", "tabler:folder", "tabler:rocket")
+      **Colors**: Common colors include blue, green, red, yellow, purple, orange, gray, slate, indigo, violet, cyan, teal, amber, lime, mint, emerald, gold
+      **Entry Statuses**: Typical statuses are draft, in_progress, complete, but can be customized per template
+      **Content Types**: Usually "text/markdown" or "text/plain"
+    
+      **Template Complexity**: Templates can range from simple (basic note-taking) to highly complex (like business intelligence frameworks with branching analysis, multiple specialist agents, and adaptive research workflows)
+    
+      You are currently working within a specific project context. Use your tools to help users:
+      - Add new content entries (notes, tasks, research, etc.)
+      - Update existing content
+      - Organize and structure their project
+      - Find and retrieve specific information
+      - Track project progress and changes
+    
+      Always be helpful, concise, and focused on the user's project needs. When making changes,
+      confirm what you've done and offer related suggestions when appropriate.
+    model: claude-4-sonnet
+    temperature: 0.3
+    max_tokens: 4096
+    traits:
+      - userspace.drafling.traits:drafling_editor
+    
+  # userspace.drafling.agents:list_projects
+  - name: list_projects
+    kind: function.lua
+    meta:
+      type: tool
+      title: List Projects
+      comment: List user's drafling projects with filtering options
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "project_type": {
+              "type": "string",
+              "description": "Filter by project type/template ID"
+            },
+            "status": {
+              "type": "string",
+              "description": "Filter by project status (draft, active, published, archived)"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "Maximum number of projects to return"
+            }
+          }
+        }
+      llm_alias: ListProjects
+      llm_description: List the user's drafling projects with optional filtering by type, status, and limit.
+    source: file://list_projects.lua
+    modules:
+      - json
+      - security
+    imports:
+      doc_repo: userspace.drafling.persist:doc_repo
+    method: handler
+    
+  # userspace.drafling.agents:list_templates
+  - name: list_templates
+    kind: function.lua
+    meta:
+      type: tool
+      title: List Templates
+      comment: List available project templates
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Search term to filter templates"
+            },
+            "tags": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Filter by template tags"
+            }
+          }
+        }
+      llm_alias: ListTemplates
+      llm_description: List available project templates with optional search and tag filtering.
+    source: file://list_templates.lua
+    modules:
+      - json
+    imports:
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handler
+    
+  # userspace.drafling.agents:project_manager
+  - name: project_manager
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Project Manager
+      comment: Template/Team driven project manager
+      group: Productivity
+      tags:
+        - drafling
+        - project
+        - management
+        - orchestrator
+      icon: tabler:folder-cog
+      class:
+        - public
+    prompt: |-
+      You are the Project Manager for the Drafling platform. You help users manage their projects at a high level and coordinate specialized tasks through delegation.
+    
+      ## TEMPLATE SYSTEM KNOWLEDGE
+    
+      **Icon System**: Use Tabler icons (tabler:icon-name) for all visual elements
+      **Template Complexity**: Templates range from simple (basic categories and entry types) to complex multi-agent frameworks with:
+      - Adaptive branching workflows
+      - Specialized research chains
+      - Deep dive analysis capabilities
+      - Cross-context validation
+      - Dynamic discovery-driven investigation
+    
+      **Common Template Patterns**:
+      - **Simple**: Basic note organization (notes, tasks, ideas)
+      - **Medium**: Project tracking (planning, execution, review phases)
+      - **Complex**: Intelligence frameworks (reconnaissance → analysis → deep dives)
+      - **Advanced**: Multi-agent orchestration with branching logic
+    
+      ## Core Capabilities
+    
+      **Project Management:**
+      - List and browse user's existing projects
+      - Create new projects from available templates
+      - Update project details (title, description, status)
+      - Query projects using their dedicated agents (get info, analyze, modify content)
+      - Switch users to project-specific agents with proper context
+    
+      **Template Management:**
+      - List available project templates
+      - Delegate template creation to specialized agents
+      - Coordinate agent creation for new templates
+    
+      **Intelligent Delegation:**
+      - For template creation: delegate to template creator
+      - For project work: redirect user to project-specific agent
+      - For agent creation: coordinate with agent manager through template creator
+    
+      ## Key Workflows
+    
+      **New Project Creation:**
+      1. Help user choose appropriate template
+      2. Create project with proper configuration
+      3. Offer to switch to project-specific agent for detailed work
+    
+      **Template Creation:**
+      1. Understand user's template requirements
+      2. Delegate to template creator agent
+      3. Coordinate any needed agent creation
+      4. Ensure proper namespace management
+    
+      **Project Work:**
+      1. Identify which project user wants to work on
+      2. Use query tool to get information or perform tasks via project agent
+      3. Use redirect tool to switch to project-specific agent for extended work
+      4. Pass proper context for seamless transition
+    
+      Always be helpful and coordinate efficiently between different specialized agents.
+    model: claude-4-sonnet
+    temperature: 0.3
+    max_tokens: 8192
+    tools:
+      - userspace.drafling.agents:list_projects
+      - userspace.drafling.agents:list_templates
+      - userspace.drafling.agents:create_project
+      - userspace.drafling.agents:update_project
+      - userspace.drafling.agents:query_project
+      - userspace.drafling.agents:redirect_to_project_agent
+    memory:
+      - I never create templates without getting user confirmation first.
+    delegates:
+      - name: template_creator
+        context:
+          can_create_agents: true
+          delegation_type: template_creation
+        id: userspace.drafling.agents:template_creator
+        rule: for creating new project templates and coordinating agent creation
+    
+  # userspace.drafling.agents:query_project
+  - name: query_project
+    kind: function.lua
+    meta:
+      type: tool
+      title: Query Project
+      comment: Query a specific project using its dedicated agent
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "description": "Project ID to query"
+            },
+            "query": {
+              "type": "string",
+              "description": "Question or task to send to the project agent"
+            },
+            "context": {
+              "type": "object",
+              "description": "Optional additional context to pass to the project agent"
+            }
+          },
+          "required": ["project_id", "query"]
+        }
+      llm_alias: QueryProject
+      llm_description: Query a specific project by delegating to its dedicated agent. The agent will have full project context and can view, analyze, or modify project content.
+    source: file://query_project.lua
+    modules:
+      - json
+      - security
+      - uuid
+      - ctx
+    imports:
+      agent_registry: wippy.agent.discovery:registry
+      client: userspace.dataflow:client
+      consts: userspace.dataflow:consts
+      doc_repo: userspace.drafling.persist:doc_repo
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handler
+    
+  # userspace.drafling.agents:redirect_to_project_agent
+  - name: redirect_to_project_agent
+    kind: function.lua
+    meta:
+      type: tool
+      title: Redirect to Project Agent
+      comment: Switch user to project-specific agent with context
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "description": "Project ID to set as context"
+            },
+            "agent_id": {
+              "type": "string",
+              "description": "Specific agent ID to switch to (optional, defaults to project's template agent)"
+            }
+          },
+          "required": ["project_id"]
+        }
+      llm_alias: RedirectToProjectAgent
+      llm_description: Switch the user to a project-specific agent with the project context loaded.
+    source: file://redirect_to_project_agent.lua
+    modules:
+      - json
+      - security
+    imports:
+      doc_repo: userspace.drafling.persist:doc_repo
+      template_registry: userspace.drafling.discovery:template_registry
+    method: handler
+    
+  # userspace.drafling.agents:template_creator
+  - name: template_creator
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Template Creator
+      comment: Specialized agent for creating project templates and coordinating agent creation
+      group: Development
+      tags:
+        - drafling
+        - template
+        - creation
+        - specialist
+      icon: tabler:template
+      class:
+        - contextual
+    prompt: |-
+      You are a Template Creator specialist, focused on creating new project templates and coordinating the creation of associated agents.
+    
+      ## NAMESPACE STRATEGY & USER WORKFLOW
+    
+      **ALWAYS ASK FOR TOPIC FIRST**: When users want to create templates, ask them for the topic/domain (e.g., "web_research", "business_intel", "content_planning", "project_management").
+    
+      **Default Namespace Pattern**: `app.drafling.{TOPIC}:{template_name}`
+      - Templates: `app.drafling.web_research:simple_research`
+      - Agents: `app.drafling.web_research:research_assistant`
+      - Keep templates and agents in same namespace for organization
+    
+      **RESEARCH FIRST WORKFLOW**:
+      1. **Ask for topic/domain** from user
+      2. **Research existing templates** in `app.drafling.*` namespaces
+      3. **Show examples** to user for inspiration
+      4. **Design template** based on requirements and patterns
+      5. **Create template** with proper namespace
+      6. **Create agent** if needed with matching namespace
+    
+      ## DRAFLING TEMPLATE SYSTEM EXPERTISE
+    
+      **Icon System**: Always use Tabler icons with "tabler:" prefix
+      - Categories: tabler:folder, tabler:rocket, tabler:target, tabler:cash, tabler:users-group
+      - Entry types: tabler:file-text, tabler:code, tabler:chart-pie, tabler:building, tabler:lightbulb
+    
+      **Color Palette**: blue, green, red, yellow, purple, orange, gray, slate, indigo, violet, cyan, teal, amber, lime, mint, emerald, gold
+    
+      **Template Complexity Levels**:
+    
+      **Level 1 - Simple Templates**:
+      - 2-4 categories (planning, execution, notes)
+      - 3-6 entry types (note, task, idea, research)
+      - Single agent or no agent
+      - Basic status workflow (draft, in_progress, complete)
+    
+      **Level 2 - Medium Templates**:
+      - 4-7 categories with logical workflow
+      - 8-15 entry types with specialization
+      - Project-specific agent with CRUD capabilities
+      - Custom status workflows per entry type
+    
+      **Level 3 - Complex Templates**:
+      - 6-10 categories with branching logic
+      - 15-30 entry types with deep specialization
+      - Multi-agent orchestration with delegation
+      - Advanced workflows with conditional paths
+    
+      **Level 4 - Advanced Frameworks**:
+      - 7+ categories with adaptive branching
+      - 25+ entry types with cross-dependencies
+      - Orchestrator + specialist agent hierarchy
+      - Discovery-driven analysis with research chains
+      - Dynamic delegation based on findings
+    
+      **Example Existing Namespaces**:
+      - `app.drafling.business_model_intel:*` - Complex intelligence framework
+      - `userspace.drafling.agents:*` - Core drafling tools
+      - Research these for patterns and inspiration
+    
+      ## Your Responsibilities
+    
+      **Template Research & Design:**
+      - Use registry tools to explore existing `app.drafling.*` templates
+      - Show users examples and patterns before creating
+      - Ask for topic to determine proper namespace
+      - Design template structure (categories, entry types, statuses)
+      - Create template registry entries with proper configuration
+    
+      **Agent Coordination:**
+      - Delegate to agent manager for creating template-specific agents
+      - Ensure matching namespaces (template and agent in same namespace)
+      - Exchange agent IDs properly between systems
+      - Create agents that work well with the template structure
+    
+      **Registry Research:**
+      - Use registry viewing tools to explore existing templates
+      - Learn from existing patterns and structures
+      - Adapt best practices from similar templates
+      - Browse namespaces to understand conventions
+    
+      ## Template Structure Understanding
+    
+      Templates define:
+      - Categories (main sections of work)
+      - Entry types (specific content types within categories)
+      - Status workflows (draft, in-progress, complete, etc.)
+      - Agent associations (which agent handles the template)
+      - Icons, colors, and display properties
+    
+      ## Tools Available
+    
+      **Registry Browsing:** Use registry viewer tools to explore existing templates and patterns
+      **Template Creation:** Use structured template creation tool with proper validation
+      **Template Updates:** Use template update tool for modifications
+      **Agent Creation:** Delegate to agent manager with clear specifications
+    
+      **ALWAYS research existing templates first and ask users for their topic/domain to ensure proper namespace organization.**
+    model: claude-4-sonnet
+    temperature: 0.3
+    max_tokens: 8192
+    tools:
+      - userspace.drafling.agents:create_template
+      - userspace.drafling.agents:update_template
+    delegates:
+      - name: agent_manager
+        context:
+          delegation_type: agent_creation
+          ensure_public_class: true
+          namespace_strategy: match_template_namespace
+          source_agent: template_creator
+        id: keeper.agents.manager:manager
+        rule: for creating agents and managing registry entries
+    traits:
+      - keeper.agents.registry:registry_viewer
+    
+  # userspace.drafling.agents:update_project
+  - name: update_project
+    kind: function.lua
+    meta:
+      type: tool
+      title: Update Project
+      comment: Update an existing project's details
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "description": "Project ID to update"
+            },
+            "title": {
+              "type": "string",
+              "description": "New project title (optional)"
+            },
+            "description": {
+              "type": "string",
+              "description": "New project description (optional)"
+            },
+            "status": {
+              "type": "string",
+              "description": "New project status (optional)"
+            }
+          },
+          "required": ["project_id"]
+        }
+      llm_alias: UpdateSpecificProject
+      llm_description: Update an existing project's title, description, or status.
+    source: file://update_project.lua
+    modules:
+      - json
+      - security
+    imports:
+      writer: userspace.drafling.persist:writer
+    method: handler
+    
+  # userspace.drafling.agents:update_template
+  - name: update_template
+    kind: function.lua
+    meta:
+      type: tool
+      title: Update Template
+      comment: Update an existing drafling template
+      input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"template_id\": {\n      \"type\": \"string\",\n      \"description\": \"Template ID to update (will add app.drafling.{topic}: prefix if no namespace provided)\"\n    },\n    \"topic\": {\n      \"type\": \"string\", \n      \"description\": \"Topic/domain for namespace (e.g., 'web_research', 'business_intel') - used if template_id has no namespace\"\n    },\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"Update template name\"\n    },\n    \"description\": {\n      \"type\": \"string\",\n      \"description\": \"Update template description\"\n    },\n    \"icon\": {\n      \"type\": \"string\",\n      \"description\": \"Update template icon (tabler icon name)\"\n    },\n    \"tags\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Update template tags\"\n    },\n    \"agent_id\": {\n      \"type\": \"string\",\n      \"description\": \"Update associated agent ID\"\n    },\n    \"add_categories\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"name\": {\"type\": \"string\", \"pattern\": \"^[a-z0-9_]+$\"},\n          \"display_name\": {\"type\": \"string\"},\n          \"icon\": {\"type\": \"string\"},\n          \"entry_types\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}\n        },\n        \"required\": [\"name\", \"display_name\", \"entry_types\"]\n      },\n      \"description\": \"Categories to add\"\n    },\n    \"remove_categories\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Category names to remove\"\n    },\n    \"set_categories\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"name\": {\"type\": \"string\", \"pattern\": \"^[a-z0-9_]+$\"},\n          \"display_name\": {\"type\": \"string\"},\n          \"icon\": {\"type\": \"string\"},\n          \"entry_types\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}\n        },\n        \"required\": [\"name\", \"display_name\", \"entry_types\"]\n      },\n      \"description\": \"Replace all categories\"\n    },\n    \"add_entry_types\": {\n      \"type\": \"object\",\n      \"patternProperties\": {\n        \"^[a-z0-9_]+$\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"display_name\": {\"type\": \"string\"},\n            \"icon\": {\"type\": \"string\"},\n            \"content_type\": {\"type\": \"string\"},\n            \"color\": {\"type\": \"string\"},\n            \"default_status\": {\"type\": \"string\"},\n            \"statuses\": {\"type\": \"array\"}\n          },\n          \"required\": [\"display_name\"]\n        }\n      },\n      \"description\": \"Entry types to add\"\n    },\n    \"remove_entry_types\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Entry type names to remove\"\n    },\n    \"set_entry_types\": {\n      \"type\": \"object\",\n      \"patternProperties\": {\n        \"^[a-z0-9_]+$\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"display_name\": {\"type\": \"string\"},\n            \"icon\": {\"type\": \"string\"},\n            \"content_type\": {\"type\": \"string\"},\n            \"color\": {\"type\": \"string\"},\n            \"default_status\": {\"type\": \"string\"},\n            \"statuses\": {\"type\": \"array\"}\n          },\n          \"required\": [\"display_name\"]\n        }\n      },\n      \"description\": \"Replace all entry types\"\n    }\n  },\n  \"required\": [\"template_id\"]\n}\n"
+      llm_alias: UpdateTemplate
+      llm_description: Update an existing drafling template with new categories, entry types, or metadata.
+    source: file://update_template.lua
+    modules:
+      - json
+      - registry
+    imports:
+      governance_client: keeper.gov:client
+    method: handler
+    

@@ -1,0 +1,23 @@
+version: "1.0"
+namespace: userspace.mcp.service
+
+entries:
+  # userspace.mcp.service:exec
+  - name: exec
+    kind: process.lua
+    meta:
+      comment: MCP server process manager for exec/stdio mode
+      tags:
+        - mcp
+        - server
+        - exec
+    source: file://exec.lua
+    modules:
+      - time
+      - logger
+      - exec
+      - json
+    imports:
+      mcp_consts: userspace.mcp:consts
+    method: run
+    

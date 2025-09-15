@@ -1,0 +1,147 @@
+version: "1.0"
+namespace: userspace.kb9.persist
+
+entries:
+  # userspace.kb9.persist:ops
+  - name: ops
+    kind: library.lua
+    meta:
+      comment: KB9 knowledge base operations handlers
+      tags:
+        - kb9
+        - operations
+        - knowledge-base
+        - cqrs
+      description: Provides operation handlers for KB9 knowledge base commands including component, node, and edge operations
+      private: true
+    source: file://ops.lua
+    modules:
+      - sql
+      - time
+      - uuid
+      - json
+    imports:
+      consts: userspace.kb9:consts
+    
+  # userspace.kb9.persist:ops_test
+  - name: ops_test
+    kind: function.lua
+    meta:
+      name: KB9 Operations Tests
+      type: test
+      comment: Unit tests for the KB9 operations module
+      group: Components / KB9
+      tags:
+        - kb9
+        - operations
+        - knowledge-base
+        - tests
+      description: Validates the functionality of KB9 operation handlers for components, nodes, and edges
+    source: file://ops_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      consts: userspace.kb9:consts
+      ops: userspace.kb9.persist:ops
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.kb9.persist:reader
+  - name: reader
+    kind: library.lua
+    meta:
+      comment: KB9 knowledge base reader for querying and traversing knowledge graphs
+      tags:
+        - kb9
+        - reader
+        - query
+        - knowledge-base
+      description: Provides fluent API for reading and querying KB9 knowledge base with support for path navigation, filtering, search, and graph traversal
+    source: file://reader.lua
+    modules:
+      - sql
+      - json
+    imports:
+      consts: userspace.kb9:consts
+    
+  # userspace.kb9.persist:reader_embeddings_test
+  - name: reader_embeddings_test
+    kind: function.lua
+    meta:
+      name: KB9 Reader Vector/Embeddings Tests
+      type: test
+      comment: Unit tests for the KB9 reader vector search and embeddings functionality
+      group: Components / KB9
+      tags:
+        - kb9
+        - reader
+        - vector
+        - embeddings
+        - search
+        - tests
+      description: Validates the functionality of KB9 reader vector search capabilities including similarity search, combined filtering, and graph traversal with embeddings
+    source: file://reader_embeddings_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      consts: userspace.kb9:consts
+      ops: userspace.kb9.persist:ops
+      reader: userspace.kb9.persist:reader
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.kb9.persist:reader_test
+  - name: reader_test
+    kind: function.lua
+    meta:
+      name: KB9 Reader Tests
+      type: test
+      comment: Unit tests for the KB9 reader module
+      group: Components / KB9
+      tags:
+        - kb9
+        - reader
+        - query
+        - knowledge-base
+        - tests
+      description: Validates the functionality of KB9 reader including path navigation, filtering, search, and graph traversal
+    source: file://reader_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+    imports:
+      consts: userspace.kb9:consts
+      ops: userspace.kb9.persist:ops
+      reader: userspace.kb9.persist:reader
+      test: wippy.test:test
+    method: run_tests
+    
+  # userspace.kb9.persist:store
+  - name: store
+    kind: library.lua
+    meta:
+      comment: KB9 knowledge base store operations with fluent batch API
+      tags:
+        - kb9
+        - store
+        - operations
+        - batch
+        - knowledge-base
+      description: Provides fluent batch API for KB9 operations with transaction management and read operations
+      private: true
+    source: file://store.lua
+    modules:
+      - sql
+      - uuid
+    imports:
+      consts: userspace.kb9:consts
+      ops: userspace.kb9.persist:ops
+    

@@ -1,0 +1,56 @@
+version: "1.0"
+namespace: userspace.oauth.persist
+
+entries:
+  # userspace.oauth.persist:oauth_repo
+  - name: oauth_repo
+    kind: library.lua
+    meta:
+      comment: Persistence library for OAuth connection and token storage operations
+      tags:
+        - oauth
+        - persistence
+        - database
+        - encryption
+        - tokens
+      description: Database operations library for OAuth connection storage with encrypted token management
+      depends_on:
+        - ns:wippy.sql
+    source: file://oauth_repo.lua
+    modules:
+      - sql
+      - json
+      - uuid
+      - time
+      - env
+      - crypto
+    
+  # userspace.oauth.persist:oauth_repo_test
+  - name: oauth_repo_test
+    kind: function.lua
+    meta:
+      name: OAuth Repository Test
+      type: test
+      comment: Tests the OAuth repository functionality for managing encrypted OAuth connections and tokens
+      group: Components / OAuth
+      tags:
+        - oauth
+        - database
+        - encryption
+        - tokens
+        - tests
+      description: Database operations library for OAuth connection storage with encrypted token management
+      depends_on:
+        - ns:wippy.sql
+    source: file://oauth_repo_test.lua
+    modules:
+      - sql
+      - uuid
+      - json
+      - time
+      - env
+    imports:
+      oauth_repo: userspace.oauth.persist:oauth_repo
+      test: wippy.test:test
+    method: run_tests
+    

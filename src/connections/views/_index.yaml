@@ -1,0 +1,20 @@
+version: "1.0"
+namespace: userspace.connections.views
+
+entries:
+  # userspace.connections.views:connections
+  - name: connections
+    kind: template.jet
+    meta:
+      name: connection
+      type: view.page
+      title: Connections
+      icon: tabler:link
+      description: Manage and discover connection components
+      order: 310
+      content_type: text/html
+      announced: true
+      secure: true
+    source: file://connections.jet
+    set: app.views.common:templates
+    

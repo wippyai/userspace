@@ -1,0 +1,1904 @@
+{{ extends "common/layout" }}
+
+{* Page title and description *}
+{{ block title() }}Manage KB9 Knowledge Base{{ end }}
+{{ block metaDescription() }}Manage KB9 knowledge base records and operations{{ end }}
+
+{{ block mainContent() }}
+<div x-data="manageKb9App" x-init="initialize()" class="max-w-7xl mx-auto" x-cloak>
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
+                    <iconify-icon icon="tabler:database-import" class="text-white" width="28" height="28"></iconify-icon>
+                </div>
+                <div class="ml-5">
+                    <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-100" x-text="kbInfo.name || 'KB9 Knowledge Base'"></h1>
+                    <div class="mt-1 text-surface-600 dark:text-surface-400">
+                        <div x-show="stats" class="flex items-center space-x-1 text-sm">
+                            <span x-text="stats?.nodes?.total || 0"></span>
+                            <span>nodes</span>
+                            <span x-show="stats?.nodes?.total_content_size">•</span>
+                            <span x-show="stats?.nodes?.total_content_size" x-text="formatContentSize(stats?.nodes?.total_content_size)"></span>
+                        </div>
+                        <div x-show="!stats && !isLoading" class="text-sm" x-text="kbInfo.description || 'Loading...'"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <button @click="openBrowseView"
+                        :disabled="!componentId"
+                        class="inline-flex items-center px-4 py-2.5 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                    <iconify-icon icon="tabler:hierarchy-2" class="mr-2" width="18" height="18"></iconify-icon>
+                    Browse Content
+                </button>
+                <button @click="refreshData"
+                        :disabled="isLoading"
+                        class="inline-flex items-center px-4 py-2.5 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                    <iconify-icon :icon="isLoading ? 'tabler:loader-2' : 'tabler:refresh'" :class="{'animate-spin': isLoading}" class="mr-2" width="18" height="18"></iconify-icon>
+                    Refresh
+                </button>
+                <button @click="goBackToList"
+                        class="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:arrow-left" class="mr-2" width="18" height="18"></iconify-icon>
+                    Back to Sources
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Component ID Input (for development/debug) -->
+    <div x-show="!componentId" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Component ID Required</h3>
+        <div class="flex gap-3">
+            <input type="text" x-model="componentIdInput"
+                   placeholder="Enter KB9 component ID..."
+                   class="flex-1 px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+            <button @click="setComponentId"
+                    :disabled="!componentIdInput.trim()"
+                    class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                Load KB
+            </button>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-red-200 dark:border-red-800 p-6 mb-8">
+        <div class="flex items-center">
+            <iconify-icon icon="tabler:alert-circle" class="text-red-600 dark:text-red-400 mr-3" width="24" height="24"></iconify-icon>
+            <div>
+                <h3 class="text-lg font-medium text-red-800 dark:text-red-200">Error</h3>
+                <p class="text-red-600 dark:text-red-400" x-text="error"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="isLoading && !kbInfo.name" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-8 mb-8">
+        <div class="flex justify-center items-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+            <span class="ml-3 text-surface-700 dark:text-surface-300">Loading knowledge base...</span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div x-show="componentId && !isLoading">
+        <!-- Tab Navigation -->
+        <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 mb-8">
+            <nav class="flex" aria-label="Tabs">
+                <button @click="activeTab = 'overview'"
+                        :class="activeTab === 'overview' ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700/50'"
+                        class="flex-1 text-center whitespace-nowrap py-4 px-6 font-medium text-sm flex items-center justify-center transition-colors duration-200 rounded-tl-2xl">
+                    <iconify-icon icon="tabler:info-circle" class="mr-2" width="18" height="18"></iconify-icon>
+                    Overview
+                </button>
+                <button @click="activeTab = 'settings'"
+                        :class="activeTab === 'settings' ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700/50'"
+                        class="flex-1 text-center whitespace-nowrap py-4 px-6 font-medium text-sm flex items-center justify-center transition-colors duration-200">
+                    <iconify-icon icon="tabler:settings" class="mr-2" width="18" height="18"></iconify-icon>
+                    Settings
+                </button>
+                <button @click="activeTab = 'add-content'"
+                        :class="activeTab === 'add-content' ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700/50'"
+                        class="flex-1 text-center whitespace-nowrap py-4 px-6 font-medium text-sm flex items-center justify-center transition-colors duration-200">
+                    <iconify-icon icon="tabler:plus" class="mr-2" width="18" height="18"></iconify-icon>
+                    Add Content
+                </button>
+                <button @click="activeTab = 'search'"
+                        :class="activeTab === 'search' ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700/50'"
+                        class="flex-1 text-center whitespace-nowrap py-4 px-6 font-medium text-sm flex items-center justify-center transition-colors duration-200 rounded-tr-2xl">
+                    <iconify-icon icon="tabler:search" class="mr-2" width="18" height="18"></iconify-icon>
+                    Search
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div>
+            <!-- Overview Tab -->
+            <div x-show="activeTab === 'overview'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <div class="space-y-6">
+                    <!-- Knowledge Base Information -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Knowledge Base Information</h3>
+                            <button @click="copyComponentReference"
+                                    :disabled="!hasValidComponentData"
+                                    :title="hasValidComponentData ? 'Copy Base64 component reference' : 'Component reference not available'"
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-surface-50 dark:hover:bg-surface-700 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <iconify-icon icon="tabler:copy" class="mr-2" width="16" height="16"></iconify-icon>
+                                Copy Reference
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-2">Name</h4>
+                                <p class="text-surface-900 dark:text-surface-100" x-text="kbInfo.name || 'N/A'"></p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-2">Embedding Model</h4>
+                                <p class="text-surface-900 dark:text-surface-100 font-mono text-sm" x-text="kbInfo.config?.embedding_model || 'N/A'"></p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-2">Your Access Level</h4>
+                                <div class="space-y-2">
+                                    <!-- Overall Access Level Badge -->
+                                    <div class="flex items-center">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                              :class="{
+                                                  'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200': kbInfo.access_level === 15,
+                                                  'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200': kbInfo.access_level >= 3 && kbInfo.access_level < 15,
+                                                  'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200': kbInfo.access_level === 1,
+                                                  'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200': kbInfo.access_level === 0
+                                              }"
+                                              x-text="accessLevelText">
+                                        </span>
+                                        <span class="ml-2 text-xs text-surface-500 dark:text-surface-400" x-text="'(Level ' + (kbInfo.access_level || 0) + ')'"></span>
+                                    </div>
+
+                                    <!-- Individual Permission Bubbles -->
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <!-- Read Permission -->
+                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
+                                              :class="hasReadAccess ?
+                                                  'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700' :
+                                                  'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400 border border-surface-200 dark:border-surface-600'">
+                                            <iconify-icon :icon="hasReadAccess ? 'tabler:eye' : 'tabler:eye-off'" class="mr-1" width="12" height="12"></iconify-icon>
+                                            Read
+                                        </span>
+
+                                        <!-- Write Permission -->
+                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
+                                              :class="hasWriteAccess ?
+                                                  'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700' :
+                                                  'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400 border border-surface-200 dark:border-surface-600'">
+                                            <iconify-icon :icon="hasWriteAccess ? 'tabler:edit' : 'tabler:edit-off'" class="mr-1" width="12" height="12"></iconify-icon>
+                                            Write
+                                        </span>
+
+                                        <!-- Delete Permission -->
+                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
+                                              :class="hasDeleteAccess ?
+                                                  'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700' :
+                                                  'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400 border border-surface-200 dark:border-surface-600'">
+                                            <iconify-icon :icon="hasDeleteAccess ? 'tabler:trash' : 'tabler:trash-off'" class="mr-1" width="12" height="12"></iconify-icon>
+                                            Delete
+                                        </span>
+
+                                        <!-- Admin Permission -->
+                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
+                                              :class="hasAdminAccess ?
+                                                  'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700' :
+                                                  'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400 border border-surface-200 dark:border-surface-600'">
+                                            <iconify-icon :icon="hasAdminAccess ? 'tabler:crown' : 'tabler:crown-off'" class="mr-1" width="12" height="12"></iconify-icon>
+                                            Admin
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-2">Embed Processor</h4>
+                                <p class="text-surface-900 dark:text-surface-100 text-sm" x-text="embedProcessorName"></p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-2">Search Engine</h4>
+                                <p class="text-surface-900 dark:text-surface-100 text-sm" x-text="searchEngineName"></p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-2">Created</h4>
+                                <p class="text-surface-900 dark:text-surface-100" x-text="formatDate(kbInfo.created_at)"></p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6" x-show="kbInfo.description">
+                            <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-2">Description</h4>
+                            <p class="text-surface-900 dark:text-surface-100 leading-relaxed" x-text="kbInfo.description"></p>
+                        </div>
+                    </div>
+
+                    <!-- Content Statistics -->
+                    <div x-show="stats" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-6">Content Statistics</h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <!-- Total Nodes -->
+                            <div class="p-4 border border-surface-200 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-700">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-2xl font-bold text-surface-900 dark:text-surface-100" x-text="stats?.nodes?.total || 0"></div>
+                                        <div class="text-sm text-surface-600 dark:text-surface-400">Total Nodes</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <iconify-icon icon="tabler:nodes" class="text-2xl text-surface-500 dark:text-surface-400"></iconify-icon>
+                                        <div x-show="stats?.nodes?.total_content_size" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="formatContentSize(stats?.nodes?.total_content_size)"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Content Nodes -->
+                            <div class="p-4 border border-surface-200 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-700">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-2xl font-bold text-surface-900 dark:text-surface-100" x-text="stats?.nodes?.with_content || 0"></div>
+                                        <div class="text-sm text-surface-600 dark:text-surface-400">With Content</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <iconify-icon icon="tabler:file-text" class="text-2xl text-surface-500 dark:text-surface-400"></iconify-icon>
+                                        <div x-show="stats?.nodes?.total_metadata_size" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="'Meta: ' + formatContentSize(stats?.nodes?.total_metadata_size)"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Node Types Breakdown -->
+                        <div x-show="stats?.node_types && Object.keys(stats.node_types).length > 0">
+                            <h4 class="text-sm font-medium text-surface-500 dark:text-surface-400 mb-3">Content Types</h4>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="(count, type) in stats?.node_types || {}" :key="type">
+                                    <div class="inline-flex items-center px-3 py-1.5 rounded-md border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 text-sm">
+                                        <span class="font-medium text-surface-900 dark:text-surface-100 capitalize" x-text="type"></span>
+                                        <span class="ml-2 text-surface-500 dark:text-surface-400" x-text="count"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div x-show="activeTab === 'settings'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <div class="space-y-6">
+                    <!-- Basic Settings -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-6">Basic Settings</h3>
+
+                        <form @submit.prevent="updateBasicSettings" class="space-y-6">
+                            <div>
+                                <label for="settingsName" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Name</label>
+                                <input
+                                        type="text"
+                                        id="settingsName"
+                                        x-model="settingsForm.name"
+                                        required
+                                        placeholder="Enter knowledge base name..."
+                                        class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            </div>
+
+                            <div>
+                                <label for="settingsDescription" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Description</label>
+                                <textarea
+                                        id="settingsDescription"
+                                        x-model="settingsForm.description"
+                                        rows="4"
+                                        placeholder="Describe what this knowledge base contains and its purpose..."
+                                        class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                            </div>
+
+                            <div class="flex space-x-3 pt-4">
+                                <button
+                                        type="submit"
+                                        :disabled="isUpdatingSettings || !settingsForm.name.trim()"
+                                        class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <iconify-icon :icon="isUpdatingSettings ? 'tabler:loader-2' : 'tabler:device-floppy'" :class="{'animate-spin': isUpdatingSettings}" class="mr-2" width="18" height="18"></iconify-icon>
+                                    <span x-text="isUpdatingSettings ? 'Updating...' : 'Update Settings'"></span>
+                                </button>
+                                <button
+                                        type="button"
+                                        @click="resetSettingsForm"
+                                        :disabled="isUpdatingSettings"
+                                        class="inline-flex items-center px-4 py-3 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                                    <iconify-icon icon="tabler:refresh" class="mr-2" width="18" height="18"></iconify-icon>
+                                    Reset
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Embed Configuration -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <div class="flex items-center mb-6">
+                            <iconify-icon icon="tabler:file-text" class="text-purple-500 mr-3" width="20" height="20"></iconify-icon>
+                            <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Content Processing Engine</h3>
+                        </div>
+
+                        <form @submit.prevent="updateEmbedSettings" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Select Processor</label>
+                                <div class="space-y-2">
+                                    <template x-for="impl in availableImplementations.embed" :key="impl.id">
+                                        <label class="flex items-start p-3 border border-surface-300 dark:border-surface-600 rounded-lg cursor-pointer hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors"
+                                               :class="settingsForm.embed.implementation === impl.id ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20' : ''">
+                                            <input
+                                                    type="radio"
+                                                    :value="impl.id"
+                                                    x-model="settingsForm.embed.implementation"
+                                                    @change="handleImplementationChange('embed')"
+                                                    class="mt-1 mr-3 text-purple-500 focus:ring-purple-500">
+                                            <div class="flex-1">
+                                                <div class="flex items-center">
+                                                    <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100" x-text="impl.name"></h4>
+                                                    <span class="ml-2 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 rounded-full text-purple-700 dark:text-purple-300" x-text="impl.provider"></span>
+                                                </div>
+                                                <p class="text-sm text-surface-600 dark:text-surface-400 mt-1" x-text="impl.description"></p>
+                                            </div>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Embed Options -->
+                            <div x-show="settingsForm.embed.implementation && currentEmbedOptions.length > 0" x-transition class="p-4 bg-surface-50 dark:bg-surface-900 rounded-lg">
+                                <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Processing Configuration</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <template x-for="option in currentEmbedOptions" :key="option.key">
+                                        <div>
+                                            <label :for="'embed-' + option.key" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1" x-text="option.title"></label>
+
+                                            <!-- Model selector -->
+                                            <template x-if="option.widget === 'model_select'">
+                                                <select
+                                                        :id="'embed-' + option.key"
+                                                        x-model="settingsForm.embed.options[option.key]"
+                                                        x-effect="syncSelectValue($el, settingsForm.embed.options[option.key], availableModels[option.modelCategory] || [])"
+                                                        :required="option.required"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                                    <option value="">Select model...</option>
+                                                    <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                                        <option :value="model.name" x-text="model.title"></option>
+                                                    </template>
+                                                </select>
+                                            </template>
+
+                                            <!-- Boolean checkbox -->
+                                            <template x-if="option.widget === 'checkbox'">
+                                                <label class="flex items-center">
+                                                    <input
+                                                            :id="'embed-' + option.key"
+                                                            type="checkbox"
+                                                            x-model="settingsForm.embed.options[option.key]"
+                                                            class="mr-2 text-purple-500 focus:ring-purple-500">
+                                                    <span class="text-sm text-surface-700 dark:text-surface-300">Enable</span>
+                                                </label>
+                                            </template>
+
+                                            <!-- Number input -->
+                                            <template x-if="option.widget === 'number' || option.type === 'number' || option.type === 'integer'">
+                                                <input
+                                                        :id="'embed-' + option.key"
+                                                        :type="option.type === 'integer' ? 'number' : 'number'"
+                                                        :min="option.minimum"
+                                                        :max="option.maximum"
+                                                        :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
+                                                        :placeholder="option.default"
+                                                        x-model.number="settingsForm.embed.options[option.key]"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            </template>
+
+                                            <!-- Text input (default) -->
+                                            <template x-if="!option.widget && option.type === 'string'">
+                                                <input
+                                                        :id="'embed-' + option.key"
+                                                        type="text"
+                                                        :placeholder="option.default"
+                                                        x-model="settingsForm.embed.options[option.key]"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            </template>
+
+                                            <!-- Textarea input -->
+                                            <template x-if="option.widget === 'textarea'">
+                                                <textarea
+                                                        :id="'embed-' + option.key"
+                                                        :placeholder="option.default"
+                                                        x-model="settingsForm.embed.options[option.key]"
+                                                        rows="3"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-vertical"></textarea>
+                                            </template>
+
+                                            <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="flex space-x-3 pt-4">
+                                <button
+                                        type="submit"
+                                        :disabled="isUpdatingEmbedSettings || !settingsForm.embed.implementation"
+                                        class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <iconify-icon :icon="isUpdatingEmbedSettings ? 'tabler:loader-2' : 'tabler:device-floppy'" :class="{'animate-spin': isUpdatingEmbedSettings}" class="mr-2" width="18" height="18"></iconify-icon>
+                                    <span x-text="isUpdatingEmbedSettings ? 'Updating...' : 'Update Embed Settings'"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Query Configuration -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <div class="flex items-center mb-6">
+                            <iconify-icon icon="tabler:search" class="text-green-500 mr-3" width="20" height="20"></iconify-icon>
+                            <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Search Engine</h3>
+                        </div>
+
+                        <form @submit.prevent="updateQuerySettings" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Select Engine</label>
+                                <div class="space-y-2">
+                                    <template x-for="impl in availableImplementations.query" :key="impl.id">
+                                        <label class="flex items-start p-3 border border-surface-300 dark:border-surface-600 rounded-lg cursor-pointer hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors"
+                                               :class="settingsForm.query.implementation === impl.id ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-900/20' : ''">
+                                            <input
+                                                    type="radio"
+                                                    :value="impl.id"
+                                                    x-model="settingsForm.query.implementation"
+                                                    @change="handleImplementationChange('query')"
+                                                    class="mt-1 mr-3 text-green-500 focus:ring-green-500">
+                                            <div class="flex-1">
+                                                <div class="flex items-center">
+                                                    <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100" x-text="impl.name"></h4>
+                                                    <span class="ml-2 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/50 rounded-full text-green-700 dark:text-green-300" x-text="impl.provider"></span>
+                                                </div>
+                                                <p class="text-sm text-surface-600 dark:text-surface-400 mt-1" x-text="impl.description"></p>
+                                            </div>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Query Options -->
+                            <div x-show="settingsForm.query.implementation && currentQueryOptions.length > 0" x-transition class="p-4 bg-surface-50 dark:bg-surface-900 rounded-lg">
+                                <h4 class="text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Search Configuration</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <template x-for="option in currentQueryOptions" :key="option.key">
+                                        <div>
+                                            <label :for="'query-' + option.key" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1" x-text="option.title"></label>
+
+                                            <!-- Model selector -->
+                                            <template x-if="option.widget === 'model_select'">
+                                                <select
+                                                        :id="'query-' + option.key"
+                                                        x-model="settingsForm.query.options[option.key]"
+                                                        x-effect="syncSelectValue($el, settingsForm.query.options[option.key], availableModels[option.modelCategory] || [])"
+                                                        :required="option.required"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                                    <option value="">Select model...</option>
+                                                    <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                                        <option :value="model.name" x-text="model.title"></option>
+                                                    </template>
+                                                </select>
+                                            </template>
+
+                                            <!-- Boolean checkbox -->
+                                            <template x-if="option.widget === 'checkbox'">
+                                                <label class="flex items-center">
+                                                    <input
+                                                            :id="'query-' + option.key"
+                                                            type="checkbox"
+                                                            x-model="settingsForm.query.options[option.key]"
+                                                            class="mr-2 text-green-500 focus:ring-green-500">
+                                                    <span class="text-sm text-surface-700 dark:text-surface-300">Enable</span>
+                                                </label>
+                                            </template>
+
+                                            <!-- Number input -->
+                                            <template x-if="option.widget === 'number' || option.type === 'number' || option.type === 'integer'">
+                                                <input
+                                                        :id="'query-' + option.key"
+                                                        :type="option.type === 'integer' ? 'number' : 'number'"
+                                                        :min="option.minimum"
+                                                        :max="option.maximum"
+                                                        :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
+                                                        :placeholder="option.default"
+                                                        x-model.number="settingsForm.query.options[option.key]"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                            </template>
+
+                                            <!-- Text input (default) -->
+                                            <template x-if="!option.widget && option.type === 'string'">
+                                                <input
+                                                        :id="'query-' + option.key"
+                                                        type="text"
+                                                        :placeholder="option.default"
+                                                        x-model="settingsForm.query.options[option.key]"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                            </template>
+
+                                            <!-- Textarea input -->
+                                            <template x-if="option.widget === 'textarea'">
+                                                <textarea
+                                                        :id="'query-' + option.key"
+                                                        :placeholder="option.default"
+                                                        x-model="settingsForm.query.options[option.key]"
+                                                        rows="3"
+                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"></textarea>
+                                            </template>
+
+                                            <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="flex space-x-3 pt-4">
+                                <button
+                                        type="submit"
+                                        :disabled="isUpdatingQuerySettings || !settingsForm.query.implementation"
+                                        class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <iconify-icon :icon="isUpdatingQuerySettings ? 'tabler:loader-2' : 'tabler:device-floppy'" :class="{'animate-spin': isUpdatingQuerySettings}" class="mr-2" width="18" height="18"></iconify-icon>
+                                    <span x-text="isUpdatingQuerySettings ? 'Updating...' : 'Update Search Settings'"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Content Tab -->
+            <div x-show="activeTab === 'add-content'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <div class="space-y-6">
+                    <!-- Upload New Files Section -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <div class="flex items-center mb-6">
+                            <iconify-icon icon="tabler:upload" class="text-blue-500 mr-3" width="20" height="20"></iconify-icon>
+                            <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Upload New Files</h3>
+                        </div>
+
+                        <!-- Drop Zone -->
+                        <div
+                                @dragover.prevent="isDragging = true"
+                                @dragleave.prevent="isDragging = false"
+                                @drop.prevent="handleFileDrop($event)"
+                                @click="$refs.fileInput.click()"
+                                :class="{'border-primary-500 bg-primary-50 dark:bg-primary-900/20': isDragging}"
+                                class="border-2 border-dashed border-surface-300 dark:border-surface-600 rounded-lg p-8 text-center cursor-pointer transition-colors duration-200 ease-in-out hover:bg-surface-100 dark:hover:bg-surface-600/50 mb-4">
+
+                            <div class="flex flex-col items-center">
+                                <iconify-icon icon="tabler:cloud-upload" class="text-4xl text-surface-400 dark:text-surface-500 mb-3"></iconify-icon>
+                                <p class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                                    Drop files here or click to browse
+                                </p>
+                                <p class="text-xs text-surface-500 dark:text-surface-400">
+                                    Supports PDF, DOC, TXT and other text formats
+                                </p>
+                            </div>
+                        </div>
+                        <input type="file" x-ref="fileInput" @change="handleFileSelect" multiple class="hidden">
+
+                        <!-- Selected Files -->
+                        <div x-show="uploadQueue.length > 0" class="mb-4" x-transition>
+                            <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Selected Files:</h4>
+                            <div class="space-y-2">
+                                <template x-for="(file, index) in uploadQueue" :key="index">
+                                    <div @click="!isUploading && removeFromQueue(index)"
+                                         :class="isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                                         class="flex items-center justify-between p-3 bg-surface-50 dark:bg-surface-700 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-600 transition-all duration-200">
+                                        <div class="flex items-center min-w-0 flex-1">
+                                            <iconify-icon icon="tabler:file" class="text-surface-500 dark:text-surface-400 mr-2 flex-shrink-0" width="16" height="16"></iconify-icon>
+                                            <span class="text-sm text-surface-900 dark:text-surface-100 truncate mr-2" :title="file.name" x-text="file.name"></span>
+                                            <span class="ml-auto text-xs text-surface-500 dark:text-surface-400 whitespace-nowrap flex-shrink-0" x-text="formatFileSize(file.size)"></span>
+                                        </div>
+                                        <button @click.stop="removeFromQueue(index)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" :disabled="isUploading">
+                                            <iconify-icon icon="tabler:x" width="16" height="16"></iconify-icon>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="px-1 mt-2">
+                                <p class="text-xs text-surface-500 dark:text-surface-400">💡 Click on a file to remove it from queue</p>
+                            </div>
+                        </div>
+
+                        <!-- Processing Uploads -->
+                        <div x-show="processingUploads.length > 0" class="mb-4" x-transition>
+                            <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Processing Files:</h4>
+                            <div class="space-y-2">
+                                <template x-for="upload in processingUploads" :key="upload.uuid">
+                                    <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                        <div class="flex items-center min-w-0 flex-1">
+                                            <div class="w-4 h-4 mr-2 flex-shrink-0">
+                                                <iconify-icon icon="tabler:loader-2" class="text-amber-600 dark:text-amber-400 animate-spin" width="16" height="16"></iconify-icon>
+                                            </div>
+                                            <span class="text-sm text-amber-900 dark:text-amber-100 truncate mr-2" :title="upload.filename" x-text="upload.filename"></span>
+                                            <span class="ml-auto text-xs text-amber-600 dark:text-amber-300 whitespace-nowrap flex-shrink-0" x-text="upload.stage || upload.status"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Upload Actions -->
+                        <div class="flex space-x-3">
+                            <button
+                                    @click="uploadFiles"
+                                    :disabled="isUploading || uploadQueue.length === 0 || processingUploads.length > 0"
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <iconify-icon :icon="isUploading ? 'tabler:loader-2' : 'tabler:upload'" :class="{'animate-spin': isUploading}" class="mr-2" width="16" height="16"></iconify-icon>
+                                <span x-text="isUploading ? 'Uploading...' : (processingUploads.length > 0 ? 'Processing...' : 'Upload to KB')"></span>
+                            </button>
+                            <button
+                                    @click="clearUploadQueue"
+                                    :disabled="isUploading || processingUploads.length > 0"
+                                    class="inline-flex items-center px-4 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 disabled:opacity-50">
+                                <iconify-icon icon="tabler:x" class="mr-2" width="16" height="16"></iconify-icon>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Select from Existing Uploads -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center">
+                                <iconify-icon icon="tabler:folder" class="text-green-500 mr-3" width="20" height="20"></iconify-icon>
+                                <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Select from Existing Uploads</h3>
+                            </div>
+                            <button @click="loadExistingUploads" :disabled="isLoadingUploads"
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-surface-50 dark:hover:bg-surface-700 rounded-lg transition-colors duration-200 disabled:opacity-50">
+                                <iconify-icon :icon="isLoadingUploads ? 'tabler:loader-2' : 'tabler:refresh'" :class="{'animate-spin': isLoadingUploads}" class="mr-2" width="16" height="16"></iconify-icon>
+                                Refresh
+                            </button>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div x-show="isLoadingUploads" class="flex justify-center items-center py-8">
+                            <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-600"></div>
+                            <span class="ml-3 text-surface-700 dark:text-surface-300">Loading uploads...</span>
+                        </div>
+
+                        <!-- Helper Text -->
+                        <div x-show="!isLoadingUploads && existingUploads.length > 0" class="px-1 mb-2">
+                            <p class="text-xs text-surface-500 dark:text-surface-400">💡 Click anywhere on a completed file to select it</p>
+                        </div>
+
+                        <!-- Existing Uploads List -->
+                        <div x-show="!isLoadingUploads && existingUploads.length > 0" class="space-y-2 max-h-64 overflow-y-auto">
+                            <template x-for="upload in existingUploads" :key="upload.uuid">
+                                <div @click="upload.status === 'completed' && toggleUploadSelection(upload.uuid)"
+                                     :class="{
+                                         'cursor-pointer': upload.status === 'completed',
+                                         'cursor-not-allowed opacity-60': upload.status !== 'completed',
+                                         'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700': selectedUploads.includes(upload.uuid)
+                                     }"
+                                     class="flex items-center justify-between p-3 border border-surface-200 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 transition-all duration-200">
+                                    <div class="flex items-center flex-1 min-w-0">
+                                        <input type="checkbox" :value="upload.uuid" x-model="selectedUploads"
+                                               @click.stop
+                                               class="mr-3 text-green-500 focus:ring-green-500 flex-shrink-0" :disabled="upload.status !== 'completed'">
+                                        <div class="flex items-center flex-1 min-w-0">
+                                            <iconify-icon :icon="getFileIcon(upload.mime_type)" class="text-surface-500 dark:text-surface-400 mr-2 flex-shrink-0" width="16" height="16"></iconify-icon>
+                                            <div class="flex-1 min-w-0">
+                                                <span class="text-sm text-surface-900 dark:text-surface-100 block truncate" :title="getFilename(upload)" x-text="getFilename(upload)"></span>
+                                                <div class="text-xs text-surface-500 dark:text-surface-400 whitespace-nowrap">
+                                                    <span x-text="formatDate(upload.created_at)"></span>
+                                                    <span class="mx-1">•</span>
+                                                    <span x-text="formatFileSize(upload.size)"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="ml-2 inline-flex items-center px-2 py-1 rounded text-xs font-medium whitespace-nowrap flex-shrink-0" :class="getStatusColor(upload.status)" x-text="upload.status"></span>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- No Uploads State -->
+                        <div x-show="!isLoadingUploads && existingUploads.length === 0" class="text-center py-8">
+                            <iconify-icon icon="tabler:inbox" class="text-3xl text-surface-300 dark:text-surface-600 mb-2" width="48" height="48"></iconify-icon>
+                            <p class="text-sm text-surface-500 dark:text-surface-400">No completed uploads found</p>
+                        </div>
+
+                        <!-- Selected Uploads Actions -->
+                        <div x-show="selectedUploads.length > 0" class="mt-4 pt-4 border-t border-surface-200 dark:border-surface-600" x-transition>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-surface-700 dark:text-surface-300">
+                                    <span x-text="selectedUploads.length"></span> upload<span x-show="selectedUploads.length !== 1">s</span> selected
+                                </span>
+                                <div class="flex space-x-2">
+                                    <button @click="addSelectedUploads" :disabled="isAddingSelectedUploads || selectedUploads.length === 0"
+                                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <iconify-icon :icon="isAddingSelectedUploads ? 'tabler:loader-2' : 'tabler:plus'" :class="{'animate-spin': isAddingSelectedUploads}" class="mr-2" width="16" height="16"></iconify-icon>
+                                        <span x-text="isAddingSelectedUploads ? 'Adding...' : 'Add to KB'"></span>
+                                    </button>
+                                    <button @click="selectedUploads = []" class="px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600">
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Text Section -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <div class="flex items-center mb-6">
+                            <iconify-icon icon="tabler:text-plus" class="text-purple-500 mr-3" width="20" height="20"></iconify-icon>
+                            <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Add Text Content</h3>
+                        </div>
+
+                        <form @submit.prevent="addTextContent" class="space-y-4">
+                            <div>
+                                <label for="textContent" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Content</label>
+                                <textarea id="textContent" x-model="textContent.content" rows="6"
+                                          placeholder="Enter the text content you want to add to the knowledge base..."
+                                          class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                            </div>
+
+                            <div>
+                                <label for="textMetadata" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Metadata (Optional JSON)</label>
+                                <textarea id="textMetadata" x-model="textContent.metadata" rows="2"
+                                          placeholder='{"source": "manual", "category": "example"}'
+                                          class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"></textarea>
+                            </div>
+
+                            <div class="flex space-x-3">
+                                <button type="submit" :disabled="!textContent.content.trim() || isAddingText"
+                                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <iconify-icon :icon="isAddingText ? 'tabler:loader-2' : 'tabler:plus'" :class="{'animate-spin': isAddingText}" class="mr-2" width="16" height="16"></iconify-icon>
+                                    <span x-text="isAddingText ? 'Adding...' : 'Add to KB'"></span>
+                                </button>
+                                <button type="button" @click="clearTextContent"
+                                        class="inline-flex items-center px-4 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600">
+                                    <iconify-icon icon="tabler:x" class="mr-2" width="16" height="16"></iconify-icon>
+                                    Clear
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Tab -->
+            <div x-show="activeTab === 'search'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <div class="space-y-6">
+                    <!-- Search Form -->
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700 p-6">
+                        <div class="flex items-center mb-6">
+                            <iconify-icon icon="tabler:search" class="text-primary-500 mr-3" width="24" height="24"></iconify-icon>
+                            <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Semantic Search</h3>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- Search Query, Limit, and Button on Same Line -->
+                            <div class="flex gap-3 items-end">
+                                <div class="flex-1">
+                                    <label for="searchQuery" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Search Query</label>
+                                    <input type="text" id="searchQuery" x-model="searchQuery" @keydown.enter="performSearch"
+                                           placeholder="Enter your search query..."
+                                           class="block w-full h-11 px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                </div>
+                                <div class="w-24">
+                                    <label for="searchLimit" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Results</label>
+                                    <select id="searchLimit" x-model.number="searchLimit"
+                                            class="block w-full h-11 px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+                                <div class="shrink-0">
+                                    <button @click="performSearch" :disabled="!searchQuery.trim() || isSearching"
+                                            class="inline-flex items-center h-11 px-6 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <iconify-icon :icon="isSearching ? 'tabler:loader-2' : 'tabler:search'" :class="{'animate-spin': isSearching}" class="mr-2" width="18" height="18"></iconify-icon>
+                                        <span x-text="isSearching ? 'Searching...' : 'Search'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div x-show="searchResults.length > 0 || searchPerformed" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700">
+                        <div class="px-6 py-4 border-b border-surface-200 dark:border-surface-600">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100">Search Results</h3>
+                                <div x-show="searchResults.length > 0" class="text-sm text-surface-500 dark:text-surface-400">
+                                    Found <span class="font-medium" x-text="searchResults.length"></span> result<span x-show="searchResults.length !== 1">s</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search Results - Full Width Rows -->
+                        <div x-show="searchResults.length > 0">
+                            <template x-for="(result, index) in searchResults.filter(r => r && r.id)" :key="`result-${result.id}-${index}`">
+                                <div class="flex items-start justify-between px-6 py-5 hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors duration-200 border-b border-surface-200 dark:border-surface-600 last:border-b-0">
+                                    <div class="flex-1 min-w-0 pr-4">
+                                        <!-- Content -->
+                                        <p class="text-sm text-surface-900 dark:text-surface-100 mb-3 whitespace-pre-wrap leading-relaxed" x-text="result.content || ''"></p>
+
+                                        <!-- Metadata Bubbles -->
+                                        <div x-show="result.metadata && Object.keys(result.metadata).length > 0" class="mb-3 flex flex-wrap gap-2">
+                                            <template x-for="[key, value] in Object.entries(result.metadata || {})" :key="`meta-${result.id}-${key}`">
+                                                <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-300 max-w-xs">
+                                                    <strong class="font-semibold mr-1.5 flex-shrink-0" x-text="key + ':'"></strong>
+                                                    <span class="truncate" :title="JSON.stringify(value)" x-text="formatMetadataValue(value)"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <!-- Node Details -->
+                                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
+                                            <div class="flex items-center" title="Node Type">
+                                                <iconify-icon icon="tabler:stack-2" class="mr-1.5 flex-shrink-0" width="14" height="14"></iconify-icon>
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200" x-text="result.node_type || 'N/A'"></span>
+                                            </div>
+                                            <div class="flex items-center" title="Path">
+                                                <iconify-icon icon="tabler:folder-symlink" class="mr-1.5 flex-shrink-0" width="14" height="14"></iconify-icon>
+                                                <span class="font-mono" x-text="result.path || 'N/A'"></span>
+                                            </div>
+                                            <div class="flex items-center" title="Created At">
+                                                <iconify-icon icon="tabler:clock" class="mr-1.5 flex-shrink-0" width="14" height="14"></iconify-icon>
+                                                <span x-text="formatDate(result.created_at)"></span>
+                                            </div>
+                                        </div>
+
+                                        <!-- IDs -->
+                                        <div class="mt-3 text-xs text-surface-400 dark:text-surface-500 font-mono flex flex-wrap gap-x-4 gap-y-1">
+                                            <div class="flex items-center">
+                                                <span class="text-surface-500 dark:text-surface-400">ID:</span>
+                                                <button @click="navigateToNode(result.id)"
+                                                        class="ml-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                                                        x-text="result.id || 'N/A'"></button>
+                                            </div>
+                                            <template x-if="result.parent_id">
+                                                <div class="flex items-center">
+                                                    <span class="text-surface-500 dark:text-surface-400">Parent:</span>
+                                                    <button @click="navigateToNode(result.parent_id)"
+                                                            class="ml-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                                                            x-text="result.parent_id"></button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Similarity Score -->
+                                    <div class="flex-shrink-0 text-right">
+                                        <div x-show="result.similarity !== undefined" class="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-primary-100 dark:bg-primary-900/50 text-primary-800 dark:text-primary-200">
+                                            <iconify-icon icon="tabler:target" class="mr-1.5" width="16" height="16"></iconify-icon>
+                                            <span class="text-sm font-semibold" x-text="(result.similarity * 100).toFixed(1) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div x-show="searchPerformed && searchResults.length === 0 && !isSearching" class="text-center py-12">
+                            <iconify-icon icon="tabler:search-off" class="w-16 h-16 text-surface-400 dark:text-surface-500 mx-auto mb-4" width="64" height="64"></iconify-icon>
+                            <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">No Results Found</h3>
+                            <p class="text-surface-500 dark:text-surface-400">Try adjusting your search query or adding more content.</p>
+                        </div>
+
+                        <div x-show="isSearching" class="text-center py-12">
+                            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
+                            <span class="mt-3 block text-surface-700 dark:text-surface-300">Searching...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div x-show="statusMessage.show" x-transition:enter="transform ease-out duration-300 transition" x-transition:enter-start="translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0" class="fixed bottom-4 right-4 max-w-sm z-50">
+        <div class="flex items-center p-4 rounded-lg shadow-lg" :class="{
+            'bg-white dark:bg-surface-800 border-l-4 border-green-500': statusMessage.type === 'success',
+            'bg-white dark:bg-surface-800 border-l-4 border-red-500': statusMessage.type === 'error',
+            'bg-white dark:bg-surface-800 border-l-4 border-blue-500': statusMessage.type === 'info'
+        }">
+            <div class="flex-shrink-0 mr-2">
+                <template x-if="statusMessage.type === 'success'">
+                    <iconify-icon icon="tabler:check-circle" class="h-5 w-5 text-green-500" width="20" height="20"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'error'">
+                    <iconify-icon icon="tabler:alert-circle" class="h-5 w-5 text-red-500" width="20" height="20"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'info'">
+                    <iconify-icon icon="tabler:info-circle" class="h-5 w-5 text-blue-500" width="20" height="20"></iconify-icon>
+                </template>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-surface-900 dark:text-surface-100" x-text="statusMessage.text"></p>
+            </div>
+            <div class="flex-shrink-0 ml-3">
+                <button @click="hideStatusMessage" class="inline-flex text-surface-400 hover:text-surface-600 dark:text-surface-500 dark:hover:text-surface-400 focus:outline-none transition-colors duration-200">
+                    <iconify-icon icon="tabler:x" class="h-4 w-4" width="16" height="16"></iconify-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('manageKb9App', () => ({
+            // State
+            componentId: '',
+            componentIdInput: '',
+            kbInfo: {},
+            stats: null,
+            error: null,
+            isLoading: false,
+            wippyApi: null,
+            api: null,
+            activeTab: 'overview',
+
+            // Available data
+            availableImplementations: {
+                embed: [],
+                query: []
+            },
+            availableModels: {
+                embedding: [],
+                generate: []
+            },
+
+            // Settings form
+            settingsForm: {
+                name: '',
+                description: '',
+                embed: {
+                    implementation: '',
+                    options: {}
+                },
+                query: {
+                    implementation: '',
+                    options: {}
+                }
+            },
+            isUpdatingSettings: false,
+            isUpdatingEmbedSettings: false,
+            isUpdatingQuerySettings: false,
+
+            // Upload state
+            uploadQueue: [],
+            isDragging: false,
+            isUploading: false,
+            processingUploads: [], // Track uploads that are still processing
+            uploadSubscriptions: {}, // Keep track of active subscriptions
+
+            // Existing uploads
+            existingUploads: [],
+            selectedUploads: [],
+            isLoadingUploads: false,
+            isAddingSelectedUploads: false,
+
+            // Text content state
+            textContent: {
+                content: '',
+                metadata: ''
+            },
+            isAddingText: false,
+
+            // Search state
+            searchQuery: '',
+            searchLimit: 10,
+            searchResults: [],
+            searchPerformed: false,
+            isSearching: false,
+
+            // Status message
+            statusMessage: {
+                show: false,
+                type: 'info',
+                text: '',
+                timeout: null
+            },
+
+            // Computed properties
+            get hasValidComponentData() {
+                return !!(this.kbInfo.implementation_id && this.componentId);
+            },
+
+            get componentReferenceBase64() {
+                if (!this.hasValidComponentData) return '';
+                const componentRef = {
+                    id: this.kbInfo.implementation_id,
+                    context: { component_id: this.componentId }
+                };
+                try {
+                    return btoa(JSON.stringify(componentRef));
+                } catch (e) {
+                    return '';
+                }
+            },
+
+            get embedProcessorName() {
+                const bindingId = this.kbInfo.config?.embed_contract?.binding_id;
+                if (!bindingId) return 'N/A';
+                const impl = this.availableImplementations.embed?.find(i => i.id === bindingId);
+                return impl?.name || bindingId;
+            },
+
+            get searchEngineName() {
+                const bindingId = this.kbInfo.config?.query_contract?.binding_id;
+                if (!bindingId) return 'N/A';
+                const impl = this.availableImplementations.query?.find(i => i.id === bindingId);
+                return impl?.name || bindingId;
+            },
+
+            get accessLevelText() {
+                const level = this.kbInfo.access_level || 0;
+                switch (level) {
+                    case 15: return 'Full Access (Owner)';
+                    case 11: return 'Read, Write & Admin';
+                    case 7: return 'Read, Write & Delete';
+                    case 3: return 'Read & Write';
+                    case 1: return 'Read Only';
+                    case 0: return 'No Access';
+                    default: return `Custom Access (${level})`;
+                }
+            },
+
+            get hasReadAccess() {
+                return (this.kbInfo.access_level & 1) === 1;
+            },
+
+            get hasWriteAccess() {
+                return (this.kbInfo.access_level & 2) === 2;
+            },
+
+            get hasDeleteAccess() {
+                return (this.kbInfo.access_level & 4) === 4;
+            },
+
+            get hasAdminAccess() {
+                return (this.kbInfo.access_level & 8) === 8;
+            },
+
+            get currentEmbedOptions() {
+                return this.getImplementationOptions('embed');
+            },
+
+            get currentQueryOptions() {
+                return this.getImplementationOptions('query');
+            },
+
+            // Methods
+            async initialize() {
+                try {
+                    this.wippyApi = await window.getWippyApi();
+                    this.api = this.wippyApi.api;
+                    this.componentId = this.wippyApi.config?.path?.replace(/^\//, '') || '';
+
+                    // Load all required data
+                    await this.loadImplementations();
+                    await this.loadModels('embedding');
+                    await this.loadModels('generate');
+
+                    if (this.componentId) {
+                        await this.loadKBInfo();
+                        await this.loadStats();
+                        await this.loadExistingUploads();
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize:', error);
+                    this.error = error.message || 'Failed to initialize';
+                }
+            },
+
+            setComponentId() {
+                this.componentId = this.componentIdInput.trim();
+                this.error = null;
+                this.loadKBInfo();
+                this.loadStats();
+                this.loadExistingUploads();
+            },
+
+            async loadImplementations() {
+                try {
+                    const response = await this.api.get('/api/v1/userspace/kb/kb9/implementations');
+                    if (response.data && response.data.success) {
+                        this.availableImplementations = response.data.implementations;
+                    } else {
+                        throw new Error('Invalid response from implementations API');
+                    }
+                } catch (error) {
+                    this.error = 'Failed to load available implementations: ' + error.message;
+                }
+            },
+
+            async loadModels(category) {
+                try {
+                    const response = await this.api.get(`/api/v1/userspace/models/list?capability=${category}`);
+                    if (response.data && response.data.success && response.data.models) {
+                        this.availableModels[category] = response.data.models;
+                    } else {
+                        this.availableModels[category] = [];
+                    }
+                } catch (error) {
+                    this.availableModels[category] = [];
+                }
+            },
+
+            async loadStats() {
+                if (!this.componentId || !this.api) return;
+
+                try {
+                    const params = new URLSearchParams({
+                        include_content_size: 'true'
+                    });
+
+                    const response = await this.api.get(`/api/v1/userspace/kb/kb9/${this.componentId}/stats?${params}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load stats');
+                    }
+
+                    this.stats = response.data;
+                } catch (error) {
+                    console.error('Failed to load stats:', error);
+                    this.stats = null;
+                }
+            },
+
+            getImplementationOptions(type) {
+                const implementation = this.settingsForm[type].implementation;
+                if (!implementation) return [];
+
+                const impl = this.availableImplementations[type].find(i => i.id === implementation);
+                if (!impl || !impl.options_schema || !impl.options_schema.properties) return [];
+
+                const options = [];
+                const properties = impl.options_schema.properties;
+                const required = impl.options_schema.required || [];
+
+                for (const [key, schema] of Object.entries(properties)) {
+                    const option = {
+                        key: key,
+                        title: schema.title || key,
+                        description: schema.description,
+                        type: schema.type,
+                        default: schema.default,
+                        required: required.includes(key),
+                        minimum: schema.minimum,
+                        maximum: schema.maximum,
+                        multipleOf: schema.multipleOf,
+                        widget: schema['x-widget'],
+                        modelCategory: schema['x-model-category'],
+                        order: schema['x-order'] || 999 // Default order for fields without explicit order
+                    };
+                    options.push(option);
+                }
+
+                // Sort by order first, then by key
+                return options.sort((a, b) => {
+                    if (a.order !== b.order) {
+                        return a.order - b.order;
+                    }
+                    return a.key.localeCompare(b.key);
+                });
+            },
+
+            // Fix for Alpine.js select binding with dynamic options
+            syncSelectValue(selectElement, desiredValue, availableOptions) {
+                if (!selectElement || !desiredValue || !availableOptions || !availableOptions.length) return;
+
+                // Check if the desired value exists in the options
+                const optionExists = availableOptions.some(option => option.name === desiredValue);
+
+                if (optionExists && selectElement.value !== desiredValue) {
+                    selectElement.value = desiredValue;
+                }
+            },
+
+            async handleImplementationChange(type) {
+                // Load required models for this implementation
+                const implementation = this.settingsForm[type].implementation;
+                if (!implementation) return;
+
+                const impl = this.availableImplementations[type].find(i => i.id === implementation);
+                if (!impl || !impl.options_schema) return;
+
+                const properties = impl.options_schema.properties || {};
+                const modelCategories = new Set();
+
+                for (const [key, schema] of Object.entries(properties)) {
+                    if (schema['x-widget'] === 'model_select' && schema['x-model-category']) {
+                        modelCategories.add(schema['x-model-category']);
+                    }
+                    // Set default values only if not already set
+                    if (schema.default !== undefined && this.settingsForm[type].options[key] === undefined) {
+                        this.settingsForm[type].options[key] = schema.default;
+                    }
+                }
+
+                // Load all required model categories
+                for (const category of modelCategories) {
+                    await this.loadModels(category);
+                }
+            },
+
+            async loadKBInfo() {
+                if (!this.componentId || !this.api) return;
+
+                this.isLoading = true;
+                this.error = null;
+
+                try {
+                    const response = await this.api.get(`/api/v1/userspace/kb/kb9/${this.componentId}/info`);
+                    const data = response.data;
+
+                    if (data.success) {
+                        this.kbInfo = data;
+                        this.initializeSettingsForm();
+                    } else {
+                        throw new Error(data.error || 'Failed to load KB info');
+                    }
+                } catch (error) {
+                    this.error = error.response?.data?.error || error.message;
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            initializeSettingsForm() {
+                this.settingsForm.name = this.kbInfo.name || '';
+                this.settingsForm.description = this.kbInfo.description || '';
+
+                // Initialize embed settings
+                if (this.kbInfo.config && this.kbInfo.config.embed_contract) {
+                    this.settingsForm.embed.implementation = this.kbInfo.config.embed_contract.binding_id || '';
+                    this.settingsForm.embed.options = { ...(this.kbInfo.config.embed_contract.options || {}) };
+
+                    // Ensure models are loaded for this implementation
+                    if (this.settingsForm.embed.implementation) {
+                        this.handleImplementationChange('embed');
+                    }
+                }
+
+                // Initialize query settings
+                if (this.kbInfo.config && this.kbInfo.config.query_contract) {
+                    this.settingsForm.query.implementation = this.kbInfo.config.query_contract.binding_id || '';
+                    this.settingsForm.query.options = { ...(this.kbInfo.config.query_contract.options || {}) };
+
+                    // Ensure models are loaded for this implementation
+                    if (this.settingsForm.query.implementation) {
+                        this.handleImplementationChange('query');
+                    }
+                }
+            },
+
+            resetSettingsForm() {
+                this.initializeSettingsForm();
+            },
+
+            async updateBasicSettings() {
+                if (!this.componentId || !this.api || !this.settingsForm.name.trim()) return;
+
+                this.isUpdatingSettings = true;
+                this.error = null;
+
+                try {
+                    const response = await this.api.put(`/api/v1/userspace/components/${this.componentId}`, {
+                        title: this.settingsForm.name.trim(),
+                        description: this.settingsForm.description.trim()
+                    });
+
+                    const data = response.data;
+                    if (data.success) {
+                        this.kbInfo.name = this.settingsForm.name.trim();
+                        this.kbInfo.description = this.settingsForm.description.trim();
+                        this.showStatus('success', 'Basic settings updated successfully!');
+                    } else {
+                        throw new Error(data.error || 'Failed to update settings');
+                    }
+                } catch (error) {
+                    this.showStatus('error', error.response?.data?.error || error.message);
+                } finally {
+                    this.isUpdatingSettings = false;
+                }
+            },
+
+            async updateEmbedSettings() {
+                if (!this.componentId || !this.api || !this.settingsForm.embed.implementation) return;
+
+                this.isUpdatingEmbedSettings = true;
+                this.error = null;
+
+                try {
+                    const response = await this.api.put(`/api/v1/userspace/kb/kb9/${this.componentId}/config`, {
+                        embed_contract: {
+                            binding_id: this.settingsForm.embed.implementation,
+                            options: this.settingsForm.embed.options
+                        }
+                    });
+
+                    const data = response.data;
+                    if (data.success) {
+                        if (!this.kbInfo.config) this.kbInfo.config = {};
+                        this.kbInfo.config.embed_contract = {
+                            binding_id: this.settingsForm.embed.implementation,
+                            options: this.settingsForm.embed.options
+                        };
+                        this.showStatus('success', 'Embed settings updated successfully!');
+                    } else {
+                        throw new Error(data.error || 'Failed to update embed settings');
+                    }
+                } catch (error) {
+                    this.showStatus('error', error.response?.data?.error || error.message);
+                } finally {
+                    this.isUpdatingEmbedSettings = false;
+                }
+            },
+
+            async updateQuerySettings() {
+                if (!this.componentId || !this.api || !this.settingsForm.query.implementation) return;
+
+                this.isUpdatingQuerySettings = true;
+                this.error = null;
+
+                try {
+                    const response = await this.api.put(`/api/v1/userspace/kb/kb9/${this.componentId}/config`, {
+                        query_contract: {
+                            binding_id: this.settingsForm.query.implementation,
+                            options: this.settingsForm.query.options
+                        }
+                    });
+
+                    const data = response.data;
+                    if (data.success) {
+                        if (!this.kbInfo.config) this.kbInfo.config = {};
+                        this.kbInfo.config.query_contract = {
+                            binding_id: this.settingsForm.query.implementation,
+                            options: this.settingsForm.query.options
+                        };
+                        this.showStatus('success', 'Search settings updated successfully!');
+                    } else {
+                        throw new Error(data.error || 'Failed to update search settings');
+                    }
+                } catch (error) {
+                    this.showStatus('error', error.response?.data?.error || error.message);
+                } finally {
+                    this.isUpdatingQuerySettings = false;
+                }
+            },
+
+            // File upload methods
+            handleFileDrop(event) {
+                this.isDragging = false;
+                if (event.dataTransfer.files.length > 0) {
+                    this.addFilesToQueue(Array.from(event.dataTransfer.files));
+                }
+            },
+
+            handleFileSelect() {
+                if (this.$refs.fileInput.files.length > 0) {
+                    this.addFilesToQueue(Array.from(this.$refs.fileInput.files));
+                }
+            },
+
+            addFilesToQueue(files) {
+                this.uploadQueue = [...this.uploadQueue, ...files];
+            },
+
+            removeFromQueue(index) {
+                this.uploadQueue.splice(index, 1);
+            },
+
+            clearUploadQueue() {
+                this.uploadQueue = [];
+                this.$refs.fileInput.value = '';
+            },
+
+            async uploadFiles() {
+                if (this.uploadQueue.length === 0 || !this.componentId) return;
+
+                this.isUploading = true;
+                this.error = null;
+
+                try {
+                    let successCount = 0;
+                    const errors = [];
+
+                    // Process files sequentially to avoid overwhelming the server
+                    for (const file of this.uploadQueue) {
+                        try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+
+                            // Upload file
+                            const uploadResponse = await this.api.post('/api/v1/uploads', formData, {
+                                headers: { 'Content-Type': 'multipart/form-data' }
+                            });
+
+                            if (!uploadResponse.data.success) {
+                                throw new Error(`Failed to upload ${file.name}: ${uploadResponse.data.error}`);
+                            }
+
+                            // Add to processing uploads - DON'T register yet!
+                            this.addProcessingUpload({
+                                uuid: uploadResponse.data.uuid,
+                                filename: file.name,
+                                status: 'uploading',
+                                timestamp: new Date().toISOString()
+                            });
+
+                            // Subscribe to upload events and wait for completion
+                            this.subscribeToUploadEvents(uploadResponse.data.uuid, file.name);
+
+                            successCount++;
+                        } catch (fileError) {
+                            errors.push(`${file.name}: ${fileError.message}`);
+                        }
+                    }
+
+                    if (successCount > 0) {
+                        this.showStatus('info', `${successCount} file(s) uploaded and processing. They will be added to the KB when ready.`);
+                        this.clearUploadQueue();
+                    }
+
+                    if (errors.length > 0) {
+                        this.showStatus('error', `Some uploads failed: ${errors.join(', ')}`);
+                    }
+
+                } catch (error) {
+                    this.showStatus('error', error.response?.data?.error || error.message);
+                } finally {
+                    this.isUploading = false;
+                }
+            },
+
+            // Real-time upload processing
+            addProcessingUpload(upload) {
+                // Add to processing uploads array if not already there
+                if (!this.processingUploads.some(u => u.uuid === upload.uuid)) {
+                    this.processingUploads.push(upload);
+                } else {
+                    // Update existing entry
+                    const index = this.processingUploads.findIndex(u => u.uuid === upload.uuid);
+                    if (index >= 0) {
+                        this.processingUploads[index] = {
+                            ...this.processingUploads[index],
+                            ...upload
+                        };
+                    }
+                }
+            },
+
+            removeProcessingUpload(uuid) {
+                this.processingUploads = this.processingUploads.filter(u => u.uuid !== uuid);
+            },
+
+            subscribeToUploadEvents(uuid, filename) {
+                if (this.uploadSubscriptions[uuid]) {
+                    return; // Already subscribed
+                }
+
+                const handleUploadEvent = (data) => {
+                    if (!data || !data.data) return;
+
+                    const eventData = data.data;
+                    console.log(`Upload event for ${uuid}:`, eventData);
+
+                    // Update processing upload status
+                    this.addProcessingUpload({
+                        uuid: eventData.uuid,
+                        filename: filename,
+                        status: eventData.status,
+                        stage: eventData.stage,
+                        timestamp: eventData.timestamp
+                    });
+
+                    // Check for errors
+                    if (eventData.error) {
+                        this.showStatus('error', `Failed to process ${filename}: ${eventData.error}`);
+                        this.removeProcessingUpload(uuid);
+                        this.unsubscribeFromUploadEvents(uuid);
+                        return;
+                    }
+
+                    // If completed, register with KB
+                    if (eventData.status === 'completed') {
+                        this.registerUploadWithKB(uuid, filename);
+                    } else if (eventData.status === 'failed' || eventData.status === 'error') {
+                        this.showStatus('error', `Processing failed for ${filename}`);
+                        this.removeProcessingUpload(uuid);
+                        this.unsubscribeFromUploadEvents(uuid);
+                    }
+                };
+
+                // Subscribe to upload events
+                this.wippyApi.on(`upload:${uuid}`, handleUploadEvent);
+                this.uploadSubscriptions[uuid] = handleUploadEvent;
+            },
+
+            unsubscribeFromUploadEvents(uuid) {
+                if (!this.uploadSubscriptions[uuid]) return;
+
+                console.log(`Unsubscribing from upload events for ${uuid}`);
+
+                // Note: this.wippyApi.off doesn't exist in the example, we'll track manually
+                delete this.uploadSubscriptions[uuid];
+            },
+
+            async registerUploadWithKB(uuid, filename) {
+                try {
+                    const registerResponse = await this.api.post(`/api/v1/userspace/kb/kb9/${this.componentId}/upload`, {
+                        upload_uuid: uuid
+                    });
+
+                    if (registerResponse.data.success) {
+                        this.showStatus('success', `${filename} successfully added to knowledge base!`);
+                    } else {
+                        throw new Error(`Failed to register ${filename} in KB: ${registerResponse.data.error}`);
+                    }
+                } catch (error) {
+                    this.showStatus('error', `Failed to add ${filename} to KB: ${error.message}`);
+                } finally {
+                    // Remove from processing list and unsubscribe
+                    this.removeProcessingUpload(uuid);
+                    this.unsubscribeFromUploadEvents(uuid);
+                }
+            },
+
+            // Existing uploads methods
+            async loadExistingUploads() {
+                this.isLoadingUploads = true;
+                try {
+                    const response = await this.api.get('/api/v1/uploads/list?limit=50&offset=0');
+                    if (response.data && response.data.success) {
+                        this.existingUploads = response.data.uploads || [];
+                    } else {
+                        throw new Error(response.data.error || 'Failed to load uploads');
+                    }
+                } catch (error) {
+                    console.error('Failed to load existing uploads:', error);
+                    this.existingUploads = [];
+                } finally {
+                    this.isLoadingUploads = false;
+                }
+            },
+
+            toggleUploadSelection(uploadUuid) {
+                const index = this.selectedUploads.indexOf(uploadUuid);
+                if (index === -1) {
+                    this.selectedUploads.push(uploadUuid);
+                } else {
+                    this.selectedUploads.splice(index, 1);
+                }
+            },
+
+            async addSelectedUploads() {
+                if (this.selectedUploads.length === 0 || !this.componentId) return;
+
+                this.isAddingSelectedUploads = true;
+                this.error = null;
+
+                try {
+                    // Create parallel promises for all uploads
+                    const uploadPromises = this.selectedUploads.map(async (uploadUuid) => {
+                        try {
+                            const response = await this.api.post(`/api/v1/userspace/kb/kb9/${this.componentId}/upload`, {
+                                upload_uuid: uploadUuid
+                            });
+
+                            const upload = this.existingUploads.find(u => u.uuid === uploadUuid);
+                            const filename = this.getFilename(upload);
+
+                            if (response.data.success) {
+                                return { success: true, filename, uploadUuid };
+                            } else {
+                                return {
+                                    success: false,
+                                    filename,
+                                    uploadUuid,
+                                    error: response.data.error
+                                };
+                            }
+                        } catch (fileError) {
+                            const upload = this.existingUploads.find(u => u.uuid === uploadUuid);
+                            const filename = this.getFilename(upload);
+                            return {
+                                success: false,
+                                filename,
+                                uploadUuid,
+                                error: fileError.message
+                            };
+                        }
+                    });
+
+                    // Wait for all uploads to complete (parallel execution)
+                    const results = await Promise.allSettled(uploadPromises);
+
+                    // Process results
+                    let successCount = 0;
+                    const errors = [];
+
+                    results.forEach((result, index) => {
+                        if (result.status === 'fulfilled') {
+                            const uploadResult = result.value;
+                            if (uploadResult.success) {
+                                successCount++;
+                            } else {
+                                errors.push(`${uploadResult.filename}: ${uploadResult.error}`);
+                            }
+                        } else {
+                            // Promise rejected (shouldn't happen with our error handling, but just in case)
+                            const uploadUuid = this.selectedUploads[index];
+                            const upload = this.existingUploads.find(u => u.uuid === uploadUuid);
+                            const filename = this.getFilename(upload);
+                            errors.push(`${filename}: ${result.reason}`);
+                        }
+                    });
+
+                    // Show results
+                    if (successCount > 0) {
+                        this.showStatus('success', `Successfully added ${successCount} file(s) to knowledge base!`);
+                        this.selectedUploads = [];
+                    }
+
+                    if (errors.length > 0) {
+                        this.showStatus('error', `Some uploads failed: ${errors.join(', ')}`);
+                    }
+
+                } catch (error) {
+                    this.showStatus('error', error.response?.data?.error || error.message);
+                } finally {
+                    this.isAddingSelectedUploads = false;
+                }
+            },
+
+            async addTextContent() {
+                if (!this.textContent.content.trim() || !this.componentId) return;
+
+                this.isAddingText = true;
+                this.error = null;
+
+                try {
+                    let metadata = {};
+                    if (this.textContent.metadata.trim()) {
+                        try {
+                            metadata = JSON.parse(this.textContent.metadata);
+                        } catch (e) {
+                            throw new Error('Invalid JSON in metadata field');
+                        }
+                    }
+
+                    const response = await this.api.post(`/api/v1/userspace/kb/kb9/${this.componentId}/embed_content`, {
+                        content: this.textContent.content.trim(),
+                        content_type: 'text/plain',
+                        metadata: metadata
+                    });
+
+                    const data = response.data;
+                    if (data.success) {
+                        this.clearTextContent();
+                        this.showStatus('success', 'Text content added successfully!');
+                    } else {
+                        throw new Error(data.error || 'Failed to add text content');
+                    }
+                } catch (error) {
+                    this.showStatus('error', error.response?.data?.error || error.message);
+                } finally {
+                    this.isAddingText = false;
+                }
+            },
+
+            clearTextContent() {
+                this.textContent.content = '';
+                this.textContent.metadata = '';
+            },
+
+            async performSearch() {
+                if (!this.componentId || !this.api || !this.searchQuery.trim()) return;
+
+                this.isSearching = true;
+                this.searchPerformed = true;
+                this.error = null;
+
+                try {
+                    const response = await this.api.post(`/api/v1/userspace/kb/kb9/${this.componentId}/query`, {
+                        query: this.searchQuery.trim(),
+                        limit: parseInt(this.searchLimit),
+                        options: {}
+                    });
+
+                    const data = response.data;
+                    if (data.success) {
+                        // Filter and clean results to ensure valid data
+                        this.searchResults = (data.items || []).filter(item =>
+                            item &&
+                            typeof item === 'object' &&
+                            item.id &&
+                            typeof item.id === 'string'
+                        );
+
+                        console.log(`Filtered ${this.searchResults.length} valid results from ${(data.items || []).length} total`);
+                    } else {
+                        throw new Error(data.error || 'Failed to search records');
+                    }
+                } catch (error) {
+                    this.error = error.response?.data?.error || error.message;
+                    this.searchResults = [];
+                } finally {
+                    this.isSearching = false;
+                }
+            },
+
+            async copyComponentReference() {
+                if (!this.hasValidComponentData) return;
+                try {
+                    await navigator.clipboard.writeText(this.componentReferenceBase64);
+                    this.showStatus('success', 'Component reference copied to clipboard!');
+                } catch (error) {
+                    this.showStatus('error', 'Failed to copy to clipboard');
+                }
+            },
+
+            refreshData() {
+                this.loadKBInfo();
+                this.loadStats();
+                this.loadExistingUploads();
+            },
+
+            openBrowseView() {
+                if (!this.componentId) return;
+                const browseUrl = `/c/userspace.kb9.views:browse/${this.componentId}`;
+                this.wippyApi.iframe.navigate(browseUrl);
+            },
+
+            navigateToNode(nodeId) {
+                if (!this.componentId || !nodeId) return;
+                const browseUrl = `/c/userspace.kb9.views:browse/${this.componentId}/${nodeId}`;
+                this.wippyApi.iframe.navigate(browseUrl);
+            },
+
+            goBackToList() {
+                if (this.wippyApi?.iframe?.navigate) {
+                    this.wippyApi.iframe.navigate('/c/userspace.knowledge.views:dashboard');
+                }
+            },
+
+            // Helper Methods
+            getFilename(upload) {
+                return (upload.meta && upload.meta.filename) ||
+                    (upload.metadata && upload.metadata.filename) ||
+                    'Unknown file';
+            },
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            },
+
+            formatContentSize(size) {
+                if (!size || size === 0) return '';
+                if (size < 1000) return size + ' chars';
+                if (size < 1000000) return Math.round(size / 1000) + 'K';
+                if (size < 1000000000) return Math.round(size / 1000000) + 'M';
+                return Math.round(size / 1000000000) + 'G';
+            },
+
+            formatDate(dateString) {
+                if (!dateString) return 'N/A';
+                try {
+                    return new Date(dateString).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return dateString;
+                }
+            },
+
+            formatMetadataValue(value) {
+                if (value === null || value === undefined) return 'null';
+
+                let stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+
+                // Truncate long strings
+                if (stringValue.length > 50) {
+                    return stringValue.substring(0, 47) + '...';
+                }
+
+                return stringValue;
+            },
+
+            getStatusColor(status) {
+                switch(status) {
+                    case 'uploaded':
+                        return 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200';
+                    case 'queued':
+                        return 'bg-surface-200 text-surface-800 dark:bg-surface-700 dark:text-surface-200';
+                    case 'processing':
+                        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                    case 'completed':
+                        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                    case 'error':
+                    case 'failed':
+                        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                    default:
+                        return 'bg-surface-200 text-surface-800 dark:bg-surface-700 dark:text-surface-200';
+                }
+            },
+
+            getFileIcon(mimeType) {
+                // Default icon
+                let icon = 'tabler:file';
+
+                if (!mimeType) return icon;
+
+                // Handle specific mime types
+                if (mimeType.startsWith('image/')) {
+                    icon = 'tabler:file-image';
+                } else if (mimeType.startsWith('video/')) {
+                    icon = 'tabler:file-video';
+                } else if (mimeType.startsWith('audio/')) {
+                    icon = 'tabler:file-audio';
+                } else if (mimeType === 'application/pdf') {
+                    icon = 'tabler:file-type-pdf';
+                } else if (mimeType === 'application/msword' ||
+                    mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                    icon = 'tabler:file-type-doc';
+                } else if (mimeType === 'application/vnd.ms-excel' ||
+                    mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+                    icon = 'tabler:file-type-xls';
+                } else if (mimeType === 'application/vnd.ms-powerpoint' ||
+                    mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
+                    icon = 'tabler:file-type-ppt';
+                } else if (mimeType === 'application/zip' ||
+                    mimeType === 'application/x-zip-compressed' ||
+                    mimeType === 'application/x-rar-compressed') {
+                    icon = 'tabler:file-zip';
+                } else if (mimeType === 'text/plain') {
+                    icon = 'tabler:file-text';
+                } else if (mimeType === 'text/html' || mimeType === 'application/xhtml+xml') {
+                    icon = 'tabler:file-code';
+                } else if (mimeType === 'application/json') {
+                    icon = 'tabler:file-json';
+                }
+
+                return icon;
+            },
+
+            showStatus(type, text, duration = 5000) {
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                }
+                this.statusMessage.type = type;
+                this.statusMessage.text = text;
+                this.statusMessage.show = true;
+                this.statusMessage.timeout = setTimeout(() => {
+                    this.hideStatusMessage();
+                }, duration);
+            },
+
+            hideStatusMessage() {
+                this.statusMessage.show = false;
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                    this.statusMessage.timeout = null;
+                }
+            }
+        }));
+    });
+</script>
+{{ end }}

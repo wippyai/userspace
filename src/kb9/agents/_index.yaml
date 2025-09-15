@@ -1,0 +1,152 @@
+version: "1.0"
+namespace: userspace.kb9.agents
+
+entries:
+  # userspace.kb9.agents:create_kb9
+  - name: create_kb9
+    kind: function.lua
+    meta:
+      type: tool
+      title: Create KB9 Knowledge Base
+      tags:
+        - tool
+        - kb9
+        - create
+        - knowledge-base
+      description: Creates a new KB9 knowledge base with specified configuration
+      input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"Knowledge base name/title\"\n    },\n    \"description\": {\n      \"type\": \"string\",\n      \"description\": \"Optional description of the knowledge base\"\n    },\n    \"embedding_model\": {\n      \"type\": \"string\",\n      \"description\": \"Embedding model to use (e.g., 'text-embedding-3-small')\"\n    },\n    \"embed_implementation\": {\n      \"type\": \"string\", \n      \"description\": \"Embed implementation binding ID\"\n    },\n    \"embed_options\": {\n      \"type\": \"object\",\n      \"description\": \"Options for the embed implementation\"\n    },\n    \"query_implementation\": {\n      \"type\": \"string\",\n      \"description\": \"Query implementation binding ID\" \n    },\n    \"query_options\": {\n      \"type\": \"object\",\n      \"description\": \"Options for the query implementation\"\n    }\n  },\n  \"required\": [\"name\", \"embedding_model\", \"embed_implementation\", \"query_implementation\"]\n}\n"
+      llm_alias: CreateKB9
+      llm_description: Creates a new KB9 knowledge base with the specified embed/query implementations and configuration options
+    source: file://create_kb9.lua
+    modules:
+      - json
+      - contract
+      - registry
+    method: handle
+    
+  # userspace.kb9.agents:kb9_creator
+  - name: kb9_creator
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: KB9 Creator
+      comment: Specialized agent for creating and configuring KB9 knowledge bases with pluggable embed/query implementations
+      group: Knowledge
+      tags:
+        - knowledge
+        - kb9
+        - creator
+        - configurable
+      icon: tabler:database-plus
+      class:
+        - knowledge_base_creator
+    prompt: |-
+      You are a KB9 Knowledge Base Creator, specialized in creating and configuring KB9 knowledge bases.
+    
+      ## Your Expertise
+    
+      **KB9 Architecture:**
+      - Modular knowledge base system with pluggable embed and query implementations
+      - Each KB9 instance uses separate embed and query contracts for maximum flexibility
+      - Vector-based search with configurable embedding models and query strategies
+    
+      **Your Capabilities:**
+      - List and explain available embed/query implementations and their capabilities
+      - Browse and recommend embedding models and other LLM models for various purposes
+      - Help users choose the right implementations for their use case
+      - Create KB9 knowledge bases with proper configuration
+      - Update existing KB9 configurations (embed/query implementations and options)
+      - Explain parameter options and their effects on performance and functionality
+      - Guide users through the complete setup and maintenance process
+    
+      **Implementation Types:**
+      - **Embed implementations**: Handle content processing and vector generation
+      - **Query implementations**: Handle search and retrieval strategies
+      - **Embedding models**: Used for generating vector embeddings (critical for search quality)
+      - Each implementation has its own options schema and capabilities
+    
+      When users want to create a knowledge base, guide them through:
+      1. Understanding their requirements (content types, search needs, scale)
+      2. Choosing appropriate embedding models (quality vs cost vs speed tradeoffs)
+      3. Selecting compatible embed and query implementations
+      4. Configuring options for optimal performance
+      5. Creating the KB with proper settings
+    
+      For existing knowledge bases, you can:
+      - Update embed/query implementations to newer or better-suited versions
+      - Modify implementation options to optimize performance
+      - Help troubleshoot configuration issues
+    
+      **Important limitation**: Embedding models cannot be changed after creation as this would require re-embedding all content. For different embedding models, create a new KB.
+    
+      Always explain the implications of different choices and help users make informed decisions. Pay special attention to embedding model selection as it directly impacts search quality and performance, and cannot be changed later without creating a new KB.
+    
+      Always ensure that all fields in options are filled, do not leave unfilled fields, they all has a purpose.
+    
+      Always use relevant model names, do not use placeholder or non existed models.
+    model: gpt-4.1
+    temperature: 0.2
+    max_tokens: 4096
+    tools:
+      - userspace.kb9.agents:list_implementations
+      - userspace.kb9.agents:create_kb9
+      - userspace.kb9.agents:update_kb9
+      - userspace.knowledge.agents:discover_knowledge_bases
+      - userspace.knowledge.agents:query_knowledge_base
+      - keeper.agents.manager:list_models
+    
+  # userspace.kb9.agents:list_implementations
+  - name: list_implementations
+    kind: function.lua
+    meta:
+      type: tool
+      title: List KB9 Implementations
+      tags:
+        - tool
+        - kb9
+        - implementations
+        - plugins
+      description: Lists available KB9 embed and query implementations with their capabilities
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["embed", "query", "all"],
+              "description": "Type of implementations to list",
+              "default": "all"
+            }
+          }
+        }
+      llm_alias: ListKB9Implementations
+      llm_description: Lists available KB9 embed and query implementations with their capabilities, options schemas, and descriptions
+    source: file://list_implementations.lua
+    modules:
+      - json
+      - contract
+      - registry
+    method: handle
+    
+  # userspace.kb9.agents:update_kb9
+  - name: update_kb9
+    kind: function.lua
+    meta:
+      type: tool
+      title: Update KB9 Configuration
+      tags:
+        - tool
+        - kb9
+        - update
+        - configuration
+      description: Updates an existing KB9 knowledge base configuration (embedding model, implementations, options)
+      input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"kb_id\": {\n      \"type\": \"string\",\n      \"description\": \"Knowledge base component ID to update\"\n    },\n    \"embedding_model\": {\n      \"type\": \"string\", \n      \"description\": \"New embedding model to use (optional)\"\n    },\n    \"embed_implementation\": {\n      \"type\": \"string\",\n      \"description\": \"New embed implementation binding ID (optional)\"\n    },\n    \"embed_options\": {\n      \"type\": \"object\",\n      \"description\": \"New options for embed implementation (optional)\"\n    },\n    \"query_implementation\": {\n      \"type\": \"string\",\n      \"description\": \"New query implementation binding ID (optional)\"\n    },\n    \"query_options\": {\n      \"type\": \"object\", \n      \"description\": \"New options for query implementation (optional)\"\n    }\n  },\n  \"required\": [\"kb_id\"]\n}\n"
+      llm_alias: UpdateKB9
+      llm_description: Updates configuration of an existing KB9 knowledge base including embedding model, embed/query implementations, and their options
+    source: file://update_kb9.lua
+    modules:
+      - json
+    imports:
+      component: userspace.component:component
+    method: handle
+    

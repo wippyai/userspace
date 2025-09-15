@@ -1,0 +1,176 @@
+version: "1.0"
+namespace: userspace.webscout.traits
+
+entries:
+  # userspace.webscout.traits:client
+  - name: client
+    kind: function.lua
+    meta:
+      type: module
+      title: Web Client
+      description: HTTP client with browser-like headers
+    source: file://client.lua
+    modules:
+      - http_client
+      - env
+    method: export
+    
+  # userspace.webscout.traits:links
+  - name: links
+    kind: function.lua
+    meta:
+      type: tool
+      title: Extract All Links
+      tags:
+        - tool
+        - links
+        - extraction
+        - analysis
+      description: Extracts all unique links from a web page for analysis and discovery
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "The complete URL of the web page to extract links from (must include http:// or https://)"
+            },
+            "absolute_only": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, only return absolute URLs (full URLs). If false, include relative URLs as well. Default is true."
+            }
+          },
+          "required": ["url"]
+        }
+      llm_alias: FetchAllLinks
+      llm_description: Extracts all unique links from a web page. Use this to discover related pages, find navigation links, or analyze a website's structure. Returns a list of all links found on the page.
+    source: file://links.lua
+    modules:
+      - json
+      - text
+    imports:
+      client: userspace.webscout.traits:client
+    method: handle
+    
+  # userspace.webscout.traits:read
+  - name: read
+    kind: function.lua
+    meta:
+      type: tool
+      title: Read Web Page
+      tags:
+        - tool
+        - web
+        - content
+        - scraping
+      description: Reads and extracts clean text content from any web page URL
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "The complete URL of the web page to read (must include http:// or https://)"
+            },
+            "max_size": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 100000,
+              "default": 50000,
+              "description": "Maximum content size in characters to return. Default is 50,000, maximum is 100,000."
+            },
+            "headers": {
+              "type": "object",
+              "description": "Optional custom HTTP headers to send with the request (e.g., for authentication or special requirements)"
+            }
+          },
+          "required": ["url"]
+        }
+      llm_alias: ReadPage
+      llm_description: Reads and extracts clean text content from web pages. Use this to get the actual content of articles, blog posts, documentation, or any web page. The tool automatically removes HTML tags and returns clean, readable text.
+    source: file://read.lua
+    modules:
+      - json
+      - html
+    imports:
+      client: userspace.webscout.traits:client
+    method: handle
+    
+  # userspace.webscout.traits:search
+  - name: search
+    kind: function.lua
+    meta:
+      type: tool
+      title: Google Search
+      tags:
+        - tool
+        - search
+        - google
+      description: Searches Google for web pages and information using Custom Search API
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query to find information on Google. Be specific and use relevant keywords."
+            },
+            "num": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 10,
+              "description": "Number of search results to return. Default is 10, maximum is 10."
+            }
+          },
+          "required": ["query"]
+        }
+      llm_alias: GoogleSearch
+      llm_description: Searches Google for web pages and information. Use this to find current information, news, articles, or any web content. Provide a clear search query with relevant keywords.
+    source: file://search.lua
+    modules:
+      - json
+      - env
+      - http_client
+    imports:
+      client: userspace.webscout.traits:client
+    method: handle
+    
+  # userspace.webscout.traits:web_researcher
+  - name: web_researcher
+    kind: registry.entry
+    meta:
+      name: Web Researcher
+      type: agent.trait
+      comment: Adds comprehensive web research and analysis capabilities
+      tags:
+        - web
+        - research
+        - search
+        - analysis
+        - links
+      icon: tabler:world-search
+      description: Provides comprehensive web research capabilities including search, content reading, and link extraction
+    prompt: |-
+      You have access to comprehensive web research tools that allow you to search, read, and analyze web content. Use these tools to:
+    
+      - Search for information using Google with targeted queries
+      - Read and extract clean content from web pages
+      - Extract and analyze all links from web pages for discovery
+      - Perform deep research across multiple interconnected sources
+      - Map website structures and relationships
+    
+      Best practices:
+      - Always cite your sources with URLs
+      - Use link extraction to discover related content and resources
+      - Provide clean, well-organized summaries of your findings
+      - When researching topics, follow link trails to gather comprehensive information
+      - Be mindful of content quality and source reliability
+    tools:
+      - userspace.webscout.traits:search
+      - userspace.webscout.traits:read
+      - userspace.webscout.traits:links
+    

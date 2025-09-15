@@ -1,0 +1,17 @@
+version: "1.0"
+namespace: userspace.drafling
+
+entries:
+  # userspace.drafling:consts
+  - name: consts
+    kind: library.lua
+    meta:
+      name: Drafling Constants
+      comment: Central repository of constants for the drafling system
+      tags:
+        - drafling
+        - constants
+        - configuration
+      description: "Defines constants for drafling operations including project types, entry types, content types, \noperation types, status values, and default category configurations.\n"
+    source: file://consts.lua
+    

@@ -1,0 +1,330 @@
+version: "1.0"
+namespace: userspace.component
+
+entries:
+  # userspace.component:component
+  - name: component
+    kind: library.lua
+    meta:
+      comment: Component client library for secure component access with validation
+      tags:
+        - component
+        - library
+        - access
+      description: Provides simplified interface for opening components with access validation
+    source: file://component.lua
+    modules:
+      - contract
+      - json
+    
+  # userspace.component:component_service
+  - name: component_service
+    kind: contract.definition
+    meta:
+      comment: User component management service contract
+      tags:
+        - components
+        - userspace
+        - contracts
+      description: Defines the interface for managing user components with access control and metadata
+    methods:
+      - name: register_component
+        description: |
+          Register a new component with implementation ID, private context, and metadata.
+          Creates component owned by current actor with full access.
+          Calling: register_component(request_dto)
+        input_schemas:
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"component_id\": {\n      \"type\": \"string\", \n      \"description\": \"Optional component UUID, generated if not provided\"\n    },\n    \"impl_id\": {\n      \"type\": \"string\",\n      \"description\": \"Implementation contract ID (e.g., 'workflow.nodes:http_request')\"\n    },\n    \"private_context\": {\n      \"type\": \"object\",\n      \"description\": \"Private configuration for component execution\",\n      \"default\": {}\n    },\n    \"meta\": {\n      \"type\": \"object\",\n      \"description\": \"Public metadata key-value pairs (title, class, etc.)\",\n      \"default\": {}\n    },\n    \"additional_access\": {\n      \"type\": \"array\",\n      \"description\": \"Additional user access grants\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"user_id\": {\"type\": \"string\"},\n          \"access_mask\": {\"type\": \"integer\"}\n        },\n        \"required\": [\"user_id\", \"access_mask\"]\n      },\n      \"default\": []\n    }\n  },\n  \"required\": [\"impl_id\"]\n}\n"
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {"type": "string"},
+                  "impl_id": {"type": "string"},
+                  "created_at": {"type": "string"},
+                  "success": {"type": "boolean"}
+                },
+                "required": ["component_id", "impl_id", "created_at", "success"]
+              }
+            format: application/schema+json
+      - name: get_component
+        description: |
+          Get component public information (impl_id, metadata) - requires READ access.
+          Uses current actor for permission check.
+          Calling: get_component(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {
+                    "type": "string",
+                    "description": "Component UUID to retrieve"
+                  }
+                },
+                "required": ["component_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {"type": "string"},
+                  "impl_id": {"type": "string"},
+                  "meta": {
+                    "type": "object",
+                    "description": "Component metadata key-value pairs"
+                  },
+                  "created_at": {"type": "string"},
+                  "updated_at": {"type": "string"}
+                },
+                "required": ["component_id", "impl_id", "meta", "created_at", "updated_at"]
+              }
+            format: application/schema+json
+      - name: get_access_context_by_meta
+        description: |
+          Get component access context by metadata filters - requires any access level.
+          Returns error if zero or multiple components match the criteria.
+          Uses current actor for permission check.
+          Calling: get_access_context_by_meta(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "meta": {
+                    "type": "object",
+                    "description": "Metadata key-value pairs to match (all must match)",
+                    "additionalProperties": {"type": "string"}
+                  },
+                  "access_mask": {
+                    "type": "integer",
+                    "description": "Minimum required access level (defaults to READ)",
+                    "default": 1
+                  }
+                },
+                "required": ["meta"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Component ID"
+                  },
+                  "context": {
+                    "type": "object",
+                    "description": "Component context for current actor"
+                  },
+                  "access_level": {
+                    "type": "integer",
+                    "description": "Access level integer for current actor"
+                  },
+                  "impl_id": {
+                    "type": "string",
+                    "description": "Implementation contract ID"
+                  }
+                },
+                "required": ["id", "context", "access_level", "impl_id"]
+              }
+            format: application/schema+json
+      - name: get_access_context
+        description: |
+          Get component access context for contract execution - requires any access level.
+          Returns structured access information including ID, context, access level, and impl_id.
+          Calling: get_access_context(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {
+                    "type": "string",
+                    "description": "Component UUID to get access context for"
+                  }
+                },
+                "required": ["component_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Component ID"
+                  },
+                  "context": {
+                    "type": "object",
+                    "description": "Component context for current actor"
+                  },
+                  "access_level": {
+                    "type": "integer",
+                    "description": "Access level integer for current actor"
+                  },
+                  "impl_id": {
+                    "type": "string",
+                    "description": "Implementation contract ID"
+                  }
+                },
+                "required": ["id", "context", "access_level", "impl_id"]
+              }
+            format: application/schema+json
+      - name: update_component
+        description: |
+          Update component metadata or access permissions using command pattern.
+          Component core fields (impl_id, private_context) are immutable.
+          Calling: update_component(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {
+                    "type": "string",
+                    "description": "Component UUID to update"
+                  },
+                  "commands": {
+                    "type": "array",
+                    "description": "Array of update commands to execute",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["PUT_META", "DELETE_META", "GRANT_ACCESS", "REVOKE_ACCESS"]
+                        },
+                        "payload": {"type": "object"}
+                      },
+                      "required": ["type", "payload"]
+                    }
+                  }
+                },
+                "required": ["component_id", "commands"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {"type": "string"},
+                  "changes_made": {"type": "boolean"},
+                  "results": {
+                    "type": "array",
+                    "description": "Results for each command executed"
+                  }
+                },
+                "required": ["component_id", "changes_made", "results"]
+              }
+            format: application/schema+json
+      - name: list_components
+        description: |
+          List components accessible to current actor with optional filtering.
+          Supports filtering by metadata, impl_id, and access level.
+          Calling: list_components(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "filters": {
+                    "type": "object",
+                    "properties": {
+                      "impl_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter by implementation IDs"
+                      },
+                      "meta": {
+                        "type": "object",
+                        "description": "Filter by metadata key-value pairs"
+                      },
+                      "access_mask": {
+                        "type": "integer",
+                        "description": "Minimum required access level"
+                      }
+                    }
+                  },
+                  "pagination": {
+                    "type": "object",
+                    "properties": {
+                      "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50},
+                      "offset": {"type": "integer", "minimum": 0, "default": 0}
+                    }
+                  },
+                  "ordering": {
+                    "type": "object",
+                    "properties": {
+                      "field": {"type": "string", "enum": ["created_at", "updated_at"], "default": "created_at"},
+                      "direction": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
+                    }
+                  }
+                },
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "components": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "component_id": {"type": "string"},
+                        "impl_id": {"type": "string"},
+                        "meta": {"type": "object"},
+                        "created_at": {"type": "string"},
+                        "updated_at": {"type": "string"}
+                      }
+                    }
+                  },
+                  "total_count": {"type": "integer"},
+                  "has_more": {"type": "boolean"}
+                },
+                "required": ["components", "total_count", "has_more"]
+              }
+            format: application/schema+json
+      - name: delete_component
+        description: |
+          Delete a component - requires DELETE access.
+          If component implements deletable contract, delegates cleanup to component first.
+          Service always handles final unregistering from component registry.
+          Permanently removes component and all associated metadata and access records.
+          Calling: delete_component(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {
+                    "type": "string",
+                    "description": "Component UUID to delete"
+                  }
+                },
+                "required": ["component_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |-
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {"type": "string"},
+                  "deleted": {"type": "boolean"},
+                  "success": {"type": "boolean"}
+                },
+                "required": ["component_id", "deleted", "success"]
+              }
+            format: application/schema+json
+    

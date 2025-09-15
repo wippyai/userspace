@@ -1,0 +1,169 @@
+local http = require("http")
+local json = require("json")
+local component = require("component")
+
+local STATUS = http.STATUS
+local CONTENT = http.CONTENT
+
+local function handler()
+    local req = http.request()
+    local res = http.response()
+
+    if not req or not res then
+        return nil, "Failed to get HTTP context"
+    end
+
+    res:set_content_type(CONTENT.JSON)
+
+    if req:method() ~= "PUT" then
+        res:set_status(STATUS.METHOD_NOT_ALLOWED)
+        res:write_json({
+            success = false,
+            error = "Method not allowed. Use PUT."
+        })
+        return
+    end
+
+    local component_id = req:param("component_id")
+    if not component_id or component_id == "" then
+        res:set_status(STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "Component ID is required in URL path"
+        })
+        return
+    end
+
+    local body, parse_err = req:body_json()
+    if parse_err then
+        res:set_status(STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "Invalid JSON request body: " .. parse_err
+        })
+        return
+    end
+
+    -- Validate that we have something to update
+    if not body.title and not body.description and not body.metadata then
+        res:set_status(STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "At least one field to update is required (title, description, or metadata)"
+        })
+        return
+    end
+
+    -- Validate component access with WRITE permissions (bitmask value 2)
+    local access_level, access_err = component.validate_access(component_id, component.ACCESS.WRITE)
+    if not access_level or access_level == 0 then
+        res:set_status(STATUS.FORBIDDEN)
+        res:write_json({
+            success = false,
+            error = access_err or "Insufficient permissions to update this component"
+        })
+        return
+    end
+
+    -- Get component service using the shortcut
+    local service, err = component.get_service()
+    if err then
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to get component service: " .. err
+        })
+        return
+    end
+
+    -- Build update commands - each metadata field needs its own command with key/value format
+    local update_commands = {}
+
+    -- Handle title as separate command
+    if body.title then
+        table.insert(update_commands, {
+            type = "PUT_META",
+            payload = {
+                key = "title",
+                value = body.title
+            }
+        })
+    end
+
+    -- Handle description as separate command
+    if body.description then
+        table.insert(update_commands, {
+            type = "PUT_META",
+            payload = {
+                key = "description",
+                value = body.description
+            }
+        })
+    end
+
+    -- Handle general metadata updates (for custom fields)
+    if body.metadata and type(body.metadata) == "table" then
+        for key, value in pairs(body.metadata) do
+            table.insert(update_commands, {
+                type = "PUT_META",
+                payload = {
+                    key = key,
+                    value = value
+                }
+            })
+        end
+    end
+
+    -- Execute the update
+    local update_result, update_err = service:update_component({
+        component_id = component_id,
+        commands = update_commands
+    })
+
+    if update_err then
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to update component: " .. update_err
+        })
+        return
+    end
+
+    if not update_result or not update_result.success then
+        local error_msg = (update_result and update_result.error) or "Component update failed"
+
+        -- Map specific errors to appropriate status codes
+        local status_code = STATUS.INTERNAL_ERROR
+        if error_msg:find("not found") or error_msg:find("Component not found") then
+            status_code = STATUS.NOT_FOUND
+        elseif error_msg:find("access denied") or error_msg:find("Insufficient access") then
+            status_code = STATUS.FORBIDDEN
+        end
+
+        res:set_status(status_code)
+        res:write_json({
+            success = false,
+            error = error_msg
+        })
+        return
+    end
+
+    -- Return success response
+    res:set_status(STATUS.OK)
+    res:write_json({
+        success = true,
+        component_id = component_id,
+        title = body.title,
+        description = body.description,
+        updated_fields = {
+            title = body.title and true or false,
+            description = body.description and true or false,
+            metadata = body.metadata and true or false
+        },
+        updated_at = update_result.updated_at or os.date("!%Y-%m-%dT%H:%M:%SZ")
+    })
+end
+
+return {
+    handler = handler
+}

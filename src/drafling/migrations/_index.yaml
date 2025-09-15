@@ -1,0 +1,24 @@
+version: "1.0"
+namespace: userspace.drafling.migrations
+
+entries:
+  # userspace.drafling.migrations:01_create_drafling_tables
+  - name: 01_create_drafling_tables
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - drafling
+        - projects
+        - entries
+        - categories
+      description: Create drafling system tables for project management
+      depends_on:
+        - ns:wippy.migration
+      target_db: app:db
+      timestamp: "2025-08-15T10:00:00Z"
+    source: file://01_create_drafling_tables.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    

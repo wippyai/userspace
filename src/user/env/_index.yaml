@@ -1,0 +1,81 @@
+version: "1.0"
+namespace: userspace.user.env
+
+entries:
+  # userspace.user.env:admin_group_id
+  - name: admin_group_id
+    kind: env.variable
+    meta:
+      comment: Security group ID for admin users (also used as scope)
+      icon: tabler:shield
+      private: true
+    default: app.security:admin
+    storage: app.env:router
+    variable: USERSPACE_USER_ADMIN_GROUP_ID
+    
+  # userspace.user.env:admin_init_enabled
+  - name: admin_init_enabled
+    kind: env.variable
+    meta:
+      comment: Enable automatic admin user creation on first boot
+      icon: tabler:user-plus
+      private: true
+    default: "true"
+    storage: app.env:router
+    variable: USERSPACE_USER_ADMIN_INIT_ENABLED
+    
+  # userspace.user.env:database_resource
+  - name: database_resource
+    kind: env.variable
+    meta:
+      comment: Database resource for userspace user system
+      icon: tabler:database
+      private: true
+    default: app:db
+    storage: app.env:router
+    variable: USERSPACE_USER_DATABASE_RESOURCE
+    
+  # userspace.user.env:default_admin_email
+  - name: default_admin_email
+    kind: env.variable
+    meta:
+      comment: Default admin email for bootstrap (migration only)
+      icon: tabler:at
+      private: true
+    default: ""
+    storage: app.env:router
+    variable: USERSPACE_USER_DEFAULT_ADMIN_EMAIL
+    
+  # userspace.user.env:default_admin_password
+  - name: default_admin_password
+    kind: env.variable
+    meta:
+      comment: Default admin password for bootstrap (migration only)
+      icon: tabler:key
+      private: true
+    default: ""
+    storage: app.env:router
+    variable: USERSPACE_USER_DEFAULT_ADMIN_PASSWORD
+    
+  # userspace.user.env:default_group_id
+  - name: default_group_id
+    kind: env.variable
+    meta:
+      comment: Default security group ID for new users (also used as scope)
+      icon: tabler:users
+      private: true
+    default: app.security:user
+    storage: app.env:router
+    variable: USERSPACE_USER_DEFAULT_GROUP_ID
+    
+  # userspace.user.env:token_expiration
+  - name: token_expiration
+    kind: env.variable
+    meta:
+      comment: Default token expiration duration
+      icon: tabler:clock
+      private: true
+    default: 24h
+    storage: app.env:router
+    variable: USERSPACE_USER_TOKEN_EXPIRATION
+    

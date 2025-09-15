@@ -1,0 +1,79 @@
+version: "1.0"
+namespace: userspace.kb9.query.basic
+
+entries:
+  # userspace.kb9.query.basic:basic_vector
+  - name: basic_vector
+    kind: contract.binding
+    meta:
+      comment: Basic vector similarity search implementation
+      tags:
+        - kb9
+        - query
+        - basic
+        - vector
+      kb9_plugin:
+        name: Basic Vector Search
+        description: Pure vector-based search using embedding similarity for meaning-based retrieval. Simple and efficient semantic search.
+        capabilities:
+          - vector_similarity
+          - semantic_matching
+          - content_search
+        id: userspace.kb9.query.basic:basic_vector
+        provider: KB9 Core
+    contracts:
+      - contract: userspace.kb9:kb9_validate_contract
+        methods:
+          validate_options: userspace.kb9.query.basic:validate_options_func
+      - contract: userspace.kb9:kb9_init_contract
+        context_required:
+          - component_id
+        methods:
+          init: userspace.kb9.query.basic:init_func
+      - contract: userspace.kb9:kb9_query_contract
+        context_required:
+          - component_id
+        methods:
+          query: userspace.kb9.query.basic:query_func
+    
+  # userspace.kb9.query.basic:init_func
+  - name: init_func
+    kind: function.lua
+    meta:
+      comment: Initialize basic vector query (no setup required)
+      tags:
+        - kb9
+        - query
+        - init
+    source: file://init_func.lua
+    method: handle
+    
+  # userspace.kb9.query.basic:query_func
+  - name: query_func
+    kind: function.lua
+    meta:
+      comment: Basic vector similarity search
+      tags:
+        - kb9
+        - query
+        - vector
+    source: file://query_func.lua
+    modules:
+      - ctx
+      - sql
+    imports:
+      reader: userspace.kb9.persist:reader
+    method: handle
+    
+  # userspace.kb9.query.basic:validate_options_func
+  - name: validate_options_func
+    kind: function.lua
+    meta:
+      comment: Validates options for basic vector query
+      tags:
+        - kb9
+        - query
+        - validation
+    source: file://validate_options_func.lua
+    method: handle
+    

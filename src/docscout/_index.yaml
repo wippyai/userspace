@@ -1,0 +1,60 @@
+version: "1.0"
+namespace: userspace.docscout
+
+entries:
+  # userspace.docscout:analyzer
+  - name: analyzer
+    kind: function.lua
+    meta:
+      comment: Document analysis function for complex field extraction
+    source: file://analyzer.lua
+    imports:
+      prompt: wippy.llm:prompt
+      embeddings: wippy.embeddings:embeddings
+      llm: wippy.llm:llm
+    method: analyze_document_chunks
+    
+  # userspace.docscout:config_registry
+  - name: config_registry
+    kind: library.lua
+    meta:
+      comment: Helper library for working with document registry entries
+    source: file://config_registry.lua
+    modules:
+      - registry
+    
+  # userspace.docscout:extractor
+  - name: extractor
+    kind: library.lua
+    meta:
+      comment: High-level extraction orchestration
+    source: file://extractor.lua
+    modules:
+      - json
+      - funcs
+    imports:
+      llm: wippy.llm:llm
+      prompter: userspace.docscout:prompter
+      state: userspace.docscout:state
+    
+  # userspace.docscout:prompter
+  - name: prompter
+    kind: library.lua
+    meta:
+      comment: Prompt generation for document extraction
+    source: file://prompter.lua
+    modules:
+      - json
+    
+  # userspace.docscout:state
+  - name: state
+    kind: library.lua
+    meta:
+      comment: State management for document extraction process
+    source: file://state.lua
+    modules:
+      - json
+    imports:
+      config_registry: userspace.docscout:config_registry
+      embeddings: wippy.embeddings:embeddings
+    

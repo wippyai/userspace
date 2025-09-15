@@ -1,0 +1,547 @@
+{{ extends "common/layout" }}
+
+{* Page title and description *}
+{{ block title() }}Knowledge Bases{{ end }}
+{{ block metaDescription() }}Manage and discover knowledge sources for your workflows{{ end }}
+
+{{ block mainContent() }}
+<div x-data="knowledgeBaseApp" x-init="initialize()" class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
+                    <iconify-icon icon="tabler:brain" class="text-white" width="28" height="28"></iconify-icon>
+                </div>
+                <div class="ml-5">
+                    <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Knowledge Bases</h1>
+                    <p class="mt-1 text-surface-600 dark:text-surface-400">Connect and manage knowledge sources to extend your AI workflows</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Search -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <iconify-icon icon="tabler:search" class="text-surface-400 dark:text-surface-500" width="18" height="18"></iconify-icon>
+                    </div>
+                    <input
+                            type="text"
+                            x-model="searchTerm"
+                            @input="filterSources()"
+                            class="block w-64 pl-10 pr-3 py-2.5 border border-surface-200 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="Search knowledge sources...">
+                </div>
+
+                <!-- Knowledge Manager Button -->
+                <button @click="startKnowledgeManagerChat" :disabled="isKnowledgeManagerLoading" class="flex items-center justify-center h-11 w-11 border border-purple-200 dark:border-purple-600 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 disabled:opacity-50 transition-colors duration-200" title="Knowledge Manager">
+                    <template x-if="!isKnowledgeManagerLoading">
+                        <iconify-icon icon="tabler:brain" width="20" height="20"></iconify-icon>
+                    </template>
+                    <template x-if="isKnowledgeManagerLoading">
+                        <iconify-icon icon="tabler:loader-2" class="animate-spin" width="20" height="20"></iconify-icon>
+                    </template>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="mb-8">
+        <div class="border-b border-surface-200 dark:border-surface-600">
+            <nav class="-mb-px flex space-x-8">
+                <button
+                        @click="activeTab = 'my-sources'"
+                        :class="activeTab === 'my-sources' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300'"
+                        class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-all duration-200">
+                    <div class="flex items-center">
+                        <iconify-icon icon="tabler:database" class="mr-2" width="18" height="18"></iconify-icon>
+                        My Knowledge
+                        <span class="ml-2 px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200" x-text="myBases.length"></span>
+                    </div>
+                </button>
+                <button
+                        @click="activeTab = 'available'"
+                        :class="activeTab === 'available' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300'"
+                        class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-all duration-200">
+                    <div class="flex items-center">
+                        <iconify-icon icon="tabler:apps" class="mr-2" width="18" height="18"></iconify-icon>
+                        Available
+                        <span class="ml-2 px-2 py-0.5 rounded-md text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300" x-text="availableBases.length"></span>
+                    </div>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div>
+        <!-- My Knowledge Sources Tab -->
+        <div x-show="activeTab === 'my-sources'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-4" x-transition:enter-end="opacity-100 transform translate-y-0">
+            <!-- Loading State -->
+            <div x-show="isLoadingMyBases" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:loader-2" class="text-surface-400 dark:text-surface-500 animate-spin" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Loading knowledge sources...</h3>
+            </div>
+
+            <!-- Error State -->
+            <div x-show="!isLoadingMyBases && myBasesError" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:alert-circle" class="text-red-500 dark:text-red-400" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load knowledge sources</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="myBasesError"></p>
+                <button @click="loadMyBases()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Retry
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!isLoadingMyBases && !myBasesError && myBases.length === 0" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:database-off" class="text-surface-400 dark:text-surface-500" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No knowledge sources connected</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">Connect your first knowledge source to start enhancing your AI workflows with external knowledge.</p>
+                <button @click="activeTab = 'available'" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:apps" class="mr-2" width="20" height="20"></iconify-icon>
+                    Browse Available Sources
+                </button>
+            </div>
+
+            <!-- My Knowledge Sources Grid -->
+            <div x-show="!isLoadingMyBases && !myBasesError && myBases.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <template x-for="base in myBases" :key="base.component_id">
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full">
+                        <div class="p-6 flex flex-col flex-1">
+                            <!-- Header with Icon -->
+                            <div class="flex items-start mb-4">
+                                <div class="flex items-center">
+                                    <div class="h-14 w-14 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg">
+                                        <iconify-icon :icon="getComponentIcon(base)" class="text-white" width="28" height="28"></iconify-icon>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-lg font-bold text-surface-900 dark:text-surface-100 mb-1" x-text="base.meta.title || base.meta.name || 'Unnamed Component'"></h3>
+                                        <p class="text-sm font-medium text-surface-500 dark:text-surface-400" x-text="base.meta.type || base.meta.class || 'Knowledge Base'"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <p class="text-surface-600 dark:text-surface-300 text-sm leading-relaxed mb-3 flex-1" x-text="base.meta.description || 'No description available'"></p>
+
+                            <!-- Status String with Status Indicator -->
+                            <div x-show="base.meta.status_string" class="mb-6">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs font-medium text-surface-500 dark:text-surface-400 flex-1" x-text="base.meta.status_string"></p>
+                                    <div class="flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ml-3" :class="getStatusBadgeClass(base.meta.status)">
+                                        <div class="w-1.5 h-1.5 rounded-full mr-1.5" :class="getStatusDotClass(base.meta.status)"></div>
+                                        <span x-text="base.meta.status || 'Unknown'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex space-x-3 mt-auto">
+                                <button @click="manageBase(base)" class="flex-1 inline-flex items-center justify-center px-4 py-2.5 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                                    <iconify-icon icon="tabler:settings" class="mr-2" width="16" height="16"></iconify-icon>
+                                    Manage
+                                </button>
+                                <button @click="deleteBase(base)" class="px-4 py-2.5 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200">
+                                    <iconify-icon icon="tabler:trash" width="16" height="16"></iconify-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Available Knowledge Sources Tab -->
+        <div x-show="activeTab === 'available'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-4" x-transition:enter-end="opacity-100 transform translate-y-0">
+            <!-- Loading State -->
+            <div x-show="isLoadingAvailable" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:loader-2" class="text-surface-400 dark:text-surface-500 animate-spin" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Loading available knowledge sources...</h3>
+            </div>
+
+            <!-- Error State -->
+            <div x-show="!isLoadingAvailable && availableError" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:alert-circle" class="text-red-500 dark:text-red-400" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load available sources</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="availableError"></p>
+                <button @click="loadAvailableBases()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Retry
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!isLoadingAvailable && !availableError && availableBases.length === 0" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:apps-off" class="text-surface-400 dark:text-surface-500" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No knowledge sources available</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">There are currently no knowledge source types available for installation.</p>
+                <button @click="loadAvailableBases()" class="inline-flex items-center px-6 py-3 border border-surface-300 dark:border-surface-600 text-base font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Refresh
+                </button>
+            </div>
+
+            <!-- Available Sources Grid -->
+            <div x-show="!isLoadingAvailable && !availableError && availableBases.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <template x-for="base in filteredBases" :key="base.id">
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full cursor-pointer" @click="connectBase(base)">
+                        <div class="p-6 flex flex-col flex-1">
+                            <!-- Header with Icon -->
+                            <div class="flex items-start mb-4">
+                                <div class="h-14 w-14 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 shadow-lg bg-gradient-to-br from-primary-500 to-primary-600">
+                                    <iconify-icon :icon="base.icon || 'tabler:database'" class="text-white" width="28" height="28"></iconify-icon>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-lg font-bold text-surface-900 dark:text-surface-100 mb-1" x-text="base.name"></h3>
+                                    <p class="text-sm font-medium text-surface-500 dark:text-surface-400" x-text="base.classes.join(', ')"></p>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <p class="text-surface-600 dark:text-surface-300 text-sm leading-relaxed mb-4 flex-1" x-text="base.description"></p>
+
+                            <!-- Classes as Tags -->
+                            <div class="flex flex-wrap gap-2 mb-6" x-show="base.classes && base.classes.length > 0">
+                                <template x-for="cls in base.classes.slice(0, 3)" :key="cls">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400" x-text="cls"></span>
+                                </template>
+                                <span x-show="base.classes.length > 3" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300" x-text="`+${base.classes.length - 3}`"></span>
+                            </div>
+
+                            <!-- Create Button -->
+                            <div class="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 mt-auto">
+                                <iconify-icon icon="tabler:plus" class="mr-2" width="16" height="16"></iconify-icon>
+                                Create Knowledge Base
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div x-show="statusMessage.show" x-transition:enter="transform ease-out duration-300 transition" x-transition:enter-start="translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0" class="fixed bottom-4 right-4 max-w-md z-50">
+        <div class="flex items-center p-4 rounded-xl shadow-lg border" :class="{
+            'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800': statusMessage.type === 'success',
+            'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800': statusMessage.type === 'error',
+            'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800': statusMessage.type === 'info'
+        }">
+            <div class="flex-shrink-0 mr-3">
+                <template x-if="statusMessage.type === 'success'">
+                    <iconify-icon icon="tabler:check-circle" class="h-6 w-6 text-green-600 dark:text-green-400" width="24" height="24"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'error'">
+                    <iconify-icon icon="tabler:alert-circle" class="h-6 w-6 text-red-600 dark:text-red-400" width="24" height="24"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'info'">
+                    <iconify-icon icon="tabler:info-circle" class="h-6 w-6 text-blue-600 dark:text-blue-400" width="24" height="24"></iconify-icon>
+                </template>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium" :class="{
+                    'text-green-800 dark:text-green-100': statusMessage.type === 'success',
+                    'text-red-800 dark:text-red-100': statusMessage.type === 'error',
+                    'text-blue-800 dark:text-blue-100': statusMessage.type === 'info'
+                }" x-text="statusMessage.text"></p>
+            </div>
+            <div class="flex-shrink-0 ml-3">
+                <button @click="hideStatusMessage" class="inline-flex text-surface-400 hover:text-surface-600 focus:outline-none transition-colors duration-200">
+                    <iconify-icon icon="tabler:x" class="h-5 w-5" width="20" height="20"></iconify-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ block customJs() }}
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('knowledgeBaseApp', () => ({
+            // State
+            activeTab: 'my-sources',
+            searchTerm: '',
+            wippyApi: null,
+
+            // Loading states
+            isLoadingMyBases: false,
+            isLoadingAvailable: false,
+            isKnowledgeManagerLoading: false,
+
+            // Error states
+            myBasesError: null,
+            availableError: null,
+
+            // Data
+            myBases: [],
+            availableBases: [],
+
+            // Computed
+            get filteredBases() {
+                if (!this.searchTerm) {
+                    return this.availableBases;
+                }
+
+                const term = this.searchTerm.toLowerCase();
+                return this.availableBases.filter(base =>
+                    base.name.toLowerCase().includes(term) ||
+                    base.description.toLowerCase().includes(term) ||
+                    (base.classes && base.classes.some(cls => cls.toLowerCase().includes(term)))
+                );
+            },
+
+            // Status message
+            statusMessage: {
+                show: false,
+                type: 'info',
+                text: '',
+                timeout: null
+            },
+
+            // Methods
+            async initialize() {
+                console.log('Knowledge Sources page initialized');
+
+                try {
+                    this.wippyApi = await window.initWippyApi();
+
+                    // Subscribe to WebSocket events for real-time updates
+                    this.setupEventListeners();
+
+                    await this.loadMyBases();
+                    await this.loadAvailableBases();
+                } catch (error) {
+                    console.error('Failed to initialize:', error);
+                    this.showStatus('error', 'Failed to initialize page');
+                }
+            },
+
+            setupEventListeners() {
+                // Subscribe to registry version changes to reload available templates
+                this.wippyApi.on('registry:version', ({ message }) => {
+                    console.log('Registry version changed, reloading available knowledge bases:', message);
+                    this.loadAvailableBases();
+                });
+
+                // Subscribe to knowledge-specific events to reload knowledge bases
+                this.wippyApi.on('knowledge:*', ({ message }) => {
+                    console.log('Knowledge event received, reloading knowledge bases:', message);
+                    this.loadMyBases();
+                });
+
+                // General message listener for debugging
+                this.wippyApi.on('@message', ({ message }) => {
+                    if (message.topic && message.topic.startsWith('knowledge')) {
+                        console.log('Knowledge WebSocket event:', message);
+                    }
+                });
+            },
+
+            async startKnowledgeManagerChat() {
+                try {
+                    this.isKnowledgeManagerLoading = true;
+
+                    // Get the start token for the knowledge manager
+                    const response = await this.wippyApi.api.get('/api/v1/keeper/agents/start-agent', {
+                        params: { agent: 'userspace.knowledge.agents:knowledge_manager' }
+                    });
+
+                    if (!response.data.success || !response.data.start_token) {
+                        throw new Error(response.data.error || 'Failed to get knowledge manager start token');
+                    }
+
+                    // Start chat with Knowledge Manager
+                    console.log('Starting chat with Knowledge Manager');
+
+                    if (!this.wippyApi.iframe || typeof this.wippyApi.iframe.startChat !== 'function') {
+                        throw new Error('Chat API not available');
+                    }
+
+                    await this.wippyApi.iframe.startChat(response.data.start_token, true); // true to open in sidebar
+                    console.log('Knowledge Manager chat started');
+                } catch (err) {
+                    console.error('Failed to start chat with Knowledge Manager:', err);
+                    this.showStatus('error', `Failed to start Knowledge Manager: ${err.message}`);
+                } finally {
+                    this.isKnowledgeManagerLoading = false;
+                }
+            },
+
+            async loadMyBases() {
+                this.isLoadingMyBases = true;
+                this.myBasesError = null;
+
+                try {
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/components/list', {
+                        params: {
+                            class: 'knowledge_base',
+                            limit: 100
+                        }
+                    });
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load knowledge sources');
+                    }
+
+                    this.myBases = response.data.components || [];
+                    console.log(`Loaded ${this.myBases.length} knowledge sources`);
+                } catch (error) {
+                    console.error('Error loading my sources:', error);
+                    this.myBasesError = error.message;
+                    this.myBases = [];
+                } finally {
+                    this.isLoadingMyBases = false;
+                }
+            },
+
+            async loadAvailableBases() {
+                this.isLoadingAvailable = true;
+                this.availableError = null;
+
+                try {
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/components/discover', {
+                        params: {
+                            class: 'knowledge_base',
+                            include_ui: true
+                        }
+                    });
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load available sources');
+                    }
+
+                    this.availableBases = response.data.components || [];
+                    console.log(`Loaded ${this.availableBases.length} available knowledge sources`);
+                } catch (error) {
+                    console.error('Error loading available sources:', error);
+                    this.availableError = error.message;
+                    this.availableBases = [];
+                } finally {
+                    this.isLoadingAvailable = false;
+                }
+            },
+
+            filterSources() {
+                // Filtering happens automatically through computed property
+            },
+
+            getComponentIcon(component) {
+                // Get icon from available bases mapping via impl_id
+                const availableBase = this.availableBases.find(base => base.id === component.impl_id);
+                return (availableBase && availableBase.icon) || 'tabler:database';
+            },
+
+            getStatusBadgeClass(status) {
+                const classMap = {
+                    'Active': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+                    'Error': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+                    'Warning': 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+                    'Inactive': 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400'
+                };
+                return classMap[status] || classMap['Inactive'];
+            },
+
+            getStatusDotClass(status) {
+                const classMap = {
+                    'Active': 'bg-green-500',
+                    'Error': 'bg-red-500',
+                    'Warning': 'bg-yellow-500',
+                    'Inactive': 'bg-gray-400'
+                };
+                return classMap[status] || classMap['Inactive'];
+            },
+
+            connectBase(base) {
+                if (base.create_ui_id) {
+                    this.wippyApi.iframe.navigate(`/c/${base.create_ui_id}`);
+                } else {
+                    this.showStatus('error', `No creation interface available for ${base.name}`);
+                }
+            },
+
+            manageBase(component) {
+                // Get manage UI ID from available bases mapping
+                const availableBase = this.availableBases.find(base => base.id === component.impl_id);
+
+                if (availableBase && availableBase.manage_ui_id) {
+                    const manageUrl = `/c/${availableBase.manage_ui_id}/${component.component_id}`;
+                    console.log('Navigating to manage URL:', manageUrl);
+                    this.wippyApi.iframe.navigate(manageUrl);
+                } else {
+                    this.showStatus('error', `No management interface available for ${component.meta.title || 'this component'}`);
+                }
+            },
+
+            async deleteBase(component) {
+                try {
+                    const confirmed = await this.wippyApi.iframe.confirm({
+                        message: `Are you sure you want to disconnect ${component.meta.title || 'this component'}?`,
+                        header: 'Confirm Deletion',
+                        icon: 'tabler:trash',
+                        acceptLabel: 'Delete',
+                        rejectLabel: 'Cancel',
+                        acceptClass: 'p-button-danger',
+                        rejectClass: 'p-button-secondary'
+                    });
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    const response = await this.wippyApi.api.delete(`/api/v1/userspace/components/${component.component_id}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to delete component');
+                    }
+
+                    // Remove from list
+                    this.myBases = this.myBases.filter(b => b.component_id !== component.component_id);
+                    this.showStatus('success', `${component.meta.title || 'Component'} has been disconnected`);
+                } catch (error) {
+                    console.error('Failed to delete source:', error);
+                    this.showStatus('error', `Failed to delete: ${error.message}`);
+                }
+            },
+
+            // Status message helpers
+            showStatus(type, text, duration = 5000) {
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                }
+
+                this.statusMessage.type = type;
+                this.statusMessage.text = text;
+                this.statusMessage.show = true;
+
+                this.statusMessage.timeout = setTimeout(() => {
+                    this.hideStatusMessage();
+                }, duration);
+            },
+
+            hideStatusMessage() {
+                this.statusMessage.show = false;
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                    this.statusMessage.timeout = null;
+                }
+            }
+        }));
+    });
+</script>
+{{ end }}

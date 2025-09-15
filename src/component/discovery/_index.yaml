@@ -1,0 +1,185 @@
+version: "1.0"
+namespace: userspace.component.discovery
+
+entries:
+  # userspace.component.discovery:component_discovery
+  - name: component_discovery
+    kind: contract.definition
+    meta:
+      comment: Component discovery service contract
+      tags:
+        - components
+        - discovery
+        - registry
+      description: Discovers available component types from registry and provides UI bindings
+    methods:
+      - name: list_available_components
+        description: |
+          List all available component types that can be created.
+          Scans registry for contract.definition entries with meta.type=component.
+          Calling: list_available_components(request_dto)
+        input_schemas:
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"filters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"classes\": {\n          \"type\": \"array\",\n          \"items\": {\"type\": \"string\"},\n          \"description\": \"Filter by component classes\"\n        },\n        \"namespaces\": {\n          \"type\": \"array\", \n          \"items\": {\"type\": \"string\"},\n          \"description\": \"Filter by component namespaces\"\n        },\n        \"search\": {\n          \"type\": \"string\",\n          \"description\": \"Search in name, comment, or classes\"\n        }\n      }\n    },\n    \"include_ui_bindings\": {\n      \"type\": \"boolean\",\n      \"default\": true,\n      \"description\": \"Include create/manage UI binding information\"\n    }\n  },\n  \"default\": {}\n}\n"
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "components": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {"type": "string"},
+                        "name": {"type": "string"},
+                        "description": {"type": "string"},
+                        "icon": {"type": "string"},
+                        "classes": {
+                          "type": "array",
+                          "items": {"type": "string"}
+                        },
+                        "namespace": {"type": "string"},
+                        "create_ui_id": {"type": "string"},
+                        "manage_ui_id": {"type": "string"}
+                      },
+                      "required": ["id", "name", "description", "classes", "namespace"]
+                    }
+                  },
+                  "total_count": {"type": "integer"},
+                  "available_classes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "All available component classes for filtering"
+                  }
+                },
+                "required": ["components", "total_count", "available_classes"]
+              }
+            format: application/schema+json
+      - name: get_component_info
+        description: |
+          Get detailed information about a specific component type.
+          Calling: get_component_info(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {
+                    "type": "string",
+                    "description": "Component contract ID to get info for"
+                  }
+                },
+                "required": ["component_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "id": {"type": "string"},
+                  "name": {"type": "string"},
+                  "description": {"type": "string"},
+                  "icon": {"type": "string"},
+                  "classes": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                  },
+                  "namespace": {"type": "string"},
+                  "methods": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {"type": "string"},
+                        "description": {"type": "string"},
+                        "input_schemas": {"type": "array"},
+                        "output_schemas": {"type": "array"}
+                      }
+                    }
+                  },
+                  "create_ui": {
+                    "type": "object",
+                    "properties": {
+                      "type": {"type": "string"},
+                      "binding_id": {"type": "string"},
+                      "title": {"type": "string"}
+                    }
+                  },
+                  "manage_ui": {
+                    "type": "object",
+                    "properties": {
+                      "type": {"type": "string"},
+                      "binding_id": {"type": "string"},
+                      "title": {"type": "string"}
+                    }
+                  }
+                },
+                "required": ["id", "name", "description", "classes", "namespace", "methods"]
+              }
+            format: application/schema+json
+    
+  # userspace.component.discovery:component_discovery_impl
+  - name: component_discovery_impl
+    kind: contract.binding
+    meta:
+      comment: Default implementation of component discovery contract
+      tags:
+        - components
+        - discovery
+        - implementation
+    contracts:
+      - contract: userspace.component.discovery:component_discovery
+        default: true
+        methods:
+          get_component_info: userspace.component.discovery:get_component_info_func
+          list_available_components: userspace.component.discovery:list_available_components_func
+    
+  # userspace.component.discovery:component_registry
+  - name: component_registry
+    kind: library.lua
+    meta:
+      comment: Component registry library for discovering available component types
+      tags:
+        - components
+        - discovery
+        - registry
+    source: file://component_registry.lua
+    modules:
+      - registry
+      - json
+    
+  # userspace.component.discovery:get_component_info_func
+  - name: get_component_info_func
+    kind: function.lua
+    meta:
+      comment: Get detailed information about a specific component type
+      tags:
+        - components
+        - discovery
+        - registry
+    source: file://get_component_info_func.lua
+    modules:
+      - registry
+    imports:
+      component_registry: userspace.component.discovery:component_registry
+    method: handle
+    
+  # userspace.component.discovery:list_available_components_func
+  - name: list_available_components_func
+    kind: function.lua
+    meta:
+      comment: List all available component types for creation
+      tags:
+        - components
+        - discovery
+        - registry
+    source: file://list_available_components_func.lua
+    modules:
+      - registry
+      - json
+    imports:
+      component_registry: userspace.component.discovery:component_registry
+    method: handle
+    

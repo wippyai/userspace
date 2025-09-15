@@ -1,0 +1,20 @@
+version: "1.0"
+namespace: userspace.drafling.discovery
+
+entries:
+  # userspace.drafling.discovery:template_registry
+  - name: template_registry
+    kind: library.lua
+    meta:
+      name: Template Registry
+      comment: Registry operations for drafling project templates
+      tags:
+        - drafling
+        - templates
+        - registry
+      description: Find and manage drafling project templates from registry
+    source: file://template_registry.lua
+    modules:
+      - registry
+      - json
+    

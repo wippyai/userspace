@@ -1,0 +1,22 @@
+version: "1.0"
+namespace: userspace.kb9.migrations
+
+entries:
+  # userspace.kb9.migrations:01_create_knowledge_tables
+  - name: 01_create_knowledge_tables
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - knowledge
+        - kb
+        - database
+        - vector
+      description: Create kb_components and kb_nodes tables for knowledge base storage with hierarchical structure
+      target_db: app:db
+      timestamp: "2025-07-02T10:00:00Z"
+    source: file://01_create_knowledge_tables.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    

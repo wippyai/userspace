@@ -1,0 +1,358 @@
+{{ extends "common/layout" }}
+
+{* Page title and description *}
+{{ block title() }}Schedule Manager{{ end }}
+{{ block metaDescription() }}View and manage your scheduled tasks{{ end }}
+
+{{ block mainContent() }}
+<div x-data="schedulesApp" x-init="initialize()" class="space-y-4">
+    <!-- Header with controls -->
+    <div class="bg-surface-50 dark:bg-surface-700 shadow rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-surface-200 dark:border-surface-600">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-xl leading-6 font-medium text-surface-900 dark:text-surface-100">
+                        Schedules
+                        <span x-show="isLoading" class="inline-block ml-2">
+                            <iconify-icon icon="tabler:loader-2" class="animate-spin" width="20" height="20"></iconify-icon>
+                        </span>
+                    </h1>
+                    <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                        View and manage automated tasks running in your userspace.
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- Search Input -->
+                    <div class="relative w-56">
+                        <input
+                                type="text"
+                                x-model="searchTerm"
+                                @input.debounce.300ms="applyFilter()"
+                                class="block w-full pl-10 pr-3 py-2 border border-surface-300 dark:border-surface-600 rounded-md shadow-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-primary-400 focus:border-primary-400 sm:text-sm"
+                                placeholder="Search by description...">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <iconify-icon icon="tabler:search" class="h-5 w-5 text-surface-400 dark:text-surface-500"></iconify-icon>
+                        </div>
+                        <button
+                                @click="clearSearch()"
+                                x-show="searchTerm.length > 0"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-surface-400 hover:text-surface-600 dark:hover:text-surface-300">
+                            <iconify-icon icon="tabler:x" class="h-4 w-4"></iconify-icon>
+                        </button>
+                    </div>
+                    <!-- Toggle Switch -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm font-medium text-surface-600 dark:text-surface-400" :class="{ 'text-primary-600 dark:text-primary-400': !showOnlyUser }">All</span>
+                        <button type="button" @click="showOnlyUser = !showOnlyUser; fetchSchedules()"
+                                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-surface-700"
+                                :class="showOnlyUser ? 'bg-primary-600' : 'bg-surface-200 dark:bg-surface-600'">
+                            <span class="sr-only">Toggle user schedules</span>
+                            <span aria-hidden="true" :class="showOnlyUser ? 'translate-x-5' : 'translate-x-0'" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                        </button>
+                        <span class="text-sm font-medium text-surface-600 dark:text-surface-400" :class="{ 'text-primary-600 dark:text-primary-400': showOnlyUser }">My</span>
+                    </div>
+                    <!-- Refresh Button -->
+                    <button
+                            @click="fetchSchedules"
+                            :disabled="isLoading"
+                            class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 shadow-sm text-sm font-medium rounded-md text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            :class="{'opacity-50 cursor-not-allowed': isLoading}">
+                        <iconify-icon :icon="isLoading ? 'tabler:loader-2' : 'tabler:refresh'" :class="{'animate-spin': isLoading}" class="mr-2" width="20" height="20"></iconify-icon>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div x-show="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+        <div class="flex">
+            <iconify-icon icon="tabler:alert-circle" class="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 mr-3"></iconify-icon>
+            <div>
+                <h3 class="text-sm font-medium text-red-800 dark:text-red-300">Error Loading Schedules</h3>
+                <p class="mt-1 text-sm text-red-700 dark:text-red-400" x-text="error"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedules Table Container -->
+    <div class="bg-surface-50 dark:bg-surface-700 shadow rounded-lg overflow-hidden">
+        <!-- Loading Indicator -->
+        <div x-show="isLoading && displayedSchedules.length === 0" class="p-12 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
+            <p class="mt-4 text-surface-600 dark:text-surface-400">Loading schedules...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="!isLoading && displayedSchedules.length === 0" class="py-12 text-center">
+            <iconify-icon icon="tabler:calendar-off" class="w-16 h-16 mx-auto text-surface-400 dark:text-surface-600"></iconify-icon>
+            <h3 class="mt-4 text-sm font-medium text-surface-900 dark:text-surface-100"
+                x-text="searchTerm ? 'No schedules matching your search' : 'No schedules found'"></h3>
+            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                <span x-show="searchTerm">Try adjusting your search term.</span>
+                <span x-show="!searchTerm">There are currently no schedules to display.</span>
+            </p>
+        </div>
+
+        <!-- Table -->
+        <table x-show="displayedSchedules.length > 0" class="min-w-full divide-y divide-surface-200 dark:divide-surface-600">
+            <thead class="bg-surface-100 dark:bg-surface-800">
+            <tr>
+                <th scope="col" class="w-1/3 px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">Schedule Info</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">Status</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">Details</th>
+                <th scope="col" class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">Last Run</th>
+                <th scope="col" class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">Next Run</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">Actions</th>
+            </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-surface-700 divide-y divide-surface-200 dark:divide-surface-600">
+            <template x-for="schedule in displayedSchedules" :key="schedule.task_id">
+                <tr class="hover:bg-surface-50 dark:hover:bg-surface-600">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <iconify-icon :icon="getScheduleTypeIcon(schedule.schedule_type)" class="h-6 w-6 mr-4 flex-shrink-0" :class="getScheduleTypeClass(schedule.schedule_type)"></iconify-icon>
+                            <div>
+                                <div class="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate" x-text="schedule.description || 'No Description'" :title="schedule.description"></div>
+                                <div class="text-xs font-mono text-surface-500 dark:text-surface-400 mt-1 truncate" x-text="schedule.task_id" :title="schedule.task_id"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize" :class="getStatusClass(schedule.status)" x-text="schedule.status"></span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-surface-700 dark:text-surface-300">
+                        <div class="flex items-center space-x-2 font-mono text-xs" :title="'Class: ' + schedule.class">
+                            <iconify-icon icon="tabler:tag" class="h-4 w-4 text-surface-400 dark:text-surface-500 flex-shrink-0"></iconify-icon>
+                            <span class="truncate" x-text="schedule.class"></span>
+                        </div>
+                        <div class="flex items-center space-x-2 font-mono text-xs mt-1" :title="'Expression: ' + schedule.schedule_expression">
+                            <iconify-icon icon="tabler:hash" class="h-4 w-4 text-surface-400 dark:text-surface-500 flex-shrink-0"></iconify-icon>
+                            <span class="truncate" x-text="formatScheduleExpression(schedule.schedule_type, schedule.schedule_expression)"></span>
+                        </div>
+                        <div x-show="schedule.retry_count > 0" class="flex items-center space-x-2 font-mono text-xs mt-1" :title="'Retries: ' + schedule.retry_count">
+                            <iconify-icon icon="tabler:repeat" class="h-4 w-4 text-yellow-500 flex-shrink-0"></iconify-icon>
+                            <span class="truncate" x-text="schedule.retry_count + ' retries'"></span>
+                        </div>
+                    </td>
+                    <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-surface-700 dark:text-surface-300">
+                        <div x-text="formatDate(schedule.last_run_at)" :title="schedule.last_run_at"></div>
+                        <div class="text-xs text-surface-500 dark:text-surface-400" x-text="getTimeSince(schedule.last_run_at)"></div>
+                    </td>
+                    <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-surface-700 dark:text-surface-300">
+                        <div x-text="formatDate(schedule.next_run_at)" :title="schedule.next_run_at"></div>
+                        <div class="text-xs text-surface-500 dark:text-surface-400" x-text="getTimeTo(schedule.next_run_at)"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button @click="deleteSchedule(schedule.task_id, schedule.description || schedule.task_id)"
+                                x-show="schedule.class === 'user'"
+                                class="inline-flex items-center p-1.5 border border-transparent rounded-full shadow-sm text-red-600 hover:text-white dark:text-red-400 dark:hover:text-white hover:bg-red-600 dark:hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                                title="Delete Schedule">
+                            <iconify-icon icon="tabler:trash" width="18" height="18"></iconify-icon>
+                        </button>
+                    </td>
+                </tr>
+            </template>
+            </tbody>
+        </table>
+    </div>
+</div>
+{{ end }}
+
+{{ block customJs() }}
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('schedulesApp', () => ({
+            // State
+            wippyApi: null,
+            allSchedules: [],
+            displayedSchedules: [],
+            searchTerm: '',
+            isLoading: true,
+            error: null,
+            showOnlyUser: true,
+
+            // Initialization
+            async initialize() {
+                try {
+                    this.wippyApi = await window.initWippyApi();
+                    await this.fetchSchedules();
+                } catch (err) {
+                    console.error('Failed to initialize schedules view:', err);
+                    this.error = `Initialization error: ${err.message}`;
+                    this.isLoading = false;
+                }
+            },
+
+            // Data Fetching
+            async fetchSchedules() {
+                this.isLoading = true;
+                this.error = null;
+                try {
+                    const params = { limit: 100 };
+                    if (this.showOnlyUser) {
+                        params.class = 'user';
+                    }
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/schedules', { params });
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'API returned an error');
+                    }
+                    this.allSchedules = response.data.schedules || [];
+                    this.applyFilter();
+                } catch (err) {
+                    console.error('Error fetching schedules:', err);
+                    this.error = err.message || 'An unknown error occurred.';
+                    this.allSchedules = [];
+                    this.displayedSchedules = [];
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            // Filtering and Actions
+            applyFilter() {
+                if (!this.searchTerm) {
+                    this.displayedSchedules = [...this.allSchedules];
+                    return;
+                }
+                const term = this.searchTerm.toLowerCase();
+                this.displayedSchedules = this.allSchedules.filter(s =>
+                    (s.description || '').toLowerCase().includes(term) ||
+                    (s.task_id || '').toLowerCase().includes(term)
+                );
+            },
+
+            clearSearch() {
+                this.searchTerm = '';
+                this.applyFilter();
+            },
+
+            async deleteSchedule(taskId, description) {
+                try {
+                    const confirmed = await this.wippyApi.iframe.confirm({
+                        message: `Are you sure you want to delete the schedule "${description}"? This action cannot be undone.`,
+                        header: 'Confirm Deletion',
+                        icon: 'tabler:trash',
+                        acceptLabel: 'Delete',
+                        rejectLabel: 'Cancel',
+                        acceptClass: 'p-button-danger'
+                    });
+                    if (!confirmed) return;
+
+                    const response = await this.wippyApi.api.delete(`/api/v1/userspace/schedules/${taskId}`);
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to delete schedule');
+                    }
+                    await this.fetchSchedules();
+                } catch (err) {
+                    console.error('Failed to delete schedule:', err);
+                    this.error = `Deletion failed: ${err.message}`;
+                }
+            },
+
+            // Helper Functions for UI
+            getScheduleTypeIcon(type) {
+                const map = { interval: 'tabler:clock', ticker: 'tabler:repeat', cron: 'tabler:calendar-event', once: 'tabler:circle-1' };
+                return map[type] || 'tabler:question-mark';
+            },
+
+            getScheduleTypeClass(type) {
+                const map = { interval: 'text-sky-500', ticker: 'text-teal-500', cron: 'text-indigo-500', once: 'text-purple-500' };
+                return map[type] || 'text-gray-500';
+            },
+
+            getStatusClass(status) {
+                const map = {
+                    scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+                    executing: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+                    completed: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+                    failed: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+                    disabled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+                };
+                return map[status] || 'bg-surface-100 text-surface-800 dark:bg-surface-600 dark:text-surface-300';
+            },
+
+            // Fixed formatScheduleExpression function
+            formatScheduleExpression(type, expression) {
+                if (type !== 'interval' && type !== 'ticker') return expression;
+
+                // Handle duration strings like "44m", "1h", "30s"
+                const durationMatch = expression.match(/^(\d+)([smh])$/);
+                if (durationMatch) {
+                    const value = parseInt(durationMatch[1], 10);
+                    const unit = durationMatch[2];
+
+                    switch (unit) {
+                        case 's':
+                            return `every ${value}s`;
+                        case 'm':
+                            return `every ${value}m`;
+                        case 'h':
+                            return `every ${value}h`;
+                        default:
+                            return `every ${expression}`;
+                    }
+                }
+
+                // Handle pure numbers (assume seconds for backward compatibility)
+                const seconds = parseInt(expression, 10);
+                if (!isNaN(seconds) && seconds > 0) {
+                    if (seconds < 60) return `every ${seconds}s`;
+                    if (seconds < 3600) return `every ${Math.floor(seconds / 60)}m`;
+                    if (seconds < 86400) return `every ${Math.floor(seconds / 3600)}h`;
+                    const days = Math.floor(seconds / 86400);
+                    const remainderHours = Math.floor((seconds % 86400) / 3600);
+                    let result = `every ${days}d`;
+                    if (remainderHours > 0) result += ` ${remainderHours}h`;
+                    return result;
+                }
+
+                // Fallback - return as-is
+                return expression;
+            },
+
+            formatDate(dateString) {
+                if (!dateString) return 'N/A';
+                try {
+                    return new Date(dateString).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                } catch (e) { return dateString; }
+            },
+
+            getTimeTo(dateString) {
+                if (!dateString) return '';
+                try {
+                    const date = new Date(dateString);
+                    const now = new Date();
+                    const diffMs = date - now;
+                    if (diffMs <= 0) return 'due now';
+                    const diffSec = Math.floor(diffMs / 1000);
+                    if (diffSec < 60) return `in ${diffSec}s`;
+                    const diffMin = Math.floor(diffSec / 60);
+                    if (diffMin < 60) return `in ${diffMin}m`;
+                    const diffHour = Math.floor(diffMin / 60);
+                    if (diffHour < 24) return `in ${diffHour}h`;
+                    return `in ${Math.floor(diffHour / 24)}d`;
+                } catch { return ''; }
+            },
+
+            getTimeSince(dateString) {
+                if (!dateString) return '';
+                try {
+                    const date = new Date(dateString);
+                    const now = new Date();
+                    const diffMs = now - date;
+                    if (diffMs < 0) return '';
+                    const diffSec = Math.floor(diffMs / 1000);
+                    if (diffSec < 60) return `${diffSec}s ago`;
+                    const diffMin = Math.floor(diffSec / 60);
+                    if (diffMin < 60) return `${diffMin}m ago`;
+                    const diffHour = Math.floor(diffMin / 60);
+                    if (diffHour < 24) return `${diffHour}h ago`;
+                    return `${Math.floor(diffHour / 24)}d ago`;
+                } catch { return ''; }
+            }
+        }));
+    });
+</script>
+{{ end }}

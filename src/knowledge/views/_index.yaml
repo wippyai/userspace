@@ -1,0 +1,20 @@
+version: "1.0"
+namespace: userspace.knowledge.views
+
+entries:
+  # userspace.knowledge.views:dashboard
+  - name: dashboard
+    kind: template.jet
+    meta:
+      name: knowledge_base
+      type: view.page
+      title: Knowledge Bases
+      icon: tabler:brain
+      description: Manage and discover knowledge base components
+      order: 300
+      content_type: text/html
+      announced: true
+      secure: true
+    source: file://dashboard.jet
+    set: app.views.common:templates
+    

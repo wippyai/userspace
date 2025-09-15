@@ -1,0 +1,45 @@
+version: "1.0"
+namespace: userspace.scheduler.interval
+
+entries:
+  # userspace.scheduler.interval:schedule_calculator
+  - name: schedule_calculator
+    kind: library.lua
+    meta:
+      comment: Schedule calculation library for determining next run times
+      tags:
+        - scheduler
+        - userspace
+        - calculation
+        - time
+        - cron
+      description: Calculates next run times for different schedule types (once, interval, ticker, cron) using regex-based parsing
+    source: file://schedule_calculator.lua
+    modules:
+      - time
+      - json
+      - text
+    
+  # userspace.scheduler.interval:schedule_calculator_test
+  - name: schedule_calculator_test
+    kind: function.lua
+    meta:
+      name: Schedule Calculator Test
+      type: test
+      comment: Comprehensive tests for the schedule calculator functionality
+      group: Components / Scheduler
+      tags:
+        - scheduler
+        - calculation
+        - time
+        - cron
+        - tests
+      description: Tests for schedule calculation logic including once, interval, ticker, and cron schedules
+    source: file://schedule_calculator_test.lua
+    modules:
+      - time
+    imports:
+      schedule_calculator: userspace.scheduler.interval:schedule_calculator
+      test: wippy.test:test
+    method: run_tests
+    

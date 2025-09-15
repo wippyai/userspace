@@ -1,0 +1,269 @@
+version: "1.0"
+namespace: userspace.contract
+
+entries:
+  # userspace.contract:component
+  - name: component
+    kind: contract.definition
+    meta:
+      comment: Base contract that all user components must implement
+      tags:
+        - component
+        - base
+        - status
+      description: Defines the minimal interface all components must provide for status reporting
+    methods:
+      - name: get_status
+        description: |
+          Get component status as human-readable description.
+          Component can return any relevant status information as free-form text.
+          Calling: get_status(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {},
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "Human-readable status description"
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "description": "ISO timestamp when status was last updated"
+                  }
+                },
+                "required": ["description"]
+              }
+            format: application/schema+json
+    
+  # userspace.contract:content_provider
+  - name: content_provider
+    kind: contract.definition
+    meta:
+      comment: Enhanced content provider interface with storage access information
+      tags:
+        - content
+        - provider
+        - storage
+      description: Interface for retrieving content from various sources with storage fallback capabilities
+    methods:
+      - name: get_content
+        description: |
+          Retrieve content from provider with size limits.
+          Calling: get_content(options)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "max_size": {
+                    "type": "integer",
+                    "description": "Maximum content size in bytes (default: 32KB text, 50MB images)"
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": ["raw", "base64"],
+                    "description": "Content format for binary data"
+                  }
+                },
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "The content"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "description": "MIME type of content"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "description": "Content size in bytes"
+                  },
+                  "storage_id": {
+                    "type": "string",
+                    "description": "Storage system identifier"
+                  },
+                  "storage_path": {
+                    "type": "string",
+                    "description": "Path to file in storage"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Any metadata associated with content"
+                  },
+                  "truncated": {
+                    "type": "boolean",
+                    "description": "Whether content was truncated due to size limits"
+                  }
+                },
+                "required": ["content", "content_type", "size", "storage_id", "storage_path"]
+              }
+            format: application/schema+json
+      - name: get_info
+        description: |
+          Get content information without loading the actual content.
+          Calling: get_info()
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "content_type": {
+                    "type": "string",
+                    "description": "MIME type of content"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "description": "Size in bytes if available"
+                  },
+                  "filename": {
+                    "type": "string",
+                    "description": "Original filename if available"
+                  },
+                  "storage_id": {
+                    "type": "string",
+                    "description": "Storage system identifier"
+                  },
+                  "storage_path": {
+                    "type": "string",
+                    "description": "Path to file in storage"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "description": "Creation timestamp"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Any metadata without loading content"
+                  }
+                },
+                "required": ["content_type", "storage_id", "storage_path"]
+              }
+            format: application/schema+json
+    
+  # userspace.contract:deletable
+  - name: deletable
+    kind: contract.definition
+    meta:
+      comment: Optional contract for components that need custom deletion logic
+      tags:
+        - components
+        - deletion
+        - cleanup
+      description: Components implement this when they need to handle their own cleanup during deletion
+    methods:
+      - name: delete
+        description: |
+          Cleanup component resources only - service handles unregistering.
+          Component should clean up files, connections, external resources, etc.
+          Component service will unregister component after successful cleanup.
+          Calling: delete(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {},
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "description": "Whether deletion completed successfully"
+                  }
+                },
+                "required": ["success"]
+              }
+            format: application/schema+json
+    
+  # userspace.contract:resource_registry
+  - name: resource_registry
+    kind: contract.definition
+    meta:
+      comment: Resource registry interface for listing and counting content resources
+      tags:
+        - resource
+        - registry
+        - listing
+        - pagination
+        - counting
+      description: Interface for listing and counting content resources with efficient pagination
+    methods:
+      - name: list_resources
+        description: |
+          List resources with cursor-based pagination and filtering.
+          Calling: list_resources(request)
+        input_schemas:
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"after_upload_id\": {\n      \"type\": \"string\",\n      \"description\": \"Return items after this upload ID (cursor-based pagination)\"\n    },\n    \"limit\": {\n      \"type\": \"integer\", \n      \"description\": \"Maximum number of items to return\",\n      \"default\": 20,\n      \"minimum\": 1,\n      \"maximum\": 100\n    },\n    \"filters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"content_types\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Filter by MIME types (e.g., ['text/html', 'application/markdown', 'image/*'])\"\n        },\n        \"created_after\": {\n          \"type\": \"string\",\n          \"format\": \"date-time\",\n          \"description\": \"Show files created after this date\"\n        },\n        \"created_before\": {\n          \"type\": \"string\",\n          \"format\": \"date-time\",\n          \"description\": \"Show files created before this date\"\n        }\n      }\n    },\n    \"sort\": {\n      \"type\": \"string\",\n      \"enum\": [\"created_at\", \"size\"],\n      \"description\": \"Sort field\",\n      \"default\": \"created_at\"\n    },\n    \"sort_order\": {\n      \"type\": \"string\",\n      \"enum\": [\"asc\", \"desc\"], \n      \"description\": \"Sort order\",\n      \"default\": \"desc\"\n    }\n  },\n  \"default\": {}\n}\n"
+            format: application/schema+json
+        output_schemas:
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"items\": {\n      \"type\": \"array\",\n      \"description\": \"Resource items\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"id\": {\n            \"type\": \"string\",\n            \"description\": \"Resource identifier (upload_id)\"\n          },\n          \"filename\": {\n            \"type\": \"string\", \n            \"description\": \"Original filename\"\n          },\n          \"content_type\": {\n            \"type\": \"string\",\n            \"description\": \"MIME type\"\n          },\n          \"size\": {\n            \"type\": \"integer\",\n            \"description\": \"Size in bytes\"\n          },\n          \"created_at\": {\n            \"type\": \"string\",\n            \"format\": \"date-time\",\n            \"description\": \"Creation timestamp\"\n          },\n          \"metadata\": {\n            \"type\": \"object\",\n            \"description\": \"Additional metadata\"\n          }\n        },\n        \"required\": [\"id\", \"content_type\", \"size\", \"created_at\"]\n      }\n    },\n    \"has_more\": {\n      \"type\": \"boolean\",\n      \"description\": \"Whether there are more items beyond the current page\"\n    }\n  },\n  \"required\": [\"items\", \"has_more\"]\n}\n"
+            format: application/schema+json
+      - name: count_resources
+        description: |
+          Get count of resources matching filters (fast operation).
+          Calling: count_resources(request)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "filters": {
+                    "type": "object",
+                    "properties": {
+                      "content_types": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Filter by MIME types"
+                      },
+                      "created_after": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Count files created after this date"
+                      },
+                      "created_before": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Count files created before this date"
+                      }
+                    }
+                  }
+                },
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "total_count": {
+                    "type": "integer",
+                    "description": "Total number of matching resources"
+                  }
+                },
+                "required": ["total_count"]
+              }
+            format: application/schema+json
+    

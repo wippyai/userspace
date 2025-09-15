@@ -1,0 +1,68 @@
+version: "1.0"
+namespace: userspace.user.migration
+
+entries:
+  # userspace.user.migration:01_create_app_user_tables
+  - name: 01_create_app_user_tables
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - userspace_user
+        - auth
+        - security
+      description: Create app_users and app_user_groups tables with indexes
+      depends_on:
+        - ns:wippy.migration
+      target_db: app:db
+      timestamp: "2025-09-13T10:00:00Z"
+    source: file://01_create_app_user_tables.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    
+  # userspace.user.migration:02_init_admin_user
+  - name: 02_init_admin_user
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - userspace_user
+        - admin
+        - bootstrap
+      description: Initialize admin user with randomized credentials on first boot
+      depends_on:
+        - ns:wippy.migration
+        - entry:01_create_app_user_tables
+      target_db: app:db
+      timestamp: "2025-09-13T11:00:00Z"
+    source: file://02_init_admin_user.lua
+    modules:
+      - logger
+      - env
+      - hash
+      - crypto
+      - sql
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    
+  # userspace.user.migration:03_create_token_store_table
+  - name: 03_create_token_store_table
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - userspace_user
+        - auth
+        - tokens
+      description: Create user_auth_tokens table for SQL-backed token storage
+      depends_on:
+        - ns:wippy.migration
+      target_db: app:db
+      timestamp: "2025-09-13T12:00:00Z"
+    source: file://03_create_token_store_table.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+    

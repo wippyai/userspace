@@ -1,0 +1,509 @@
+{{ extends "common/layout" }}
+
+{* Page title and description *}
+{{ block title() }}Connections{{ end }}
+{{ block metaDescription() }}Manage and discover connection components for your workflows{{ end }}
+
+{{ block mainContent() }}
+<div x-data="connectionApp" x-init="initialize()" class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
+                    <iconify-icon icon="tabler:link" class="text-white" width="28" height="28"></iconify-icon>
+                </div>
+                <div class="ml-5">
+                    <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Connections</h1>
+                    <p class="mt-1 text-surface-600 dark:text-surface-400">Connect and manage external services to extend your AI workflows</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Search -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <iconify-icon icon="tabler:search" class="text-surface-400 dark:text-surface-500" width="18" height="18"></iconify-icon>
+                    </div>
+                    <input
+                            type="text"
+                            x-model="searchTerm"
+                            @input="filterSources()"
+                            class="block w-64 pl-10 pr-3 py-2.5 border border-surface-200 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="Search connections...">
+                </div>
+
+                <!-- Connect New Button -->
+                <button @click="activeTab = 'available'" class="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:plus" class="mr-2" width="18" height="18"></iconify-icon>
+                    Connect New
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="mb-8">
+        <div class="border-b border-surface-200 dark:border-surface-600">
+            <nav class="-mb-px flex space-x-8">
+                <button
+                        @click="activeTab = 'my-connections'"
+                        :class="activeTab === 'my-connections' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300'"
+                        class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-all duration-200">
+                    <div class="flex items-center">
+                        <iconify-icon icon="tabler:plug" class="mr-2" width="18" height="18"></iconify-icon>
+                        My Connections
+                        <span class="ml-2 px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200" x-text="myConnections.length"></span>
+                    </div>
+                </button>
+                <button
+                        @click="activeTab = 'available'"
+                        :class="activeTab === 'available' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300'"
+                        class="whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-all duration-200">
+                    <div class="flex items-center">
+                        <iconify-icon icon="tabler:apps" class="mr-2" width="18" height="18"></iconify-icon>
+                        Available
+                        <span class="ml-2 px-2 py-0.5 rounded-md text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300" x-text="availableConnections.length"></span>
+                    </div>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div>
+        <!-- My Connections Tab -->
+        <div x-show="activeTab === 'my-connections'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-4" x-transition:enter-end="opacity-100 transform translate-y-0">
+            <!-- Loading State -->
+            <div x-show="isLoadingMyConnections" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:loader-2" class="text-surface-400 dark:text-surface-500 animate-spin" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Loading connections...</h3>
+            </div>
+
+            <!-- Error State -->
+            <div x-show="!isLoadingMyConnections && myConnectionsError" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:alert-circle" class="text-red-500 dark:text-red-400" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load connections</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="myConnectionsError"></p>
+                <button @click="loadMyConnections()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Retry
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!isLoadingMyConnections && !myConnectionsError && myConnections.length === 0" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:unlink" class="text-surface-400 dark:text-surface-500" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No connections configured</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">Connect your first external service to start integrating with APIs and external systems.</p>
+                <button @click="activeTab = 'available'" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:apps" class="mr-2" width="20" height="20"></iconify-icon>
+                    Browse Available Connections
+                </button>
+            </div>
+
+            <!-- My Connections Grid -->
+            <div x-show="!isLoadingMyConnections && !myConnectionsError && myConnections.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <template x-for="connection in myConnections" :key="connection.component_id">
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full">
+                        <div class="p-6 flex flex-col flex-1">
+                            <!-- Header with Icon -->
+                            <div class="flex items-start mb-4">
+                                <div class="flex items-center">
+                                    <div class="h-14 w-14 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg">
+                                        <iconify-icon :icon="getComponentIcon(connection)" class="text-white" width="28" height="28"></iconify-icon>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-lg font-bold text-surface-900 dark:text-surface-100 mb-1" x-text="connection.meta.title || connection.meta.name || 'Unnamed Connection'"></h3>
+                                        <p x-show="connection.meta.group && connection.meta.group !== 'Connection'" class="text-sm font-medium text-surface-500 dark:text-surface-400" x-text="connection.meta.group"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <p class="text-surface-600 dark:text-surface-300 text-sm leading-relaxed mb-4 flex-1" x-text="connection.meta.description || connection.meta.comment || 'No description available'"></p>
+
+                            <!-- Tags and Status -->
+                            <div class="mb-6">
+                                <!-- Tags -->
+                                <div class="flex flex-wrap gap-2 mb-3" x-show="connection.meta.tags && connection.meta.tags.length > 0">
+                                    <template x-for="tag in (connection.meta.tags || []).slice(0, 3)" :key="tag">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400" x-text="tag"></span>
+                                    </template>
+                                    <span x-show="(connection.meta.tags || []).length > 3" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300" x-text="`+${(connection.meta.tags || []).length - 3}`"></span>
+                                </div>
+
+                                <!-- Status -->
+                                <div x-show="connection.meta.status" class="flex items-center justify-end">
+                                    <div class="flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold" :class="getStatusBadgeClass(connection.meta.status)">
+                                        <div class="w-1.5 h-1.5 rounded-full mr-1.5" :class="getStatusDotClass(connection.meta.status)"></div>
+                                        <span x-text="connection.meta.status || 'Unknown'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex space-x-3 mt-auto">
+                                <button @click="manageConnection(connection)" class="flex-1 inline-flex items-center justify-center px-4 py-2.5 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                                    <iconify-icon icon="tabler:settings" class="mr-2" width="16" height="16"></iconify-icon>
+                                    Manage
+                                </button>
+                                <button @click="deleteConnection(connection)" class="px-4 py-2.5 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200">
+                                    <iconify-icon icon="tabler:trash" width="16" height="16"></iconify-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Available Connections Tab -->
+        <div x-show="activeTab === 'available'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-4" x-transition:enter-end="opacity-100 transform translate-y-0">
+            <!-- Loading State -->
+            <div x-show="isLoadingAvailable" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:loader-2" class="text-surface-400 dark:text-surface-500 animate-spin" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Loading available connections...</h3>
+            </div>
+
+            <!-- Error State -->
+            <div x-show="!isLoadingAvailable && availableError" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:alert-circle" class="text-red-500 dark:text-red-400" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load available connections</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="availableError"></p>
+                <button @click="loadAvailableConnections()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Retry
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!isLoadingAvailable && !availableError && availableConnections.length === 0" class="text-center py-16">
+                <div class="mx-auto h-20 w-20 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-6">
+                    <iconify-icon icon="tabler:apps-off" class="text-surface-400 dark:text-surface-500" width="40" height="40"></iconify-icon>
+                </div>
+                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No connections available</h3>
+                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">There are currently no connection types available for installation.</p>
+                <button @click="loadAvailableConnections()" class="inline-flex items-center px-6 py-3 border border-surface-300 dark:border-surface-600 text-base font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                    <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
+                    Refresh
+                </button>
+            </div>
+
+            <!-- Available Connections Grid -->
+            <div x-show="!isLoadingAvailable && !availableError && availableConnections.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <template x-for="connection in filteredConnections" :key="connection.id">
+                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full">
+                        <div class="p-6 flex flex-col flex-1">
+                            <!-- Header with Icon -->
+                            <div class="flex items-start mb-4">
+                                <div class="h-14 w-14 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 shadow-lg bg-gradient-to-br from-primary-500 to-primary-600">
+                                    <iconify-icon :icon="connection.icon || 'tabler:link'" class="text-white" width="28" height="28"></iconify-icon>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-lg font-bold text-surface-900 dark:text-surface-100 mb-1" x-text="connection.name"></h3>
+                                    <p x-show="connection.group && connection.group !== 'Connection'" class="text-sm font-medium text-surface-500 dark:text-surface-400" x-text="connection.group"></p>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <p class="text-surface-600 dark:text-surface-300 text-sm leading-relaxed mb-4 flex-1" x-text="connection.description"></p>
+
+                            <!-- Tags -->
+                            <div class="flex flex-wrap gap-2 mb-6" x-show="connection.tags && connection.tags.length > 0">
+                                <template x-for="tag in (connection.tags || []).slice(0, 4)" :key="tag">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400" x-text="tag"></span>
+                                </template>
+                                <span x-show="(connection.tags || []).length > 4" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300" x-text="`+${(connection.tags || []).length - 4}`"></span>
+                            </div>
+
+                            <!-- Connect Button -->
+                            <button @click="connectConnection(connection)" class="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 mt-auto">
+                                <iconify-icon icon="tabler:plug" class="mr-2" width="16" height="16"></iconify-icon>
+                                Connect
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div x-show="statusMessage.show" x-transition:enter="transform ease-out duration-300 transition" x-transition:enter-start="translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0" class="fixed bottom-4 right-4 max-w-md z-50">
+        <div class="flex items-center p-4 rounded-xl shadow-lg border" :class="{
+            'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800': statusMessage.type === 'success',
+            'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800': statusMessage.type === 'error',
+            'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800': statusMessage.type === 'info'
+        }">
+            <div class="flex-shrink-0 mr-3">
+                <template x-if="statusMessage.type === 'success'">
+                    <iconify-icon icon="tabler:check-circle" class="h-6 w-6 text-green-600 dark:text-green-400" width="24" height="24"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'error'">
+                    <iconify-icon icon="tabler:alert-circle" class="h-6 w-6 text-red-600 dark:text-red-400" width="24" height="24"></iconify-icon>
+                </template>
+                <template x-if="statusMessage.type === 'info'">
+                    <iconify-icon icon="tabler:info-circle" class="h-6 w-6 text-blue-600 dark:text-blue-400" width="24" height="24"></iconify-icon>
+                </template>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium" :class="{
+                    'text-green-800 dark:text-green-100': statusMessage.type === 'success',
+                    'text-red-800 dark:text-red-100': statusMessage.type === 'error',
+                    'text-blue-800 dark:text-blue-100': statusMessage.type === 'info'
+                }" x-text="statusMessage.text"></p>
+            </div>
+            <div class="flex-shrink-0 ml-3">
+                <button @click="hideStatusMessage" class="inline-flex text-surface-400 hover:text-surface-600 focus:outline-none transition-colors duration-200">
+                    <iconify-icon icon="tabler:x" class="h-5 w-5" width="20" height="20"></iconify-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ block customJs() }}
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('connectionApp', () => ({
+            // State
+            activeTab: 'my-connections',
+            searchTerm: '',
+            wippyApi: null,
+
+            // Loading states
+            isLoadingMyConnections: false,
+            isLoadingAvailable: false,
+
+            // Error states
+            myConnectionsError: null,
+            availableError: null,
+
+            // Data
+            myConnections: [],
+            availableConnections: [],
+
+            // Computed
+            get filteredConnections() {
+                if (!this.searchTerm) {
+                    return this.availableConnections;
+                }
+
+                const term = this.searchTerm.toLowerCase();
+                return this.availableConnections.filter(connection =>
+                    connection.name.toLowerCase().includes(term) ||
+                    connection.description.toLowerCase().includes(term) ||
+                    (connection.tags && connection.tags.some(tag => tag.toLowerCase().includes(term)))
+                );
+            },
+
+            // Status message
+            statusMessage: {
+                show: false,
+                type: 'info',
+                text: '',
+                timeout: null
+            },
+
+            // Methods
+            async initialize() {
+                console.log('Connections page initialized');
+
+                try {
+                    this.wippyApi = await window.initWippyApi();
+                    await this.loadMyConnections();
+                    await this.loadAvailableConnections();
+                } catch (error) {
+                    console.error('Failed to initialize:', error);
+                    this.showStatus('error', 'Failed to initialize page');
+                }
+            },
+
+            async loadMyConnections() {
+                this.isLoadingMyConnections = true;
+                this.myConnectionsError = null;
+
+                try {
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/components/list', {
+                        params: {
+                            class: 'connection',
+                            limit: 100
+                        }
+                    });
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load connections');
+                    }
+
+                    this.myConnections = response.data.components || [];
+                    console.log(`Loaded ${this.myConnections.length} connections`);
+                } catch (error) {
+                    console.error('Error loading my connections:', error);
+                    this.myConnectionsError = error.message;
+                    this.myConnections = [];
+                } finally {
+                    this.isLoadingMyConnections = false;
+                }
+            },
+
+            async loadAvailableConnections() {
+                this.isLoadingAvailable = true;
+                this.availableError = null;
+
+                try {
+                    const response = await this.wippyApi.api.get('/api/v1/userspace/components/discover', {
+                        params: {
+                            class: 'connection',
+                            include_ui: true
+                        }
+                    });
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to load available connections');
+                    }
+
+                    // Map registry data to include user-facing properties
+                    this.availableConnections = (response.data.components || []).map(component => ({
+                        ...component,
+                        tags: component.tags || [],
+                        group: component.group || 'Connection'
+                    }));
+
+                    console.log(`Loaded ${this.availableConnections.length} available connections`);
+                } catch (error) {
+                    console.error('Error loading available connections:', error);
+                    this.availableError = error.message;
+                    this.availableConnections = [];
+                } finally {
+                    this.isLoadingAvailable = false;
+                }
+            },
+
+            filterSources() {
+                // Filtering happens automatically through computed property
+            },
+
+            // Helper method to get the appropriate ID for linking to discovered adapters
+            getLinkingId(component) {
+                // Use display_id from meta if available, otherwise fall back to impl_id
+                return component.meta?.display_id || component.impl_id;
+            },
+
+            getComponentIcon(component) {
+                // Get icon from available connections mapping via display_id or impl_id
+                const linkingId = this.getLinkingId(component);
+                const availableConnection = this.availableConnections.find(connection => connection.id === linkingId);
+                return (availableConnection && availableConnection.icon) || 'tabler:link';
+            },
+
+            getStatusBadgeClass(status) {
+                const classMap = {
+                    'Active': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+                    'Error': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+                    'Warning': 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+                    'Inactive': 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400'
+                };
+                return classMap[status] || classMap['Inactive'];
+            },
+
+            getStatusDotClass(status) {
+                const classMap = {
+                    'Active': 'bg-green-500',
+                    'Error': 'bg-red-500',
+                    'Warning': 'bg-yellow-500',
+                    'Inactive': 'bg-gray-400'
+                };
+                return classMap[status] || classMap['Inactive'];
+            },
+
+            connectConnection(connection) {
+                if (connection.create_ui_id) {
+                    this.wippyApi.iframe.navigate(`/c/${connection.create_ui_id}`);
+                } else {
+                    this.showStatus('error', `No creation interface available for ${connection.name}`);
+                }
+            },
+
+            manageConnection(component) {
+                // Get manage UI ID from available connections mapping using display_id or impl_id
+                const linkingId = this.getLinkingId(component);
+                const availableConnection = this.availableConnections.find(connection => connection.id === linkingId);
+
+                if (availableConnection && availableConnection.manage_ui_id) {
+                    const manageUrl = `/c/${availableConnection.manage_ui_id}/${component.component_id}`;
+                    console.log('Navigating to manage URL:', manageUrl);
+                    this.wippyApi.iframe.navigate(manageUrl);
+                } else {
+                    this.showStatus('error', `No management interface available for ${component.meta.title || 'this connection'}`);
+                }
+            },
+
+            async deleteConnection(component) {
+                try {
+                    const confirmed = await this.wippyApi.iframe.confirm({
+                        message: `Are you sure you want to disconnect ${component.meta.title || 'this connection'}?`,
+                        header: 'Confirm Deletion',
+                        icon: 'tabler:trash',
+                        acceptLabel: 'Delete',
+                        rejectLabel: 'Cancel',
+                        acceptClass: 'p-button-danger',
+                        rejectClass: 'p-button-secondary'
+                    });
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    const response = await this.wippyApi.api.delete(`/api/v1/userspace/components/${component.component_id}`);
+
+                    if (!response.data.success) {
+                        throw new Error(response.data.error || 'Failed to delete component');
+                    }
+
+                    // Remove from list
+                    this.myConnections = this.myConnections.filter(c => c.component_id !== component.component_id);
+                    this.showStatus('success', `${component.meta.title || 'Connection'} has been disconnected`);
+                } catch (error) {
+                    console.error('Failed to delete connection:', error);
+                    this.showStatus('error', `Failed to delete: ${error.message}`);
+                }
+            },
+
+            // Status message helpers
+            showStatus(type, text, duration = 5000) {
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                }
+
+                this.statusMessage.type = type;
+                this.statusMessage.text = text;
+                this.statusMessage.show = true;
+
+                this.statusMessage.timeout = setTimeout(() => {
+                    this.hideStatusMessage();
+                }, duration);
+            },
+
+            hideStatusMessage() {
+                this.statusMessage.show = false;
+                if (this.statusMessage.timeout) {
+                    clearTimeout(this.statusMessage.timeout);
+                    this.statusMessage.timeout = null;
+                }
+            }
+        }));
+    });
+</script>
+{{ end }}

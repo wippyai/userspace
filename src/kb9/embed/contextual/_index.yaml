@@ -1,0 +1,166 @@
+version: "1.0"
+namespace: userspace.kb9.embed.contextual
+
+entries:
+  # userspace.kb9.embed.contextual:contextual_embedder
+  - name: contextual_embedder
+    kind: contract.binding
+    meta:
+      comment: AI-powered contextual embedding following Anthropic's research
+      tags:
+        - kb9
+        - embed
+        - contextual
+        - anthropic
+        - ai-enhanced
+      kb9_plugin:
+        name: Contextual Embedder
+        description: AI-powered contextual embedding based on Anthropic's research. Generates document summaries and enriches chunks with contextual information for improved retrieval accuracy.
+        capabilities:
+          - contextual_embedding
+          - document_summaries
+          - chunk_enrichment
+          - prompt_caching
+          - hierarchical_storage
+        id: userspace.kb9.embed.contextual:contextual_embedder
+        options_schema:
+          type: object
+          properties:
+            chunk_enrichment_model:
+              type: string
+              title: Chunk Enrichment Model
+              description: AI model for generating contextual information for chunks (smaller models recommended)
+              x-model-category: generate
+              x-order: 1
+              x-widget: model_select
+            chunk_size:
+              type: integer
+              title: Chunk Size
+              description: Maximum characters per content chunk
+              default: 1000
+              maximum: 2500
+              minimum: 300
+              x-order: 3
+              x-widget: number
+            context_length:
+              type: integer
+              title: Context Length
+              description: Target length for contextual snippets (characters)
+              default: 250
+              maximum: 500
+              minimum: 25
+              x-order: 5
+              x-widget: number
+            generate_summaries:
+              type: boolean
+              title: Generate Document Summaries
+              description: Create AI-generated summaries of documents
+              default: true
+              x-order: 7
+              x-widget: checkbox
+            generate_title:
+              type: boolean
+              title: Generate Document Titles
+              description: Auto-generate descriptive titles for documents
+              default: true
+              x-order: 8
+              x-widget: checkbox
+            overlap:
+              type: integer
+              title: Chunk Overlap
+              description: Character overlap between chunks
+              default: 150
+              maximum: 400
+              minimum: 0
+              x-order: 4
+              x-widget: number
+            summary_length:
+              type: integer
+              title: Summary Length
+              description: Target length for document summaries (characters)
+              default: 750
+              maximum: 2200
+              minimum: 200
+              x-order: 6
+              x-widget: number
+            summary_model:
+              type: string
+              title: Summary Model
+              description: AI model for generating document summaries (recommended to use smaller models with good caching)
+              x-model-category: generate
+              x-order: 2
+              x-widget: model_select
+            title_prompt_tip:
+              type: string
+              title: Title Generation Guidance
+              description: 'Additional instructions for title generation (e.g., ''Use format: [Type]: [Subject] - [Details]'' or ''Include version numbers when present'')'
+              default: ""
+              x-order: 9
+              x-widget: textarea
+          required:
+            - chunk_enrichment_model
+            - summary_model
+        provider: KB9 Core
+    contracts:
+      - contract: userspace.kb9:kb9_validate_contract
+        methods:
+          validate_options: userspace.kb9.embed.contextual:validate_options_func
+      - contract: userspace.kb9:kb9_init_contract
+        context_required:
+          - component_id
+        methods:
+          init: userspace.kb9.embed.contextual:init_func
+      - contract: userspace.kb9:kb9_embed_contract
+        context_required:
+          - component_id
+        methods:
+          embed: userspace.kb9.embed.contextual:embed_func
+    
+  # userspace.kb9.embed.contextual:embed_func
+  - name: embed_func
+    kind: function.lua
+    meta:
+      comment: Contextual embedding with document summaries and enriched chunks
+      tags:
+        - kb9
+        - embed
+        - contextual
+        - ai-enhanced
+    source: file://embed_func.lua
+    modules:
+      - text
+      - uuid
+      - json
+      - time
+    imports:
+      prompt: wippy.llm:prompt
+      compress: wippy.llm.util:compress
+      llm: wippy.llm:llm
+    method: handle
+    
+  # userspace.kb9.embed.contextual:init_func
+  - name: init_func
+    kind: function.lua
+    meta:
+      comment: Initialize contextual embedder (no setup required)
+      tags:
+        - kb9
+        - embed
+        - contextual
+        - init
+    source: file://init_func.lua
+    method: handle
+    
+  # userspace.kb9.embed.contextual:validate_options_func
+  - name: validate_options_func
+    kind: function.lua
+    meta:
+      comment: Validates options for contextual embedder
+      tags:
+        - kb9
+        - embed
+        - contextual
+        - validation
+    source: file://validate_options_func.lua
+    method: handle
+    

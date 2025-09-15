@@ -1,0 +1,113 @@
+version: "1.0"
+namespace: userspace.kb9.query.adaptive
+
+entries:
+  # userspace.kb9.query.adaptive:adaptive_search
+  - name: adaptive_search
+    kind: contract.binding
+    meta:
+      comment: AI-powered adaptive search with document-aware query generation
+      tags:
+        - kb9
+        - query
+        - adaptive
+        - ai-enhanced
+        - document-aware
+      kb9_plugin:
+        name: Adaptive Document Search
+        description: 'Two-stage search: find relevant documents via summaries, then use LLM to generate targeted queries for detailed chunk retrieval within those documents. Only works with summarizing embedders.'
+        capabilities:
+          - document_aware_search
+          - llm_query_generation
+          - hierarchical_search
+          - context_enhancement
+        id: userspace.kb9.query.adaptive:adaptive_search
+        options_schema:
+          type: object
+          properties:
+            analysis_model:
+              type: string
+              title: Analysis Model
+              description: LLM model for query analysis and generation (generate models)
+              required: true
+              x-model-category: generate
+              x-order: 1
+              x-widget: model_select
+            enable_reranking:
+              type: boolean
+              title: Enable LLM Re-ranking
+              description: Use LLM to re-rank final combined results against original query
+              default: false
+              x-order: 3
+              x-widget: checkbox
+            extra_prompt:
+              type: string
+              title: Additional Search Instructions
+              description: Extra instructions to guide the AI's document analysis and query generation
+              default: ""
+              x-order: 2
+              x-widget: textarea
+          required:
+            - analysis_model
+        provider: KB9 Core
+    contracts:
+      - contract: userspace.kb9:kb9_validate_contract
+        methods:
+          validate_options: userspace.kb9.query.adaptive:validate_options_func
+      - contract: userspace.kb9:kb9_init_contract
+        context_required:
+          - component_id
+        methods:
+          init: userspace.kb9.query.adaptive:init_func
+      - contract: userspace.kb9:kb9_query_contract
+        context_required:
+          - component_id
+        methods:
+          query: userspace.kb9.query.adaptive:query_func
+    
+  # userspace.kb9.query.adaptive:init_func
+  - name: init_func
+    kind: function.lua
+    meta:
+      comment: Initialize adaptive query (no setup required)
+      tags:
+        - kb9
+        - query
+        - adaptive
+        - init
+    source: file://init_func.lua
+    method: handle
+    
+  # userspace.kb9.query.adaptive:query_func
+  - name: query_func
+    kind: function.lua
+    meta:
+      comment: Adaptive document-aware search with LLM query generation
+      tags:
+        - kb9
+        - query
+        - adaptive
+        - llm
+    source: file://query_func.lua
+    modules:
+      - ctx
+      - text
+    imports:
+      prompt: wippy.llm:prompt
+      llm: wippy.llm:llm
+      reader: userspace.kb9.persist:reader
+    method: handle
+    
+  # userspace.kb9.query.adaptive:validate_options_func
+  - name: validate_options_func
+    kind: function.lua
+    meta:
+      comment: Validates options for adaptive query
+      tags:
+        - kb9
+        - query
+        - adaptive
+        - validation
+    source: file://validate_options_func.lua
+    method: handle
+    

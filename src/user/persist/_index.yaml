@@ -1,0 +1,32 @@
+version: "1.0"
+namespace: userspace.user.persist
+
+entries:
+  # userspace.user.persist:user_groups_repo
+  - name: user_groups_repo
+    kind: library.lua
+    meta:
+      comment: Userspace user groups repository library
+      description: User security group assignment and management
+    source: file://user_groups_repo.lua
+    modules:
+      - sql
+      - time
+    imports:
+      consts: userspace.user:consts
+    
+  # userspace.user.persist:user_repo
+  - name: user_repo
+    kind: library.lua
+    meta:
+      comment: Userspace user repository library
+      description: User account management with secure password handling
+    source: file://user_repo.lua
+    modules:
+      - sql
+      - hash
+      - crypto
+      - time
+    imports:
+      consts: userspace.user:consts
+    

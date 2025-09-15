@@ -1,0 +1,98 @@
+version: "1.0"
+namespace: userspace.kb9.embed.basic
+
+entries:
+  # userspace.kb9.embed.basic:basic_embedder
+  - name: basic_embedder
+    kind: contract.binding
+    meta:
+      comment: Basic content chunking embedder implementation
+      tags:
+        - kb9
+        - embed
+        - basic
+        - chunking
+      kb9_plugin:
+        name: Basic Embedder
+        description: Simple content chunking with configurable parameters. Creates document nodes with child chunks for efficient search and retrieval.
+        capabilities:
+          - chunking
+          - overlap
+          - basic_processing
+          - hierarchical_storage
+        id: userspace.kb9.embed.basic:basic_embedder
+        options_schema:
+          type: object
+          properties:
+            chunk_size:
+              type: integer
+              title: Chunk Size
+              description: Maximum characters per content chunk
+              default: 500
+              maximum: 2000
+              x-widget: number
+            overlap:
+              type: integer
+              title: Chunk Overlap
+              description: Character overlap between chunks
+              default: 120
+              maximum: 300
+              minimum: 0
+              x-widget: number
+          required: {}
+        provider: KB9 Core
+    contracts:
+      - contract: userspace.kb9:kb9_validate_contract
+        methods:
+          validate_options: userspace.kb9.embed.basic:validate_options_func
+      - contract: userspace.kb9:kb9_init_contract
+        context_required:
+          - component_id
+        methods:
+          init: userspace.kb9.embed.basic:init_func
+      - contract: userspace.kb9:kb9_embed_contract
+        context_required:
+          - component_id
+        methods:
+          embed: userspace.kb9.embed.basic:embed_func
+    
+  # userspace.kb9.embed.basic:embed_func
+  - name: embed_func
+    kind: function.lua
+    meta:
+      comment: Basic content chunking and node creation
+      tags:
+        - kb9
+        - embed
+        - chunking
+    source: file://embed_func.lua
+    modules:
+      - text
+      - uuid
+      - json
+    method: handle
+    
+  # userspace.kb9.embed.basic:init_func
+  - name: init_func
+    kind: function.lua
+    meta:
+      comment: Initialize basic embedder (no setup required)
+      tags:
+        - kb9
+        - embed
+        - init
+    source: file://init_func.lua
+    method: handle
+    
+  # userspace.kb9.embed.basic:validate_options_func
+  - name: validate_options_func
+    kind: function.lua
+    meta:
+      comment: Validates options for basic embedder
+      tags:
+        - kb9
+        - embed
+        - validation
+    source: file://validate_options_func.lua
+    method: handle
+    

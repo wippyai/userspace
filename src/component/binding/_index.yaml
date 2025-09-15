@@ -1,0 +1,152 @@
+version: "1.0"
+namespace: userspace.component.binding
+
+entries:
+  # userspace.component.binding:component_service_impl
+  - name: component_service_impl
+    kind: contract.binding
+    meta:
+      comment: Default implementation of component service contract
+      tags:
+        - components
+        - userspace
+        - implementation
+      description: Provides standard implementation of user component management with access control and deletable contract support
+    contracts:
+      - contract: userspace.component:component_service
+        default: true
+        methods:
+          delete_component: userspace.component.binding:delete_component_func
+          get_access_context: userspace.component.binding:get_access_context_func
+          get_access_context_by_meta: userspace.component.binding:get_access_context_by_meta_func
+          get_component: userspace.component.binding:get_component_func
+          list_components: userspace.component.binding:list_components_func
+          register_component: userspace.component.binding:register_component_func
+          update_component: userspace.component.binding:update_component_func
+    
+  # userspace.component.binding:delete_component_func
+  - name: delete_component_func
+    kind: function.lua
+    meta:
+      comment: Delete a component with deletable contract support
+      tags:
+        - components
+        - delete
+      description: Deletes component with DELETE access validation and optional delegated deletion
+    source: file://delete_component_func.lua
+    modules:
+      - sql
+      - security
+      - contract
+      - json
+    imports:
+      component_reader: userspace.component.persist:component_reader
+      ops: userspace.component.persist:ops
+    method: handle
+    
+  # userspace.component.binding:get_access_context_by_meta_func
+  - name: get_access_context_by_meta_func
+    kind: function.lua
+    meta:
+      comment: Get component access context by metadata filters
+      tags:
+        - components
+        - execution
+        - metadata
+      description: Retrieves component access context using metadata filters with uniqueness validation
+    source: file://get_access_context_by_meta_func.lua
+    modules:
+      - security
+    imports:
+      component_reader: userspace.component.persist:component_reader
+      ops: userspace.component.persist:ops
+    method: handle
+    
+  # userspace.component.binding:get_access_context_func
+  - name: get_access_context_func
+    kind: function.lua
+    meta:
+      comment: Get component access context for execution
+      tags:
+        - components
+        - execution
+      description: Retrieves enhanced access context with ID, context, and access level
+    source: file://get_access_context_func.lua
+    modules:
+      - security
+      - json
+    imports:
+      component_reader: userspace.component.persist:component_reader
+      ops: userspace.component.persist:ops
+    method: handle
+    
+  # userspace.component.binding:get_component_func
+  - name: get_component_func
+    kind: function.lua
+    meta:
+      comment: Get component public information
+      tags:
+        - components
+        - read
+      description: Retrieves component metadata with READ access validation
+    source: file://get_component_func.lua
+    modules:
+      - security
+    imports:
+      component_reader: userspace.component.persist:component_reader
+      ops: userspace.component.persist:ops
+    method: handle
+    
+  # userspace.component.binding:list_components_func
+  - name: list_components_func
+    kind: function.lua
+    meta:
+      comment: List accessible components
+      tags:
+        - components
+        - list
+      description: Lists components with filtering and pagination
+    source: file://list_components_func.lua
+    modules:
+      - security
+    imports:
+      component_reader: userspace.component.persist:component_reader
+    method: handle
+    
+  # userspace.component.binding:register_component_func
+  - name: register_component_func
+    kind: function.lua
+    meta:
+      comment: Register a new component implementation
+      tags:
+        - components
+        - create
+      description: Creates a new component with validation and access control
+    source: file://register_component_func.lua
+    modules:
+      - sql
+      - json
+      - uuid
+      - time
+      - security
+    imports:
+      ops: userspace.component.persist:ops
+    method: handle
+    
+  # userspace.component.binding:update_component_func
+  - name: update_component_func
+    kind: function.lua
+    meta:
+      comment: Update component metadata and access
+      tags:
+        - components
+        - update
+      description: Updates component using command pattern with validation and access control
+    source: file://update_component_func.lua
+    modules:
+      - sql
+      - security
+    imports:
+      ops: userspace.component.persist:ops
+    method: handle
+    

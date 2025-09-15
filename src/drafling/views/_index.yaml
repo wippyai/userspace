@@ -1,0 +1,49 @@
+version: "1.0"
+namespace: userspace.drafling.views
+
+entries:
+  # userspace.drafling.views:editor
+  - name: editor
+    kind: template.jet
+    meta:
+      name: editor
+      type: view.page
+      title: Manage Project
+      icon: tabler:edit
+      description: Edit and manage drafling documents with categories and entries
+      order: 100
+      content_type: text/html
+      announced: false
+      secure: true
+    source: file://editor.jet
+    set: keeper.views.common:templates
+    resources:
+      - userspace.drafling.views:marked
+    
+  # userspace.drafling.views:marked
+  - name: marked
+    kind: registry.entry
+    meta:
+      name: Marked.js
+      type: view.resource
+      order: 12
+      resource_type: script
+      template_set: app.views.common:templates
+      url: https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js
+    
+  # userspace.drafling.views:projects
+  - name: projects
+    kind: template.jet
+    meta:
+      name: documents
+      type: view.page
+      title: Projects
+      icon: tabler:folder
+      description: Create and manage drafling documents and documents from templates
+      order: 50
+      content_type: text/html
+      announced: true
+      secure: true
+    source: file://projects.jet
+    set: keeper.views.common:templates
+    

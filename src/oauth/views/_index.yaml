@@ -1,0 +1,46 @@
+version: "1.0"
+namespace: userspace.oauth.views
+
+entries:
+  # userspace.oauth.views:create_oauth_connection
+  - name: create_oauth_connection
+    kind: template.jet
+    meta:
+      name: create_oauth_connection
+      type: view.page
+      title: Connect OAuth Provider
+      icon: tabler:plug-connected
+      description: Configure and connect to an OAuth provider
+      content_type: text/html
+      secure: true
+    source: file://create_oauth_connection.jet
+    set: app.views.common:templates
+    
+  # userspace.oauth.views:manage_oauth_connection
+  - name: manage_oauth_connection
+    kind: template.jet
+    meta:
+      name: manage_oauth_connection
+      type: view.page
+      title: Manage OAuth Connection
+      icon: tabler:settings
+      description: Manage and configure OAuth connection settings
+      content_type: text/html
+      secure: true
+    source: file://manage_oauth_connection.jet
+    set: app.views.common:templates
+    
+  # userspace.oauth.views:oauth_callback
+  - name: oauth_callback
+    kind: template.jet
+    meta:
+      name: oauth_callback
+      type: view.page
+      title: OAuth Callback
+      icon: tabler:check-circle
+      description: OAuth authorization callback page
+      content_type: text/html
+      secure: false
+    source: file://oauth_callback.jet
+    set: app.views.common:templates
+    

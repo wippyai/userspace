@@ -1,0 +1,30 @@
+version: "1.0"
+namespace: userspace.user.security
+
+entries:
+  # userspace.user.security:token_storage
+  - name: token_storage
+    kind: store.sql
+    meta:
+      comment: SQL-backed storage for authentication tokens
+      description: Uses dedicated user_auth_tokens table for secure token storage
+    cleanup_interval: 1h
+    database: app:db
+    expire_column_name: expires_at
+    id_column_name: token_key
+    lifecycle:
+      auto_start: true
+    payload_column_name: token_value
+    table_name: user_auth_tokens
+    
+  # userspace.user.security:tokens
+  - name: tokens
+    kind: security.token_store
+    meta:
+      comment: Authentication token store for userspace users
+      description: Manages JWT tokens with SQL backend storage
+    default_expiration: 24h
+    store: userspace.user.security:token_storage
+    token_key: ${ENV_TOKEN_KEY:-userspace-auth-key}
+    token_length: 32
+    
