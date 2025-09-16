@@ -51,6 +51,7 @@ local function handle(request_dto)
     if not config or not config.embedding_model or not config.query_contract then
         return {
             success = false,
+            error = "Component is not properly configured",
             items = {},
             count = 0
         }
@@ -64,6 +65,7 @@ local function handle(request_dto)
     if err or not embed_response.result or #embed_response.result == 0 then
         return {
             success = false,
+            error = err or "Failed to get embedding",
             items = {},
             count = 0
         }

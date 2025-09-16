@@ -37,3 +37,18 @@ entries:
       comment: MCP process execution service (for local MCP)
     default_work_dir: ""
     
+  # userspace.mcp:mcp.spec
+  - name: mcp.spec
+    kind: registry.entry
+    meta:
+      type: module.spec
+      comment: Model Context Protocol (MCP) integration for tool servers - client communication, server registration, and process management
+      tags:
+        - mcp
+        - tools
+        - client
+        - server
+        - integration
+        - protocol
+    source: file://mcp.spec.md
+    

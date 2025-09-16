@@ -1,0 +1,79 @@
+version: "1.0"
+namespace: userspace.mcp.traits
+
+entries:
+  # userspace.mcp.traits:individual_tools_caller
+  - name: individual_tools_caller
+    kind: function.lua
+    meta:
+      type: tool
+      title: MCP Tool
+      comment: Individual tools MCP caller with real schema validation
+    source: file://individual_tools_caller.lua
+    modules:
+      - json
+      - time
+      - ctx
+    imports:
+      mcp_client: userspace.mcp:client
+    method: individual_tools_handler
+
+  # userspace.mcp.traits:command_caller
+  - name: command_caller
+    kind: function.lua
+    meta:
+      type: tool
+      title: MCP Tool
+      comment: Command-pattern MCP tool caller with flexible schema
+    source: file://command_caller.lua
+    modules:
+      - json
+      - time
+      - ctx
+    imports:
+      mcp_client: userspace.mcp:client
+    method: command_caller_handler
+
+  # userspace.mcp.traits:init_mcp_integration
+  - name: init_mcp_integration
+    kind: function.lua
+    meta:
+      type: function
+      comment: Initializes MCP server integration trait with dynamic tool discovery and creation
+    source: file://init_mcp_integration.lua
+    modules:
+      - json
+      - time
+      - ctx
+    imports:
+      mcp_client: userspace.mcp:client
+    method: execute
+
+  # userspace.mcp.traits:mcp_integration
+  - name: client
+    kind: registry.entry
+    meta:
+      name: MCP Integration
+      type: agent.trait
+      comment: |
+        Connects to MCP server and dynamically integrates all available tools.
+        Build function creates appropriate tools based on integration mode.
+        
+        Required context at binding level:
+        - server_id: MCP server identifier (e.g. "filesystem_server")
+        
+        Optional context at binding level:
+        - integration_mode: Integration strategy (default: "individual_tools")
+          * "individual_tools" - Single tool with real schemas, tool selection via parameters
+          * "command_caller" - Individual pre-bound tools with flexible schemas per MCP tool
+          * "unified_tool" - Single tool that can call any MCP tool (legacy)
+        - tool_prefix: String to prefix tool names (default: "")
+        - tool_name: Name for individual_tools mode (default: "mcp_tools")
+        - selected_tools: Array of tool names to filter (default: all tools)
+      tags:
+        - mcp
+        - tools
+        - integration
+        - dynamic
+        - build_function
+    build_func_id: userspace.mcp.traits:init_mcp_integration

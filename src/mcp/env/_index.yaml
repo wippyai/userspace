@@ -16,6 +16,7 @@ entries:
     kind: env.variable
     meta:
       comment: MCP client version
+      private: true
     default: 1.0.0
     storage: app.env:router
     variable: MCP_CLIENT_VERSION
@@ -25,6 +26,7 @@ entries:
     kind: env.variable
     meta:
       comment: Default executor ID for MCP process spawning
+      private: true
     default: userspace.mcp:executor
     storage: app.env:router
     variable: MCP_EXECUTOR_ID
@@ -34,6 +36,7 @@ entries:
     kind: env.variable
     meta:
       comment: MCP protocol version to use
+      private: true
     default: "2024-11-05"
     storage: app.env:router
     variable: MCP_PROTOCOL_VERSION

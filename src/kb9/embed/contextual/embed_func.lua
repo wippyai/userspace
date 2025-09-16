@@ -272,8 +272,6 @@ local function merge_small_chunks(chunks, options)
     local enable_merging = options.enable_chunk_merging ~= false
     if not enable_merging or #chunks <= 1 then return chunks end
 
-    print(string.format("Chunk merging: min_size=%d, max_merged=%d, total_chunks=%d", min_chunk_size, max_merged_size, #chunks))
-
     local small_sequences = identify_small_sequences(chunks, min_chunk_size)
     if #small_sequences == 0 then
         print("No small chunks found, using original chunks")
