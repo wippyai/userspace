@@ -108,7 +108,7 @@ local function handler()
         })
         return
     end
-print("DONE", result, tostring(embed_err))
+
     if not result.success then
         res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)

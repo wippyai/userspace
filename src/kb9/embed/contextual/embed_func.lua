@@ -386,7 +386,7 @@ local function process_chunks_parallel(pre_summary, chunks, chunk_enrichment_mod
             chunk_worker(worker_id, work_ch, result_ch, done_ch, pre_summary, chunk_enrichment_model, context_length)
         end)
     end
-print(chunk_count, work_items, worker_count)
+
     for i = 2, chunk_count do
         work_ch:send({ index = i, chunk = chunks[i] })
     end
