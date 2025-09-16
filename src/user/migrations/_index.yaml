@@ -1,8 +1,8 @@
 version: "1.0"
-namespace: userspace.user.migration
+namespace: userspace.user.migrations
 
 entries:
-  # userspace.user.migration:01_create_app_user_tables
+  # userspace.user.migrations:01_create_app_user_tables
   - name: 01_create_app_user_tables
     kind: function.lua
     meta:
@@ -21,7 +21,7 @@ entries:
       migration: wippy.migration:migration
     method: migrate
 
-  # userspace.user.migration:02_init_admin_user
+  # userspace.user.migrations:02_init_admin_user
   - name: 02_init_admin_user
     kind: function.lua
     meta:
@@ -46,7 +46,7 @@ entries:
       - hash
       - crypto
 
-  # userspace.user.migration:03_create_token_store_table
+  # userspace.user.migrations:03_create_token_store_table
   - name: 03_create_token_store_table
     kind: function.lua
     meta:
