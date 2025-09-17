@@ -1,0 +1,203 @@
+{{ extends "onboard/step" }}
+
+{{ block title() }}Knowledge Bases and Information Storage{{ end }}
+
+{{ block stepContent() }}
+<div class="max-w-4xl mx-auto" x-data="knowledgeBaseTutorialApp()">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-surface-900 dark:text-surface-100 mb-4">
+            Knowledge Bases and Information Storage
+        </h1>
+        <p class="text-xl text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
+            Organize information into searchable knowledge bases.
+        </p>
+    </div>
+
+    <!-- What Are Knowledge Bases -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:brain" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">What Are Knowledge Bases?</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300">
+            Knowledge bases are organized collections of information stored locally on your system. Think of them as smart filing cabinets where you can store documents, notes, and data that authorized agents can search through and reference when helping you.
+        </p>
+    </div>
+
+    <!-- How You Can Use Them -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:bulb" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">How You Can Use Them</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <iconify-icon icon="tabler:briefcase" class="text-orange-500" width="20" height="20"></iconify-icon>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Project Documentation</h4>
+                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">
+                    Store specs, requirements, meeting notes that agents can reference when working on tasks
+                </div>
+            </div>
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <iconify-icon icon="tabler:book" class="text-purple-500" width="20" height="20"></iconify-icon>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Research Materials</h4>
+                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">
+                    Collect articles, papers, and references for agents to cite and build upon
+                </div>
+            </div>
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <iconify-icon icon="tabler:building" class="text-blue-500" width="20" height="20"></iconify-icon>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Company Knowledge</h4>
+                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">
+                    Policies, procedures, and institutional knowledge that agents can consult
+                </div>
+            </div>
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <iconify-icon icon="tabler:puzzle" class="text-red-500" width="20" height="20"></iconify-icon>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Learning Resources</h4>
+                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">
+                    Tutorials, guides, and reference materials for agents to learn from
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Integration -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:robot" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Agent Integration</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-4">
+            Agents need specific permissions to access knowledge bases. The Agent Manager controls which agents can search and retrieve information from your stored content.
+        </p>
+
+        <div class="space-y-3">
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <iconify-icon icon="tabler:search" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Smart Search</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Authorized agents find relevant information using natural language queries</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <iconify-icon icon="tabler:share" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Cross-Agent Access</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Multiple permitted agents can reference the same knowledge base for consistency</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <iconify-icon icon="tabler:brain" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Context-Aware Responses</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Agents provide more informed answers using your stored knowledge</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Getting Started -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:rocket" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Getting Started</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-4">
+            Knowledge bases work immediately with your local setup. In the Knowledge Bases page, you'll find a bot icon - the knowledge base manager that can help you create, manage, or communicate with multiple knowledge bases.
+        </p>
+
+        <div class="space-y-3">
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold text-xs">1</span>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Visit Knowledge Bases</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Navigate to the knowledge bases section from your main interface</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold text-xs">2</span>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Create Your First Knowledge Base</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Use the bot icon or browse available sources to set up your first knowledge base</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold text-xs">3</span>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Add Content</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Upload files, add text, or import existing documents</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Need Help? -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:settings" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Flexible and Extensible</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-4">
+            Need specialized knowledge base configurations, custom search approaches, or integration with external systems? The <span class="font-medium">Maker</span> agent can help build exactly what you need.
+        </p>
+
+        <div class="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div class="flex items-start gap-2">
+                <iconify-icon icon="tabler:info-circle" class="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <p class="text-sm text-amber-800 dark:text-amber-200">
+                    The Maker agent can create custom knowledge base types, specialized search algorithms, or integrate with your existing data systems.
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function knowledgeBaseTutorialApp() {
+        return {
+            async init() {
+                console.log('Knowledge base tutorial initialized');
+            }
+        }
+    }
+</script>
+{{ end }}

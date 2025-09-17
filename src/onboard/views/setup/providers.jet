@@ -11,7 +11,7 @@
             Connect Your AI
         </h1>
         <p class="text-xl text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
-            Configure your AI providers to get started with Wippy. OpenRouter is required for access to multiple model families.
+            Configure your AI providers to get started with Wippy.
         </p>
     </div>
 
@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <!-- Success Display (Only when all providers work) -->
+    <!-- Success Display -->
     <div x-show="setupComplete && setupSuccess" x-transition class="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-6">
         <div class="flex items-center justify-center gap-3">
             <iconify-icon icon="tabler:check-circle" class="text-green-600 dark:text-green-400" width="24" height="24"></iconify-icon>
@@ -151,28 +151,19 @@
         <iconify-icon icon="tabler:key" class="text-surface-400 dark:text-surface-600 mb-4" width="64" height="64"></iconify-icon>
         <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Add OpenRouter API Key to Continue</h3>
         <p class="text-surface-600 dark:text-surface-400 max-w-2xl mx-auto text-sm leading-relaxed">
-            OpenRouter provides access to Claude 4, GPT-5, Gemini, and other leading AI models through a single API.
-            Adding an OpenAI key is optional but recommended for embedding support and enhanced features.
+            OpenRouter provides access to Claude 4, GPT-5, Gemini, and other leading AI models through a single API. Adding an OpenAI key is optional but recommended for embedding support and enhanced features.
         </p>
     </div>
 
-    <!-- Additional Info -->
-    <div class="space-y-4 mt-8">
-        <div class="text-center text-sm text-surface-500 dark:text-surface-500">
-            API keys are stored securely and never shared with third parties
-        </div>
-
-        <!-- Additional Providers Notice -->
-        <div class="text-center">
-            <div class="bg-surface-50 dark:bg-surface-900 rounded-xl p-4">
-                <p class="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
-                    <iconify-icon icon="tabler:info-circle" class="inline mr-1" width="16" height="16"></iconify-icon>
-                    Need Anthropic direct access or local models? Additional providers like Anthropic, Ollama, LM Studio,
-                    and LocalAI can be configured later through the
-                    <span class="font-medium text-surface-700 dark:text-surface-300">Registry</span> or
-                    <span class="font-medium text-surface-700 dark:text-surface-300">Maker Agent</span>.
-                </p>
-            </div>
+    <!-- Footer Information -->
+    <div class="text-center mt-8">
+        <div class="bg-surface-50 dark:bg-surface-900 rounded-xl p-4">
+            <p class="text-sm text-surface-600 dark:text-surface-400 leading-relaxed mb-3">
+                Need Anthropic direct access or local models? Additional providers like Anthropic, Ollama, LM Studio, and LocalAI can be configured later through the <span class="font-medium text-surface-700 dark:text-surface-300">Registry</span> or <span class="font-medium text-surface-700 dark:text-surface-300">Maker Agent</span>.
+            </p>
+            <p class="text-sm text-surface-500 dark:text-surface-500">
+                API keys are stored securely and never shared with third parties
+            </p>
         </div>
     </div>
 </div>

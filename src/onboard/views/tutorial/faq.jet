@@ -1,0 +1,555 @@
+{{ extends "onboard/step" }}
+
+{{ block title() }}Frequently Asked Questions{{ end }}
+
+{{ block stepContent() }}
+<div class="max-w-4xl mx-auto" x-data="faqApp()">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-surface-900 dark:text-surface-100 mb-4">
+            Frequently Asked Questions
+        </h1>
+        <p class="text-xl text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
+            Find answers to common questions about using Wippy effectively.
+        </p>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="mb-8">
+        <div class="relative">
+            <iconify-icon icon="tabler:search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-surface-400" width="20" height="20"></iconify-icon>
+            <input
+                    type="text"
+                    x-model="searchQuery"
+                    placeholder="Search FAQ..."
+                    class="w-full pl-10 pr-4 py-3 border border-surface-200 dark:border-surface-700 rounded-xl bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        </div>
+    </div>
+
+    <!-- What is Wippy -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:help-circle" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">What is Wippy?</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.basics" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('basics', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.basics[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.basics[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Getting Started -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:rocket" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Getting Started</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.getting_started" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('getting_started', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.getting_started[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.getting_started[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Working with Agents -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:robot" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Working with Agents</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.agents" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('agents', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.agents[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.agents[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Files and Data -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:file-text" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Files and Data</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.files" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('files', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.files[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.files[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Programming and Development -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:code" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Programming and Development</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.development" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('development', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.development[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.development[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Integration and Connectivity -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:plug" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Integration and Connectivity</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.integration" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('integration', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.integration[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.integration[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Platform and Infrastructure -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:server" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Platform and Infrastructure</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.platform" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('platform', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.platform[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.platform[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Enterprise and Advanced -->
+    <div>
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:building-skyscraper" class="text-white" width="18" height="18"></iconify-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Enterprise and Advanced</h2>
+        </div>
+
+        <div class="space-y-3">
+            <template x-for="(faq, index) in filteredFaqs.enterprise" :key="index">
+                <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
+                    <button
+                            @click="toggleFaq('enterprise', index)"
+                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                        <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
+                        <iconify-icon
+                                icon="tabler:chevron-down"
+                                class="text-surface-500 transition-transform duration-200"
+                                :class="{ 'rotate-180': openFaqs.enterprise[index] }"
+                                width="20" height="20"></iconify-icon>
+                    </button>
+                    <div
+                            x-show="openFaqs.enterprise[index]"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="px-6 pb-4 text-surface-700 dark:text-surface-300 leading-relaxed"
+                            x-html="faq.answer">
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function faqApp() {
+        return {
+            searchQuery: '',
+            openFaqs: {
+                basics: {},
+                getting_started: {},
+                agents: {},
+                files: {},
+                development: {},
+                integration: {},
+                platform: {},
+                enterprise: {}
+            },
+            faqs: {
+                basics: [
+                    {
+                        question: "What is Wippy?",
+                        answer: "Wippy is an integrated application platform where you can change and replace approximately 99% of the codebase from inside Wippy itself at runtime. It's a complete application operating system designed for AI agents to live, develop, and improve within a unified system."
+                    },
+                    {
+                        question: "Is Wippy open source?",
+                        answer: "Some parts of Wippy like runtime binaries and frameworks will be released under open source licenses, while other parts will remain proprietary. We plan to provide more details about open source components in future releases."
+                    },
+                    {
+                        question: "Can Wippy work locally?",
+                        answer: "Yes, Wippy can work completely locally on your machine. It can also work on a server or in the cloud depending on your needs."
+                    },
+                    {
+                        question: "Does Wippy collect any information?",
+                        answer: "When working locally, Wippy does not collect any information or statistics from your installation. All your data remains on your computer."
+                    }
+                ],
+                getting_started: [
+                    {
+                        question: "How do I start using Wippy?",
+                        answer: "Start small with simple tasks. Begin by exploring the interface and uploading your first file or creating a basic project. Don't try to handle complex projects all at once - use an iterative approach starting with a research phase and testing connections step by step."
+                    },
+                    {
+                        question: "Do I need to know programming?",
+                        answer: "You don't need to be a programmer to work with Wippy, but having a structured approach is helpful. Wippy is designed to be accessible to non-technical users through its AI agent interface."
+                    },
+                    {
+                        question: "Can I still program if I'm an engineer?",
+                        answer: "Absolutely! You can write code manually, edit directly in the Wippy editor, or work with agents. Talk to the Maker agent about foundational principles like the actor model to understand the most effective programming approaches."
+                    },
+                    {
+                        question: "My agents are taking too long or building the wrong thing. What should I do?",
+                        answer: "Start smaller and be more specific. Don't try to handle the entire scope at once - break it into iterations. Begin with a research phase and ask agents what would be the first logical step to test the connection, just like any other software implementation."
+                    }
+                ],
+                agents: [
+                    {
+                        question: "What's the difference between agents?",
+                        answer: "Different agents specialize in different tasks. Some handle research, others manage projects, and some focus on specific workflows like content creation or system integration. Each agent has unique capabilities and tools."
+                    },
+                    {
+                        question: "My agents misbehaved. How can I debug them?",
+                        answer: "You can always come back to the Maker and ask him to analyze one of your past sessions. You can also open the admin panel, find your sessions, and view the session content to see which tools the agent called, what information it received, and what led it in different directions."
+                    },
+                    {
+                        question: "The Maker has been working for 30 minutes. Is this normal?",
+                        answer: "Yes, the Maker is designed to be a comprehensive integration specialist and will work for significant amounts of time on complex tasks. Over time, we will be increasing this capability to handle more and more complex challenges."
+                    },
+                    {
+                        question: "My chat is showing 'overloaded' error. What do I do?",
+                        answer: "In this build, Wippy doesn't include automatic retries yet. Simply type again in the same chat to continue. These errors usually happen due to provider issues - consider changing the provider or starting a new chat."
+                    }
+                ],
+                files: [
+                    {
+                        question: "Will Wippy remember what it did?",
+                        answer: "Wippy stores information about changes to the system in application state, knowledge bases, and local database. Checkpointing is required to preserve these changes between application sessions. Future updates will include optional automatic history backup."
+                    },
+                    {
+                        question: "What file types does Wippy support?",
+                        answer: "Wippy supports documents (PDF, Word, PowerPoint), images (JPG, PNG, GIF), and text files. In this alpha version, document processing happens through our cloud service, but the content is not retained after processing - everything is stored locally."
+                    },
+                    {
+                        question: "Which database does Wippy use?",
+                        answer: "By default, Wippy uses SQLite for local storage. It's possible to reconfigure it to use PostgreSQL, though this option isn't available in the current build."
+                    },
+                    {
+                        question: "Where are my API keys and secrets stored?",
+                        answer: "All secret keys in Wippy are stored as environment variables on your computer, not inline in the code. This provides good separation between your keys and the actual code that agents generate."
+                    }
+                ],
+                development: [
+                    {
+                        question: "Can Wippy be used as a coding agent?",
+                        answer: "Yes, Wippy can definitely be used as a coding agent. We don't provide a baseline coding package yet, but you can assemble a coding agent by talking to the Maker agent about your specific needs."
+                    },
+                    {
+                        question: "How do I read the documentation for Wippy internals?",
+                        answer: "You can find Wippy internals and documentation inside the Wippy registry or by talking to the Maker agent about specific topics you want to understand."
+                    },
+                    {
+                        question: "I want to build a low-level extension. What should I do?",
+                        answer: "Wait for the runtime code to be released under open source license. Once available, you'll be able to extend Wippy not only at the application layer but also at the runtime layer."
+                    },
+                    {
+                        question: "What programming language does Wippy use internally?",
+                        answer: "Wippy uses embedded Lua for scripting and application logic. The underlying engine is written in a compiled language and designed for high performance. The system can handle many users efficiently."
+                    }
+                ],
+                integration: [
+                    {
+                        question: "Does Wippy connect to external services?",
+                        answer: "Wippy connects to LLM model providers based on your configuration. In this alpha build, it also connects to our document processing pipeline temporarily. Wippy connects to our modular registry at installation time for updates. No other connections happen unless you specifically build them."
+                    },
+                    {
+                        question: "Is Wippy compatible with other frameworks?",
+                        answer: "Yes, Wippy is API-first and can connect with anything that has an API or create APIs for other platforms to connect to it."
+                    },
+                    {
+                        question: "Can Wippy integrate with Discord and Slack?",
+                        answer: "We will provide modules for Discord and Slack integration later. You can try to create it yourself, but the integration work will be on you for now."
+                    },
+                    {
+                        question: "Can Wippy read my Gmail emails?",
+                        answer: "Wippy has a prebuilt foundation for Google Services integration but doesn't currently have the specific integration to read Gmail. The Maker agent would be able to build this integration for you."
+                    },
+                    {
+                        question: "Can Wippy integrate with my proprietary CRM or software?",
+                        answer: "As long as your software has integration points like APIs, Wippy can integrate with it. However, you'll need to provide Wippy with documentation and information about how the integration should work."
+                    }
+                ],
+                platform: [
+                    {
+                        question: "What makes Wippy different from LangChain, AutoGen, or similar tools?",
+                        answer: "Wippy is not just an application framework - it's a fully integrated application operating system designed for agents to live, develop, and improve within a unified system. All of this runs within a single binary. The closest comparison would be a mix between BabyAGI and Erlang OTP, specifically designed for AI agents with a governance pipeline on top."
+                    },
+                    {
+                        question: "Is Wippy scalable?",
+                        answer: "Yes, while this build is intended for personal and local use, the same agent architecture is used in production for multiple organizations. Wippy is designed with a distributed actor runtime and can handle concurrent operations effectively."
+                    },
+                    {
+                        question: "Can I run Wippy on Linux?",
+                        answer: "Yes, you will absolutely be able to use Wippy on Linux, though it will be packaged differently than the current version."
+                    },
+                    {
+                        question: "Can I run Wippy on Raspberry Pi?",
+                        answer: "Yes, you can run Wippy on a Raspberry Pi. The memory consumption for headless applications is within a few hundred megabytes."
+                    },
+                    {
+                        question: "What is the Registry that agents keep mentioning?",
+                        answer: "The Registry is the centralized system that describes everything in Wippy. Every behavior, agent, function, and component you see or interact with is defined in the Registry. When agents talk about 'modifying the registry' or 'doing updates,' they're referring to making changes to this central system. All modifications are versioned, can be rolled back, and are saved in separate history storage for safety."
+                    },
+                    {
+                        question: "What is the Actor framework that agents keep mentioning?",
+                        answer: "Wippy is designed on principles of maximum fault tolerance and isolation. We needed to ensure that code generated by agents can be safely integrated and combined with other code through composition. This required us to move away from classic approaches and create a custom runtime based on actor model principles."
+                    }
+                ],
+                enterprise: [
+                    {
+                        question: "Is Wippy expensive to use?",
+                        answer: "Wippy consumes the same amount of tokens as any other AI platform. However, the self-modification loops do require significant token usage and context processing. Keep in mind that modifying Wippy from inside the system is a token-intensive process, but you typically only do it once per modification."
+                    },
+                    {
+                        question: "Can Wippy run background automation?",
+                        answer: "This build doesn't include a full-fledged automation framework, but agents can figure out how to make automation happen. Talk to the Maker and explore the scheduler. Future updates will include visual workflow diagrams and triggers for comprehensive automation."
+                    },
+                    {
+                        question: "Will Wippy receive updates?",
+                        answer: "On every application start, we check for recent modular updates and install them for you. We don't update your application state or custom builds - those remain yours."
+                    },
+                    {
+                        question: "Can I host this application in the cloud later?",
+                        answer: "Yes, we will provide a simple way to deploy your entire Wippy application with all resources and databases to the cloud."
+                    },
+                    {
+                        question: "Can I have multiple users modifying Wippy at the same time or enable self-modification on public deployments?",
+                        answer: "<strong>We strongly recommend you do NOT ever deploy Wippy for 3rd party access with self-modification features enabled.</strong> Self-modification capabilities are not well researched and we believe that outside of controlled environments, they are not safe to use. Work with Wippy's self-modifications locally, then sync changes to your production environment. Instruments to do these changes will be provided later. Under no conditions should you leave Wippy's self-modification features deployed in a multi-user environment where you don't trust every user entirely."
+                    },
+                    {
+                        question: "Can I share my agents and integrations with other people?",
+                        answer: "This feature is on our roadmap for later. Currently, you can do manual transfers. In the future, we plan to provide a marketplace for public and private integrations as well as enterprise packages."
+                    },
+                    {
+                        question: "Can Wippy be used by multiple people at the same time?",
+                        answer: "If you're interested in commercial or team-based use of Wippy, please contact <a href='https://spiralscout.com' target='_blank' class='text-blue-600 hover:text-blue-800 underline'>Spiral Scout</a>. The current version is designed for single-user accounts, though you can create multiple local accounts if needed."
+                    },
+                    {
+                        question: "What is Wippy Enterprise?",
+                        answer: "This build is intended for personal use on your personal machine. If you're interested in Enterprise Wippy installation with high durability guarantees and team features, please contact <a href='https://spiralscout.com' target='_blank' class='text-blue-600 hover:text-blue-800 underline'>Spiral Scout</a>."
+                    },
+                    {
+                        question: "Who built Wippy?",
+                        answer: "Wippy was built by the team of engineers from <a href='https://spiralscout.com' target='_blank' class='text-blue-600 hover:text-blue-800 underline'>Spiral Scout</a>. It's a product of Spiral Scout company."
+                    }
+                ]
+            },
+
+            get filteredFaqs() {
+                if (!this.searchQuery) return this.faqs;
+
+                const query = this.searchQuery.toLowerCase();
+                const filtered = {};
+
+                for (const category in this.faqs) {
+                    filtered[category] = this.faqs[category].filter(faq =>
+                        faq.question.toLowerCase().includes(query) ||
+                        faq.answer.toLowerCase().includes(query)
+                    );
+                }
+
+                return filtered;
+            },
+
+            toggleFaq(category, index) {
+                this.openFaqs[category][index] = !this.openFaqs[category][index];
+            },
+
+            init() {
+                console.log('FAQ tutorial initialized');
+            }
+        }
+    }
+</script>
+{{ end }}

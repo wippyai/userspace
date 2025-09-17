@@ -1,0 +1,159 @@
+{{ extends "onboard/step" }}
+
+{{ block title() }}Projects and Structured Workflows{{ end }}
+
+{{ block stepContent() }}
+<div class="max-w-4xl mx-auto" x-data="projectsTutorialApp()">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-surface-900 dark:text-surface-100 mb-4">
+            Projects and Structured Workflows
+        </h1>
+        <p class="text-xl text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
+            Build structured workflows that organize complex work across sessions with coordinated agent teams.
+        </p>
+    </div>
+
+    <!-- What Are Projects -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:folder-cog" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">What Are Projects?</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-6">
+            Complex work needs structure. Projects provide templates that organize information into logical workflows, letting you return to work across different sessions with full context intact. Each project coordinates specialized agents that handle different aspects while maintaining overall coherence.
+        </p>
+
+        <div class="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+            <div class="flex items-start gap-2">
+                <iconify-icon icon="tabler:lightbulb" class="text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <p class="text-sm text-indigo-800 dark:text-indigo-200">
+                    Think of projects as persistent workspaces where agents remember context, organize findings, and coordinate tasks - even when you're away.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Teamwork -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:users-group" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Flexible Agent Teamwork</h2>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2">
+                <p class="text-surface-700 dark:text-surface-300 mb-4">
+                    Projects create agent teams with clear roles. A primary coordinator understands the project structure and delegates specific tasks to specialist agents. This creates flexible teamwork where each agent contributes their expertise while maintaining project coherence.
+                </p>
+
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-700 rounded-lg">
+                        <iconify-icon icon="tabler:crown" class="text-yellow-600" width="20" height="20"></iconify-icon>
+                        <span class="text-surface-900 dark:text-surface-100 font-medium">Primary Coordinator</span>
+                        <span class="text-surface-600 dark:text-surface-400 text-sm">orchestrates workflow</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-700 rounded-lg">
+                        <iconify-icon icon="tabler:search" class="text-blue-600" width="20" height="20"></iconify-icon>
+                        <span class="text-surface-900 dark:text-surface-100 font-medium">Research Specialists</span>
+                        <span class="text-surface-600 dark:text-surface-400 text-sm">gather and analyze data</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-700 rounded-lg">
+                        <iconify-icon icon="tabler:pencil" class="text-green-600" width="20" height="20"></iconify-icon>
+                        <span class="text-surface-900 dark:text-surface-100 font-medium">Content Creators</span>
+                        <span class="text-surface-600 dark:text-surface-400 text-sm">draft and refine outputs</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-surface-50 dark:bg-surface-700 rounded-xl p-4">
+                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Session Continuity</h4>
+                <p class="text-sm text-surface-600 dark:text-surface-400 mb-3">
+                    Return to projects weeks later with full context preserved. Agents remember where you left off and can continue work seamlessly.
+                </p>
+                <div class="text-xs text-surface-500 dark:text-surface-500 bg-surface-100 dark:bg-surface-600 rounded p-2">
+                    "Pick up research from session 2 weeks ago" ✓
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Working with Projects -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:rocket" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Working with Projects</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Create Projects</h4>
+                <p class="text-sm text-surface-600 dark:text-surface-400 mb-4">
+                    Visit the Projects page and use the project manager icon to create new projects from existing templates or request custom templates for specific workflows.
+                </p>
+
+                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Coordinate Work</h4>
+                <p class="text-sm text-surface-600 dark:text-surface-400">
+                    Let the primary coordinator delegate tasks to specialists while you focus on providing direction and reviewing outputs. Agents handle the coordination complexity.
+                </p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Return Anytime</h4>
+                <p class="text-sm text-surface-600 dark:text-surface-400 mb-4">
+                    Projects preserve context across sessions. Return weeks later and agents remember exactly where you left off, continuing work seamlessly.
+                </p>
+
+                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Scale Complexity</h4>
+                <p class="text-sm text-surface-600 dark:text-surface-400">
+                    From simple task tracking to complex multi-agent research frameworks - projects scale to match your workflow complexity needs.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Templates -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:template" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Custom Templates</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-4">
+            Need project templates for specific workflows? The <span class="font-medium">Project Manager</span> can create custom templates with coordinated agent teams tailored to your requirements.
+        </p>
+
+        <div class="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div class="flex items-start gap-2">
+                <iconify-icon icon="tabler:info-circle" class="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <p class="text-sm text-amber-800 dark:text-amber-200">
+                    Templates can range from simple task organization to complex multi-agent frameworks with specialized coordination workflows.
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function projectsTutorialApp() {
+        return {
+            async init() {
+                console.log('Projects tutorial initialized');
+            }
+        }
+    }
+</script>
+{{ end }}

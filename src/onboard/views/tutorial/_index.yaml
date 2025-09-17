@@ -2,6 +2,44 @@ version: "1.0"
 namespace: userspace.onboard.views.tutorial
 
 entries:
+  # userspace.onboard.views.tutorial:advanced_agents
+  - name: advanced_agents
+    kind: template.jet
+    meta:
+      name: advanced_agents
+      type: onboard.step
+      title: Advanced Agent Patterns
+      description: Discover how agents collaborate, delegate tasks, and intelligently modify systems through advanced patterns and approval workflows
+      order: 3
+      optional: false
+      tutorial: true
+    source: file://advanced_agents.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views.tutorial:agent_sessions
+  - name: agent_sessions
+    kind: template.jet
+    meta:
+      name: agent_sessions
+      type: onboard.step
+      title: Working with Agent Sessions
+      description: Learn how to communicate effectively with AI agents and manage your conversation sessions
+      order: 2
+      optional: false
+      tutorial: true
+    source: file://agent_sessions.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
   # userspace.onboard.views.tutorial:ui_guide
   - name: ui_guide
     kind: template.jet
@@ -21,18 +59,20 @@ entries:
       - userspace.onboard.views:wippy-api
       - userspace.onboard.views:iconify
 
-  # userspace.onboard.views.tutorial:agent_sessions
-  - name: agent_sessions
+  # Add to userspace.onboard.views.tutorial/_index.yaml
+
+  # userspace.onboard.views.tutorial:file_uploads
+  - name: file_uploads
     kind: template.jet
     meta:
-      name: agent_sessions
+      name: file_uploads
       type: onboard.step
-      title: Working with Agent Sessions
-      description: Learn how to communicate effectively with AI agents and manage your conversation sessions
-      order: 2
+      title: File Uploads and Processing
+      description: Learn how Wippy processes and stores your uploaded files for intelligent agent access
+      order: 4
       optional: false
       tutorial: true
-    source: file://agent_sessions.jet
+    source: file://file_uploads.jet
     set: userspace.onboard.views:templates
     resources:
       - userspace.onboard.views:tailwindcss
@@ -40,18 +80,56 @@ entries:
       - userspace.onboard.views:wippy-api
       - userspace.onboard.views:iconify
 
-  # userspace.onboard.views.tutorial:advanced_agents
-  - name: advanced_agents
+  # userspace.onboard.views.tutorial:knowledge_bases
+  - name: knowledge_bases
     kind: template.jet
     meta:
-      name: advanced_agents
+      name: knowledge_bases
       type: onboard.step
-      title: Advanced Agent Patterns
-      description: Discover how agents collaborate, delegate tasks, and intelligently modify systems through advanced patterns and approval workflows
-      order: 3
+      title: Knowledge Bases and Information Storage
+      description: Organize information into searchable knowledge bases that any agent can access and use
+      order: 5
       optional: false
       tutorial: true
-    source: file://advanced_agents.jet
+    source: file://knowledge_bases.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+
+  # userspace.onboard.views.tutorial:projects
+  - name: projects
+    kind: template.jet
+    meta:
+      name: projects
+      type: onboard.step
+      title: Projects and Structured Workflows
+      description: Create structured project templates with agent coordination for organized work across sessions
+      order: 6
+      optional: false
+      tutorial: true
+    source: file://projects.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+
+  # userspace.onboard.views.tutorial:faq
+  - name: faq
+    kind: template.jet
+    meta:
+      name: faq
+      type: onboard.step
+      title: Frequently Asked Questions
+      description: Common questions and answers about using Wippy effectively
+      order: 7
+      optional: true
+      tutorial: true
+    source: file://faq.jet
     set: userspace.onboard.views:templates
     resources:
       - userspace.onboard.views:tailwindcss

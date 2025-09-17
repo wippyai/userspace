@@ -1,0 +1,167 @@
+{{ extends "onboard/step" }}
+
+{{ block title() }}File Uploads and Processing{{ end }}
+
+{{ block stepContent() }}
+<div class="max-w-4xl mx-auto" x-data="uploadTutorialApp()">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-surface-900 dark:text-surface-100 mb-4">
+            File Uploads and Processing
+        </h1>
+        <p class="text-xl text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
+            Upload files to Wippy for intelligent processing and agent access.
+        </p>
+    </div>
+
+    <!-- How It Works -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:database" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">How It Works</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-4">
+            When you upload files to Wippy, they're processed and stored locally in your knowledge bases within the local database. This creates a small footprint while making your content accessible to AI agents.
+        </p>
+
+        <div class="bg-surface-50 dark:bg-surface-700/50 rounded-xl p-4">
+            <div class="space-y-2 text-sm">
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="tabler:upload" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
+                    <span class="text-surface-700 dark:text-surface-300">Files processed and stored locally</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="tabler:robot" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
+                    <span class="text-surface-700 dark:text-surface-300">Agents can find, read, and analyze content</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="tabler:search" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
+                    <span class="text-surface-700 dark:text-surface-300">Content becomes searchable and referenceable</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supported File Types -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:files" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Supported Files</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <iconify-icon icon="tabler:file-text" class="text-red-500" width="20" height="20"></iconify-icon>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Documents</h4>
+                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">
+                    PDF, Word, PowerPoint files converted to searchable markdown
+                </div>
+            </div>
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <iconify-icon icon="tabler:photo" class="text-purple-500" width="20" height="20"></iconify-icon>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Images</h4>
+                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">
+                    JPG, PNG, GIF and other formats for agent analysis
+                </div>
+            </div>
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <iconify-icon icon="tabler:code" class="text-blue-500" width="20" height="20"></iconify-icon>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Text & Code</h4>
+                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">
+                    Source code, markdown, JSON, and other text formats
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Integration -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:brain" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Agent Integration</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-4">
+            Agents need specific traits to access files - not every agent can access all files. Agents are given specific permissions and sets of tools for file operations. The Agent Manager controls who gets assigned what capabilities.
+        </p>
+
+        <div class="space-y-3">
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <iconify-icon icon="tabler:shield-check" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Permission-Based Access</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Only agents with file access traits can find and read uploaded content</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <iconify-icon icon="tabler:analyze" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Content Analysis</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Authorized agents can analyze and extract insights from your documents</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <iconify-icon icon="tabler:link" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                </div>
+                <div>
+                    <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Cross-Reference</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Connect information across multiple uploaded files when permitted</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Processing -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <iconify-icon icon="tabler:cloud" class="text-white" width="20" height="20"></iconify-icon>
+            </div>
+            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Document Processing</h2>
+        </div>
+
+        <p class="text-surface-700 dark:text-surface-300 mb-4">
+            In this alpha version, Wippy uses our cloud services to process documents (PDFs, Word, PowerPoint) into markdown format. Processing happens in the cloud - storage remains local. The cloud does not store any of your content after processing.
+        </p>
+
+        <div class="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
+            <div class="flex items-start gap-2">
+                <iconify-icon icon="tabler:info-circle" class="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <p class="text-sm text-emerald-800 dark:text-emerald-200">
+                    If you wish to have support for more formats, access to external systems, local processing alternatives, or additional converters, simply talk to the <span class="font-medium">Maker</span> agent.
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function uploadTutorialApp() {
+        return {
+            async init() {
+                console.log('Upload tutorial initialized');
+            }
+        }
+    }
+</script>
+{{ end }}
