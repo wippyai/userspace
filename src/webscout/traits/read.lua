@@ -52,3 +52,6 @@ local function handle(args)
     return content
 end
 
+return {
+    handle = handle
+}
