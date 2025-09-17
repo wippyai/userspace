@@ -20,7 +20,7 @@
         <!-- Core Description -->
         <div x-data="{ show: false }" x-init="setTimeout(() => show = true, 1000)">
             <p :class="show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'" class="text-lg text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed mb-6 transition-all ease-out duration-1000">
-                Ask for anything. Wippy creates custom agents, builds new integrations, and adapts to your workflows. It writes code and configures own system components based on your requests.
+                Wippy creates custom agents, builds new integrations, and adapts to your workflows. It writes code and configures own system components based on your requests.
             </p>
 
             <p :class="show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'" class="text-base text-surface-600 dark:text-surface-400 transition-all ease-out duration-1000 delay-200">
