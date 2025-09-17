@@ -1,0 +1,14 @@
+version: "1.0"
+namespace: userspace.onboard
+
+entries:
+  # userspace.onboard:registry
+  - name: registry
+    kind: library.lua
+    meta:
+      comment: Registry for managing onboarding steps
+    source: file://registry.lua
+    modules:
+      - registry
+      - security
+    

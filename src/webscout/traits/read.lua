@@ -37,24 +37,18 @@ local function handle(args)
     end
 
     local content_type = response.headers["content-type"] or response.headers["Content-Type"] or ""
-    if not content_type:find("text/html") then
-        return nil, "Page is not HTML content"
-    end
+    local content = response.body
 
-    local content = clean_content(response.body)
+    if content_type:find("text/html") then
+        content = clean_content(content)
+    elseif not (content_type:find("application/json") or content_type:find("text/")) then
+        return nil, "Unsupported content type: " .. content_type
+    end
 
     if #content > max_size then
         content = content:sub(1, max_size) .. "... [content truncated]"
     end
 
-    return {
-        url = args.url,
-        content = content,
-        size = #content,
-        original_size = #response.body,
-        status_code = response.status_code,
-        content_type = content_type
-    }
+    return content
 end
 
-return { handle = handle }

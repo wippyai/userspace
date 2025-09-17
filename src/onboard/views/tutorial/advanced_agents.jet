@@ -1,0 +1,155 @@
+{{ extends "onboard/step" }}
+
+{{ block title() }}Advanced Agent Patterns{{ end }}
+
+{{ block stepContent() }}
+<div class="max-w-6xl mx-auto" x-data="advancedAgentsApp()">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-100 mb-4">
+            Advanced Agent Patterns
+        </h1>
+        <p class="text-lg text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
+            Discover how Wippy agents collaborate, delegate tasks, and intelligently modify the system to deliver complex solutions.
+        </p>
+    </div>
+
+    <!-- Agent Delegation and Collaboration -->
+    <div class="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 mb-6 p-6">
+        <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">Agent Delegation and Collaboration</h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div>
+                <img src="/tutorial_images/enhance_tools.png" alt="Agent delegation in chat" class="w-full rounded-lg border border-surface-200 dark:border-surface-700" />
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-surface-50 dark:bg-surface-700 rounded-lg p-4">
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">How Agent Delegation Works</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center gap-2">
+                            <iconify-icon icon="tabler:users" class="text-blue-500" width="16" height="16"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Primary agent receives your request</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <iconify-icon icon="tabler:arrow-fork" class="text-blue-500" width="16" height="16"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Delegates to specialized agents behind the scenes</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <iconify-icon icon="tabler:puzzle" class="text-blue-500" width="16" height="16"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Each agent contributes their expertise</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <iconify-icon icon="tabler:check" class="text-blue-500" width="16" height="16"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Results are synthesized and returned to you</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-surface-50 dark:bg-surface-700 rounded-lg p-4">
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">What You See in Chat</h4>
+                    <p class="text-sm text-surface-600 dark:text-surface-400 mb-3">The chat interface shows you when agents are working together:</p>
+                    <div class="grid grid-cols-1 gap-1 text-sm">
+                        <div class="text-surface-700 dark:text-surface-300">• Token usage from different specialist agents</div>
+                        <div class="text-surface-700 dark:text-surface-300">• Research, analysis, and implementation phases</div>
+                        <div class="text-surface-700 dark:text-surface-300">• Context switching between agent types</div>
+                        <div class="text-surface-700 dark:text-surface-300">• Progress indicators for complex tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Changes and Approvals -->
+    <div class="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 mb-6 p-6">
+        <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">When Agents Modify the System</h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div class="space-y-4">
+                <div class="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <iconify-icon icon="tabler:shield-check" class="text-red-600 dark:text-red-400" width="16" height="16"></iconify-icon>
+                        <h4 class="font-semibold text-red-900 dark:text-red-100">System Modifications</h4>
+                    </div>
+                    <p class="text-sm text-red-800 dark:text-red-200 mb-3">
+                        Some agent operations require changes to your Wippy environment. These include:
+                    </p>
+                    <div class="space-y-1 text-sm text-red-700 dark:text-red-300">
+                        <div>• Creating new tools and integrations</div>
+                        <div>• Adding service connections</div>
+                        <div>• Modifying system configurations</div>
+                        <div>• Installing new capabilities</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <img src="/tutorial_images/keeper_push.png" alt="System modification approval interface" class="w-full rounded-lg border border-surface-200 dark:border-surface-700" />
+                <p class="text-xs text-surface-500 dark:text-surface-400 mt-2 text-center">
+                    Example approval interface when agents need to modify your system
+                </p>
+            </div>
+        </div>
+
+        <!-- Control and Approval Section - moved below for balance -->
+        <div class="mt-6 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <iconify-icon icon="tabler:hand-stop" class="text-blue-600 dark:text-blue-400" width="16" height="16"></iconify-icon>
+                <h4 class="font-semibold text-blue-900 dark:text-blue-100">Your Control and Approval</h4>
+            </div>
+            <p class="text-sm text-blue-800 dark:text-blue-200">
+                You maintain full control. Agents will pause and request your approval before making any system changes. You can review exactly what will be modified before proceeding.
+            </p>
+        </div>
+    </div>
+
+    <!-- Best Practices -->
+    <div class="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 mb-6 p-6">
+        <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">Best Practices for Advanced Agent Interaction</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3 text-green-600 dark:text-green-400">Effective Strategies</h4>
+                <div class="space-y-3">
+                    <div class="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                        <p class="text-sm text-green-800 dark:text-green-200">Trust the agent orchestration - let them coordinate the best approach</p>
+                    </div>
+                    <div class="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                        <p class="text-sm text-green-800 dark:text-green-200">Describe your end goal rather than prescribing the process</p>
+                    </div>
+                    <div class="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                        <p class="text-sm text-green-800 dark:text-green-200">Review system modification requests carefully before approving</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3 text-amber-600 dark:text-amber-400">What to Expect</h4>
+                <div class="space-y-3">
+                    <div class="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                        <p class="text-sm text-amber-800 dark:text-amber-200">Longer response times for complex multi-agent tasks</p>
+                    </div>
+                    <div class="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                        <p class="text-sm text-amber-800 dark:text-amber-200">Approval prompts when system changes are needed</p>
+                    </div>
+                    <div class="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                        <p class="text-sm text-amber-800 dark:text-amber-200">Higher token usage reflecting the collaborative work</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function advancedAgentsApp() {
+        return {
+            init() {
+                console.log('Advanced Agents tutorial initialized');
+            }
+        }
+    }
+</script>
+{{ end }}

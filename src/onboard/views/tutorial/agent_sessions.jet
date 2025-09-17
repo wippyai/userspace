@@ -1,0 +1,263 @@
+{{ extends "onboard/step" }}
+
+{{ block title() }}Working with Agent Sessions{{ end }}
+
+{{ block stepContent() }}
+<div class="max-w-4xl mx-auto" x-data="agentSessionsApp()">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-surface-900 dark:text-surface-100 mb-4">
+            Working with Agent Sessions
+        </h1>
+        <p class="text-xl text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
+            Learn how to communicate with AI agents and manage your conversation sessions.
+        </p>
+    </div>
+
+    <!-- Tutorial Sections -->
+    <div class="space-y-8">
+
+        <!-- Section 1: Understanding Agent Sessions -->
+        <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <iconify-icon icon="tabler:robot" class="text-white" width="20" height="20"></iconify-icon>
+                </div>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">How Sessions Work</h2>
+            </div>
+
+            <p class="text-surface-700 dark:text-surface-300 mb-4">
+                You communicate with one primary agent at a time. This agent delegates specialized tasks to other agents behind the scenes and can redirect you to specialized agents when needed, while maintaining your conversation thread and context.
+            </p>
+
+            <div class="bg-surface-50 dark:bg-surface-700/50 rounded-xl p-4">
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center gap-2">
+                        <iconify-icon icon="tabler:history" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
+                        <span class="text-surface-700 dark:text-surface-300">Conversation history preserved throughout session</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <iconify-icon icon="tabler:brain" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
+                        <span class="text-surface-700 dark:text-surface-300">Context from earlier messages informs responses</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <iconify-icon icon="tabler:stack" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
+                        <span class="text-surface-700 dark:text-surface-300">Build incrementally on previous work</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Session Management -->
+        <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+                    <iconify-icon icon="tabler:folders" class="text-white" width="20" height="20"></iconify-icon>
+                </div>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Session Management</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Access Sessions</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-start gap-2">
+                            <iconify-icon icon="tabler:settings" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">View sessions through Keeper panel</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <iconify-icon icon="tabler:download" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Download sessions for reference</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <iconify-icon icon="tabler:plus" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Start new sessions for different projects</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Navigation</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-start gap-2">
+                            <iconify-icon icon="tabler:refresh" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Continue previous sessions from dashboard</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <iconify-icon icon="tabler:switch-horizontal" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Switch between agents and models</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <iconify-icon icon="tabler:route" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
+                            <span class="text-surface-700 dark:text-surface-300">Get redirected to specialized agents</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Communication Best Practices -->
+        <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                    <iconify-icon icon="tabler:message-circle" class="text-white" width="20" height="20"></iconify-icon>
+                </div>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Communication Tips</h2>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <iconify-icon icon="tabler:target" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Be Specific</h4>
+                        <p class="text-sm text-surface-600 dark:text-surface-400">Instead of "help with data," try "create a dashboard to track monthly sales from Google Sheets."</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <iconify-icon icon="tabler:stairs" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Work in Steps</h4>
+                        <p class="text-sm text-surface-600 dark:text-surface-400">Start with basic functionality, then add features incrementally.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <iconify-icon icon="tabler:puzzle" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Simplify Complex Tasks</h4>
+                        <p class="text-sm text-surface-600 dark:text-surface-400">Break down complex requests into smaller, manageable parts.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <iconify-icon icon="tabler:language" class="text-purple-600 dark:text-purple-400" width="12" height="12"></iconify-icon>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-surface-900 dark:text-surface-100 mb-1">Use Clear Language</h4>
+                        <p class="text-sm text-surface-600 dark:text-surface-400">Communicate in straightforward terms. Agents learn from clear, direct language.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Better Prompt Examples -->
+        <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                    <iconify-icon icon="tabler:lightbulb" class="text-white" width="20" height="20"></iconify-icon>
+                </div>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Effective Prompts</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3 text-green-600 dark:text-green-400">Good Examples</h4>
+                    <div class="space-y-3">
+                        <div class="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                            <p class="text-sm text-green-800 dark:text-green-200">"Create a tool to track expenses from receipts"</p>
+                        </div>
+                        <div class="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                            <p class="text-sm text-green-800 dark:text-green-200">"Build a dashboard showing sales data from Google Sheets"</p>
+                        </div>
+                        <div class="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                            <p class="text-sm text-green-800 dark:text-green-200">"Connect to my GitHub and create a project status report"</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3 text-red-600 dark:text-red-400">Avoid These</h4>
+                    <div class="space-y-3">
+                        <div class="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                            <p class="text-sm text-red-800 dark:text-red-200">"Help me with stuff"</p>
+                        </div>
+                        <div class="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                            <p class="text-sm text-red-800 dark:text-red-200">"Make something for data"</p>
+                        </div>
+                        <div class="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                            <p class="text-sm text-red-800 dark:text-red-200">"Build an app that does everything"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Try It Now -->
+        <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                    <iconify-icon icon="tabler:play" class="text-white" width="20" height="20"></iconify-icon>
+                </div>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Try It Now</h2>
+            </div>
+
+            <p class="text-surface-700 dark:text-surface-300 mb-6">
+                Ready to start your first conversation? Click below to begin chatting with Wippy.
+            </p>
+
+            <button @click="startConversation()"
+                    class="w-full px-6 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:scale-105 transform flex items-center justify-center gap-3">
+                <iconify-icon icon="tabler:message-circle-2" width="20" height="20"></iconify-icon>
+                <span>Start Conversation with Wippy</span>
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    function agentSessionsApp() {
+        return {
+            api: null,
+            primaryAgent: null,
+
+            async init() {
+                try {
+                    this.api = await window.initWippyApi();
+                    await this.loadPrimaryAgent();
+                } catch (error) {
+                    console.error('Failed to initialize agent sessions app:', error);
+                }
+            },
+
+            async loadPrimaryAgent() {
+                try {
+                    const response = await this.api.api.get('/api/v1/agents/list');
+                    if (response.data.success) {
+                        const agents = response.data.agents || [];
+                        this.primaryAgent = agents.find(agent =>
+                            agent.class && Array.isArray(agent.class) && agent.class.includes('primary')
+                        );
+                    }
+                } catch (error) {
+                    console.warn('Failed to load primary agent:', error);
+                }
+            },
+
+            async startConversation() {
+                try {
+                    if (this.primaryAgent && this.primaryAgent.start_token) {
+                        await this.api.iframe.startChat(this.primaryAgent.start_token, false);
+                    } else {
+                        // Fallback - try to start with any available agent
+                        const response = await this.api.api.get('/api/v1/agents/list');
+                        if (response.data.success && response.data.agents.length > 0) {
+                            const firstAgent = response.data.agents[0];
+                            if (firstAgent.start_token) {
+                                await this.api.iframe.startChat(firstAgent.start_token, false);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to start conversation:', error);
+                }
+            }
+        }
+    }
+</script>
+{{ end }}

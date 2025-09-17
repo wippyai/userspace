@@ -1,0 +1,58 @@
+version: "1.0"
+namespace: userspace.onboard.views.setup
+
+entries:
+  # userspace.onboard.views.setup:capabilities
+  - name: capabilities
+    kind: template.jet
+    meta:
+      name: capabilities
+      type: onboard.step
+      title: Additional Capabilities
+      description: Configure optional features like web search and enhanced research capabilities
+      order: 3
+      optional: true
+    source: file://capabilities.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views.setup:providers
+  - name: providers
+    kind: template.jet
+    meta:
+      name: providers
+      type: onboard.step
+      title: AI Providers
+      description: Configure your AI model providers for the best Wippy experience
+      order: 2
+      optional: false
+    source: file://providers.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views.setup:welcome
+  - name: welcome
+    kind: template.jet
+    meta:
+      name: welcome
+      type: onboard.step
+      title: Welcome
+      description: Welcome step for onboarding flow
+      order: 1
+      optional: false
+    source: file://welcome.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    

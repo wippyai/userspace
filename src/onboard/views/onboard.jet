@@ -1,0 +1,253 @@
+{{ extends "onboard/layout" }}
+
+{{ block title() }}Welcome - Get Started{{ end }}
+{{ block metaDescription() }}Complete your setup in just a few steps{{ end }}
+
+{{ block mainContent() }}
+<div x-data="onboardApp" x-init="init()" class="h-full flex flex-col bg-surface-50 dark:bg-surface-900">
+
+    <!-- Full Step Content -->
+    <div class="flex-1 overflow-hidden">
+        <!-- Dynamic Step Content -->
+        <div x-show="!loading && currentStepData" class="h-full" :key="currentStep">
+            <w-artifact :url="getStepUrl()" type="page" class="w-full h-full"></w-artifact>
+        </div>
+
+        <!-- Loading State -->
+        <div x-show="loading" class="h-full flex items-center justify-center">
+            <div class="text-center">
+                <div class="w-8 h-8 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-3 mx-auto">
+                    <iconify-icon icon="tabler:loader-2" class="animate-spin text-primary-600 dark:text-primary-400" width="16" height="16"></iconify-icon>
+                </div>
+                <h3 class="text-base font-semibold text-surface-900 dark:text-surface-100 mb-1">Loading...</h3>
+                <p class="text-sm text-surface-600 dark:text-surface-400">Preparing your experience</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation Footer -->
+    <div class="bg-white dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700 shadow-lg">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <!-- Left: Back button -->
+                <div class="w-20">
+                    <button x-show="canGoBack" @click="goBack()" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 transition-colors">
+                        <iconify-icon icon="tabler:arrow-left" width="16" height="16"></iconify-icon>
+                        Back
+                    </button>
+                </div>
+
+                <!-- Center: Progress -->
+                <div class="flex items-center gap-4">
+                    <div class="text-sm font-medium text-surface-600 dark:text-surface-400"
+                         x-text="getProgressText()"></div>
+                    <div class="w-32 bg-surface-200 dark:bg-surface-700 rounded-full h-2">
+                        <div class="h-full rounded-full transition-all duration-500"
+                             :class="inSetupPhase ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-green-500 to-green-600'"
+                             :style="`width: ${getCurrentSectionProgress()}%`"></div>
+                    </div>
+                    <div class="text-sm text-surface-500 dark:text-surface-500"
+                         x-text="`${Math.round(getCurrentSectionProgress())}%`"></div>
+                </div>
+
+                <!-- Right: Continue/Skip buttons -->
+                <div class="flex items-center gap-3">
+                    <!-- Skip Tutorial Section (only when in tutorial phase) -->
+                    <button x-show="!inSetupPhase && tutorialSteps.length > 0" @click="skipTutorials()" class="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-surface-500 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors">
+                        Skip Tutorials
+                    </button>
+
+                    <!-- Skip Current Step (only for optional setup steps) -->
+                    <button x-show="inSetupPhase && currentStepData && currentStepData.optional" @click="skipStep()" class="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-surface-500 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors">
+                        Skip
+                    </button>
+
+                    <!-- Continue Button -->
+                    <button @click="goNext()" class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 rounded-lg transition-all animate-pulse hover:animate-none hover:shadow-lg hover:scale-105 transform">
+                        <span x-text="getButtonText()"></span>
+                        <iconify-icon :icon="getButtonIcon()" width="16" height="16"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{{ end }}
+
+{{ block customJs() }}
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('onboardApp', () => ({
+            loading: true,
+            currentStep: 0,
+            steps: [],
+            setupSteps: [],
+            tutorialSteps: [],
+            api: null,
+            config: {
+                stepsApiUrl: '/api/v1/onboard/steps',
+                stepUrlBase: '/api/v1/onboard/step',
+                completeRedirect: '/c/app.views:welcome'
+            },
+
+            get inSetupPhase() {
+                return this.currentStep < this.setupSteps.length;
+            },
+
+            get isLastSetupStep() {
+                return this.currentStep === this.setupSteps.length - 1;
+            },
+
+            get canGoBack() {
+                return this.currentStep > 0;
+            },
+
+            get isLastStep() {
+                return this.currentStep >= this.steps.length - 1;
+            },
+
+            get currentStepData() {
+                return this.steps[this.currentStep] || null;
+            },
+
+            getCurrentSectionProgress() {
+                if (this.inSetupPhase) {
+                    const setupIndex = this.currentStep;
+                    return this.setupSteps.length > 0 ? ((setupIndex + 1) / this.setupSteps.length) * 100 : 0;
+                } else {
+                    const tutorialIndex = this.currentStep - this.setupSteps.length;
+                    return this.tutorialSteps.length > 0 ? ((tutorialIndex + 1) / this.tutorialSteps.length) * 100 : 0;
+                }
+            },
+
+            getProgressText() {
+                if (this.inSetupPhase) {
+                    return `Setup ${this.currentStep + 1} of ${this.setupSteps.length}`;
+                } else {
+                    const tutorialIndex = this.currentStep - this.setupSteps.length + 1;
+                    return `Tutorial ${tutorialIndex} of ${this.tutorialSteps.length}`;
+                }
+            },
+
+            getButtonText() {
+                if (this.isLastStep) return 'Complete';
+                if (this.isLastSetupStep && this.tutorialSteps.length > 0) return 'Start Tutorials';
+                return 'Continue';
+            },
+
+            getButtonIcon() {
+                if (this.isLastStep) return 'tabler:check';
+                if (this.isLastSetupStep && this.tutorialSteps.length > 0) return 'tabler:school';
+                return 'tabler:arrow-right';
+            },
+
+            async init() {
+                try {
+                    this.api = await window.initWippyApi();
+                    await this.loadSteps();
+                } catch (error) {
+                    console.error('Onboarding init failed:', error);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            async loadSteps() {
+                const response = await this.api.api.get(this.config.stepsApiUrl);
+                if (response.data.success) {
+                    const allSteps = response.data.steps || [];
+
+                    // Separate setup and tutorial steps first
+                    const setupSteps = allSteps.filter(step => !step.tutorial);
+                    const tutorialSteps = allSteps.filter(step => step.tutorial);
+
+                    // Sort each group separately by order, with stable sorting using name as tiebreaker
+                    setupSteps.sort((a, b) => {
+                        const orderDiff = (a.order || 0) - (b.order || 0);
+                        return orderDiff !== 0 ? orderDiff : (a.name || '').localeCompare(b.name || '');
+                    });
+
+                    tutorialSteps.sort((a, b) => {
+                        const orderDiff = (a.order || 0) - (b.order || 0);
+                        return orderDiff !== 0 ? orderDiff : (a.name || '').localeCompare(b.name || '');
+                    });
+
+                    // Combine them: setup first, then tutorials
+                    this.steps = [...setupSteps, ...tutorialSteps];
+
+                    // Add URLs to all steps and ensure no duplicates
+                    const seenNames = new Set();
+                    this.steps = this.steps.filter(step => {
+                        if (seenNames.has(step.name)) {
+                            console.warn('Duplicate step found:', step.name);
+                            return false;
+                        }
+                        seenNames.add(step.name);
+                        step.url = this.composeStepUrl(step.name);
+                        return true;
+                    });
+
+                    this.setupSteps = this.steps.filter(step => !step.tutorial);
+                    this.tutorialSteps = this.steps.filter(step => step.tutorial);
+
+                    console.log('Loaded steps:', {
+                        total: this.steps.length,
+                        setup: this.setupSteps.length,
+                        tutorial: this.tutorialSteps.length
+                    });
+                }
+            },
+
+            composeStepUrl(stepName) {
+                return `${this.config.stepUrlBase}/${stepName}`;
+            },
+
+            getStepUrl() {
+                const step = this.currentStepData;
+                return step ? step.url : '';
+            },
+
+            goNext() {
+                if (this.isLastStep) {
+                    this.complete();
+                } else {
+                    this.currentStep++;
+                }
+            },
+
+            goBack() {
+                if (this.canGoBack) {
+                    this.currentStep--;
+                }
+            },
+
+            skipStep() {
+                if (this.currentStepData && this.currentStepData.optional) {
+                    if (this.isLastStep) {
+                        this.complete();
+                    } else {
+                        this.currentStep++;
+                    }
+                }
+            },
+
+            skipTutorials() {
+                this.complete();
+            },
+
+            async complete() {
+                if (this.api?.iframe?.navigate) {
+                    this.api.iframe.navigate(this.config.completeRedirect);
+                } else {
+                    window.location.href = this.config.completeRedirect;
+                }
+            },
+
+            setConfig(newConfig) {
+                this.config = { ...this.config, ...newConfig };
+            }
+        }));
+    });
+</script>
+{{ end }}

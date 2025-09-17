@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ block title() }}Onboarding Step{{ end }}</title>
+    <base href="{{ env.hostname }}">
+    {{ if isset(resources.style) }}
+    {{ range resources.style }}
+    {{ if isset(.url) }}
+    <link rel="stylesheet" href="{{ .url }}"{{ if isset(.integrity) }} integrity="{{ .integrity }}"{{ end }}{{ if isset(.crossorigin) }} crossorigin="{{ .crossorigin }}"{{ end }}{{ if isset(.media) }} media="{{ .media }}"{{ end }}>
+    {{ end }}
+    {{ if isset(.inline) }}
+    <style>{{ .inline }}</style>
+    {{ end }}
+    {{ end }}
+    {{ end }}
+    {{ if isset(resources.script) }}
+    {{ range resources.script }}
+    {{ if isset(.url) }}
+    <script src="{{ .url }}"{{ if isset(.integrity) }} integrity="{{ .integrity }}"{{ end }}{{ if isset(.crossorigin) }} crossorigin="{{ .crossorigin }}"{{ end }}{{ if isset(.defer) }} defer{{ end }}{{ if isset(.async) }} async{{ end }}></script>
+    {{ end }}
+    {{ if isset(.inline) }}
+    <script>{{ .inline }}</script>
+    {{ end }}
+    {{ end }}
+    {{ end }}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="h-full bg-surface-50 dark:bg-surface-900">
+<div class="h-full w-full bg-surface-50 dark:bg-surface-900">
+    <div class="h-full w-full overflow-auto">
+        <div class="w-full min-h-full py-8 px-4">
+            {{ yield stepContent() }}
+        </div>
+    </div>
+</div>
+
+{{ block customJs() }}{{ end }}
+</body>
+</html>

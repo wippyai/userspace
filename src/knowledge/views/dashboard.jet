@@ -11,7 +11,7 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center">
                 <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
-                    <iconify-icon icon="tabler:brain" class="text-white" width="28" height="28"></iconify-icon>
+                    <iconify-icon icon="tabler:robot" class="text-white" width="28" height="28"></iconify-icon>
                 </div>
                 <div class="ml-5">
                     <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-100">Knowledge Bases</h1>
@@ -36,7 +36,7 @@
                 <!-- Knowledge Manager Button -->
                 <button @click="startKnowledgeManagerChat" :disabled="isKnowledgeManagerLoading" class="flex items-center justify-center h-11 w-11 border border-purple-200 dark:border-purple-600 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 disabled:opacity-50 transition-colors duration-200" title="Knowledge Manager">
                     <template x-if="!isKnowledgeManagerLoading">
-                        <iconify-icon icon="tabler:brain" width="20" height="20"></iconify-icon>
+                        <iconify-icon icon="tabler:robot" width="20" height="20"></iconify-icon>
                     </template>
                     <template x-if="isKnowledgeManagerLoading">
                         <iconify-icon icon="tabler:loader-2" class="animate-spin" width="20" height="20"></iconify-icon>

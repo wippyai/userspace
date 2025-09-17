@@ -1,0 +1,60 @@
+version: "1.0"
+namespace: userspace.onboard.views.tutorial
+
+entries:
+  # userspace.onboard.views.tutorial:ui_guide
+  - name: ui_guide
+    kind: template.jet
+    meta:
+      name: ui_guide
+      type: onboard.step
+      title: Wippy Interface Guide
+      description: Complete overview of the Wippy interface, navigation, and key features
+      order: 1
+      optional: true
+      tutorial: true
+    source: file://ui_guide.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+
+  # userspace.onboard.views.tutorial:agent_sessions
+  - name: agent_sessions
+    kind: template.jet
+    meta:
+      name: agent_sessions
+      type: onboard.step
+      title: Working with Agent Sessions
+      description: Learn how to communicate effectively with AI agents and manage your conversation sessions
+      order: 2
+      optional: false
+      tutorial: true
+    source: file://agent_sessions.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+
+  # userspace.onboard.views.tutorial:advanced_agents
+  - name: advanced_agents
+    kind: template.jet
+    meta:
+      name: advanced_agents
+      type: onboard.step
+      title: Advanced Agent Patterns
+      description: Discover how agents collaborate, delegate tasks, and intelligently modify systems through advanced patterns and approval workflows
+      order: 3
+      optional: false
+      tutorial: true
+    source: file://advanced_agents.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify

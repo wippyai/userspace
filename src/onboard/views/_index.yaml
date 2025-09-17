@@ -1,0 +1,97 @@
+version: "1.0"
+namespace: userspace.onboard.views
+
+entries:
+  # userspace.onboard.views:alpine.js
+  - name: alpine.js
+    kind: registry.entry
+    meta:
+      name: Alpine.js
+      type: view.resource
+      order: 6
+      defer: true
+      resource_type: script
+      template_set: userspace.onboard.views:templates
+      url: https://unpkg.com/alpinejs@3.13.0/dist/cdn.min.js
+    
+  # userspace.onboard.views:iconify
+  - name: iconify
+    kind: registry.entry
+    meta:
+      name: Iconify
+      type: view.resource
+      order: 15
+      resource_type: script
+      template_set: userspace.onboard.views:templates
+      url: https://code.iconify.design/iconify-icon/2.3.0/iconify-icon.min.js
+    
+  # userspace.onboard.views:layout
+  - name: layout
+    kind: template.jet
+    meta:
+      name: onboard/layout
+      type: view.layout
+      description: Base layout for onboarding flow
+    source: file://layout.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views:onboard
+  - name: onboard
+    kind: template.jet
+    meta:
+      name: onboard
+      type: view.page
+      title: Onboarding
+      icon: tabler:rocket
+      description: User onboarding flow
+      order: 100
+      content_type: text/html
+      announced: false
+      secure: true
+    source: file://onboard.jet
+    set: userspace.onboard.views:templates
+    
+  # userspace.onboard.views:step
+  - name: step
+    kind: template.jet
+    meta:
+      name: onboard/step
+      description: Step layout for individual onboarding steps
+    source: file://step.jet
+    set: userspace.onboard.views:templates
+    
+  # userspace.onboard.views:tailwindcss
+  - name: tailwindcss
+    kind: registry.entry
+    meta:
+      name: TailwindCSS
+      type: view.resource
+      order: 5
+      resource_type: script
+      template_set: userspace.onboard.views:templates
+      url: https://cdn.tailwindcss.com
+    
+  # userspace.onboard.views:templates
+  - name: templates
+    kind: template.set
+    meta:
+      description: Onboarding template set with unified design system
+    engine:
+      development_mode: true
+    
+  # userspace.onboard.views:wippy-api
+  - name: wippy-api
+    kind: registry.entry
+    meta:
+      name: WippyAPI
+      type: view.resource
+      order: 10
+      resource_type: script
+      template_set: userspace.onboard.views:templates
+      url: https://front.wippy.ai/proxy.js
+    

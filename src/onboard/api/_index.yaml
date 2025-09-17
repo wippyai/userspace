@@ -1,0 +1,64 @@
+version: "1.0"
+namespace: userspace.onboard.api
+
+entries:
+  # userspace.onboard.api:list_steps
+  - name: list_steps
+    kind: function.lua
+    meta:
+      comment: Returns list of onboarding steps with metadata
+      depends_on:
+        - ns:app
+      router: app:api
+    source: file://list_steps.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      onboard_registry: userspace.onboard:registry
+    method: handler
+    
+  # userspace.onboard.api:list_steps.endpoint
+  - name: list_steps.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint for listing onboarding steps
+      depends_on:
+        - ns:app
+      router: app:api
+    method: GET
+    func: list_steps
+    path: /onboard/steps
+    
+  # userspace.onboard.api:render_step
+  - name: render_step
+    kind: function.lua
+    meta:
+      comment: Renders an onboarding step
+      depends_on:
+        - ns:app
+      router: app:api
+    source: file://render_step.lua
+    modules:
+      - http
+      - json
+      - security
+      - templates
+      - env
+    imports:
+      onboard_registry: userspace.onboard:registry
+    method: handler
+    
+  # userspace.onboard.api:render_step.endpoint
+  - name: render_step.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint for rendering onboarding step
+      depends_on:
+        - ns:app
+      router: app:api
+    method: GET
+    func: render_step
+    path: /onboard/step/{step_name}
+    

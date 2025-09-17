@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ block title() }}Onboarding{{ end }}</title>
+    <meta name="description" content="{{ block metaDescription() }}Welcome to your onboarding experience{{ end }}">
+    <base href="{{ env.hostname }}">
+    {{ if isset(resources.style) }}
+    {{ range resources.style }}
+    {{ if isset(.url) }}
+    <link rel="stylesheet" href="{{ .url }}"{{ if isset(.integrity) }} integrity="{{ .integrity }}"{{ end }}{{ if isset(.crossorigin) }} crossorigin="{{ .crossorigin }}"{{ end }}{{ if isset(.media) }} media="{{ .media }}"{{ end }}>
+    {{ end }}
+    {{ if isset(.inline) }}
+    <style>{{ .inline }}</style>
+    {{ end }}
+    {{ end }}
+    {{ end }}
+    {{ if isset(resources.script) }}
+    {{ range resources.script }}
+    {{ if isset(.url) }}
+    <script src="{{ .url }}"{{ if isset(.integrity) }} integrity="{{ .integrity }}"{{ end }}{{ if isset(.crossorigin) }} crossorigin="{{ .crossorigin }}"{{ end }}{{ if isset(.defer) }} defer{{ end }}{{ if isset(.async) }} async{{ end }}></script>
+    {{ end }}
+    {{ if isset(.inline) }}
+    <script>{{ .inline }}</script>
+    {{ end }}
+    {{ end }}
+    {{ end }}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        w-artifact {
+            height: 100%;
+            width: 100%;
+            display: block;
+        }
+        w-artifact::part(frame) {
+            height: 100%;
+            width: 100%;
+            border: none;
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body class="h-full bg-surface-50 dark:bg-surface-900">
+<div class="h-full w-full flex flex-col">
+    {{ yield mainContent() }}
+</div>
+{{ block customJs() }}{{ end }}
+</body>
+</html>
