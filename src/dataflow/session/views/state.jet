@@ -84,8 +84,8 @@
         .dark .node-icon.failed { color: rgb(248 113 113); }
         .node-icon.running { color: rgb(37 99 235); }
         .dark .node-icon.running { color: rgb(147 197 253); }
-        .node-icon.pending { color: rgb(107 114 128); }
-        .dark .node-icon.pending { color: rgb(156 163 175); }
+        .node-icon.pending { color: rgb(156 163 175); }
+        .dark .node-icon.pending { color: rgb(107 114 128); }
         .node-icon.agent.pending,
         .node-icon.agent.running { color: rgb(147 51 234); }
         .dark .node-icon.agent.pending,
@@ -108,7 +108,7 @@
         }
         .nested-items {
             margin-left: 1.5rem;
-            margin-top: 0.2rem; /* 20% smaller than 0.25rem */
+            margin-top: 0.2rem;
         }
         .collapse-toggle {
             background: none;
@@ -160,30 +160,29 @@
             margin-bottom: 0.1rem;
             padding: 1px 0;
             background: none;
-        } none !important;
         }
         .iteration-node .content-wrapper {
-            gap: 6px; /* 25% smaller gap */
+            gap: 6px;
         }
         .iteration-node .icon-wrapper {
-            width: 14px; /* 25% smaller */
+            width: 14px;
             height: 14px;
         }
         .iteration-node .node-icon {
-            width: 12px; /* 25% smaller */
+            width: 12px;
             height: 12px;
             font-size: 11px;
         }
         .iteration-node .metric-item {
-            font-size: max(0.625rem, 9px); /* 25% smaller but not below 9px */
+            font-size: max(0.625rem, 9px);
         }
         .iteration-node .metric-icon {
-            width: 7px; /* 25% smaller */
+            width: 7px;
             height: 7px;
             font-size: 7px;
         }
         .iteration-node .status-message {
-            font-size: max(0.625rem, 9px); /* 25% smaller but not below 9px */
+            font-size: max(0.625rem, 9px);
         }
         .progress-container {
             display: flex;
@@ -581,25 +580,41 @@
                 return iterations;
             },
             getMapReduceProgress(parentId) {
-                const children = this.getMapReduceChildren(parentId);
-                if (children.length === 0) {
-                    const parent = this.nodeMap[parentId];
-                    if (parent && parent.metadata && parent.metadata.map_reduce_progress) {
-                        const progress = parent.metadata.map_reduce_progress;
-                        return {
-                            completed: progress.items_successful || 0,
-                            total: progress.items_total || 0,
-                            percentage: progress.percentage_complete || 0
-                        };
-                    }
+                // Always prioritize metadata from the map-reduce node itself
+                const parent = this.nodeMap[parentId];
+                if (parent && parent.metadata && parent.metadata.map_reduce_progress) {
+                    const progress = parent.metadata.map_reduce_progress;
+                    return {
+                        completed: progress.items_completed || 0,
+                        total: progress.items_total || 0,
+                        percentage: progress.percentage_complete || 0
+                    };
+                }
+
+                // Fallback to counting iterations if no metadata
+                const iterations = this.getMapReduceIterations(parentId);
+                const iterationCount = Object.keys(iterations).length;
+
+                if (iterationCount === 0) {
                     return { completed: 0, total: 0, percentage: 0 };
                 }
 
-                const completed = children.filter(n => n.status === 'completed').length;
-                const total = children.length;
-                const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+                // Count completed iterations (all nodes in iteration completed)
+                let completedIterations = 0;
+                Object.values(iterations).forEach(iterNodes => {
+                    const allCompleted = iterNodes.every(node => node.status === 'completed');
+                    if (allCompleted) {
+                        completedIterations++;
+                    }
+                });
 
-                return { completed, total, percentage };
+                const percentage = Math.round((completedIterations / iterationCount) * 100);
+
+                return {
+                    completed: completedIterations,
+                    total: iterationCount,
+                    percentage
+                };
             },
             renderNode(node) {
                 const levelClass = node.level > 0 ? `child-level-${Math.min(node.level, 5)}` : '';

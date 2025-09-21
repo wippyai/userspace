@@ -99,13 +99,6 @@ function FlowGraph:create_template_nodes(template, parent_node_id)
 
             -- Chain template nodes: connect previous to current
             if last_template_node_id then
-                config.data_targets = config.data_targets or {}
-                table.insert(config.data_targets, {
-                    data_type = consts.DATA_TYPE.NODE_INPUT,
-                    node_id = template_node_id,
-                    key = "default"
-                })
-
                 -- Update previous node's config to route to this node
                 if not self.nodes[last_template_node_id].config.data_targets then
                     self.nodes[last_template_node_id].config.data_targets = {}
@@ -242,15 +235,16 @@ function FlowGraph:create_template_nodes(template, parent_node_id)
         end
     end
 
-    -- CRITICAL: Route final template node output back to parent for map-reduce collection
+    -- CRITICAL FIX: Configure ONLY the last template node to write to node.output
+    -- This is where iterator.collect_results will look for the final result
     if last_template_node_id then
-        if not self.nodes[last_template_node_id].config.data_targets then
-            self.nodes[last_template_node_id].config.data_targets = {}
+        local last_node = self.nodes[last_template_node_id]
+        if not last_node.config.data_targets then
+            last_node.config.data_targets = {}
         end
-        table.insert(self.nodes[last_template_node_id].config.data_targets, {
+        table.insert(last_node.config.data_targets, {
             data_type = consts.DATA_TYPE.NODE_OUTPUT,
-            node_id = parent_node_id,
-            key = "iteration_result"
+            key = "result"
         })
     end
 
