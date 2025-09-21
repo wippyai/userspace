@@ -1,6 +1,6 @@
 {{ extends "onboard/step" }}
 
-{{ block title() }}Working with Agent Sessions{{ end }}
+{{ block title() }}Working with Agent Chats{{ end }}
 
 {{ block stepContent() }}
 <div class="max-w-4xl mx-auto" x-data="agentSessionsApp()">
@@ -8,23 +8,23 @@
     <!-- Header -->
     <div class="text-center mb-10">
         <h1 class="text-4xl font-bold text-surface-900 dark:text-surface-100 mb-4">
-            Working with Agent Sessions
+            Working with Agent Chats
         </h1>
         <p class="text-xl text-surface-700 dark:text-surface-300 max-w-3xl mx-auto leading-relaxed">
-            Learn how to communicate with AI agents and manage your conversation sessions.
+            Learn how to communicate with AI agents and manage your conversation chats.
         </p>
     </div>
 
     <!-- Tutorial Sections -->
     <div class="space-y-8">
 
-        <!-- Section 1: Understanding Agent Sessions -->
+        <!-- Section 1: Understanding Agent Chats -->
         <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                     <iconify-icon icon="tabler:robot" class="text-white" width="20" height="20"></iconify-icon>
                 </div>
-                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">How Sessions Work</h2>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">How Chats Work</h2>
             </div>
 
             <p class="text-surface-700 dark:text-surface-300 mb-4">
@@ -35,7 +35,7 @@
                 <div class="space-y-2 text-sm">
                     <div class="flex items-center gap-2">
                         <iconify-icon icon="tabler:history" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
-                        <span class="text-surface-700 dark:text-surface-300">Conversation history preserved throughout session</span>
+                        <span class="text-surface-700 dark:text-surface-300">Conversation history preserved throughout chat</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <iconify-icon icon="tabler:brain" class="text-blue-500 flex-shrink-0" width="16" height="16"></iconify-icon>
@@ -49,30 +49,30 @@
             </div>
         </div>
 
-        <!-- Section 2: Session Management -->
+        <!-- Section 2: Chat Management -->
         <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
                     <iconify-icon icon="tabler:folders" class="text-white" width="20" height="20"></iconify-icon>
                 </div>
-                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Session Management</h2>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Chat Management</h2>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Access Sessions</h4>
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Access Chats</h4>
                     <div class="space-y-2 text-sm">
                         <div class="flex items-start gap-2">
                             <iconify-icon icon="tabler:settings" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
-                            <span class="text-surface-700 dark:text-surface-300">View sessions through Keeper panel</span>
+                            <span class="text-surface-700 dark:text-surface-300">View chats through Keeper panel</span>
                         </div>
                         <div class="flex items-start gap-2">
                             <iconify-icon icon="tabler:download" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
-                            <span class="text-surface-700 dark:text-surface-300">Download sessions for reference</span>
+                            <span class="text-surface-700 dark:text-surface-300">Download chats for reference</span>
                         </div>
                         <div class="flex items-start gap-2">
                             <iconify-icon icon="tabler:plus" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
-                            <span class="text-surface-700 dark:text-surface-300">Start new sessions for different projects</span>
+                            <span class="text-surface-700 dark:text-surface-300">Start new chats for different projects</span>
                         </div>
                     </div>
                 </div>
@@ -81,7 +81,7 @@
                     <div class="space-y-2 text-sm">
                         <div class="flex items-start gap-2">
                             <iconify-icon icon="tabler:refresh" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
-                            <span class="text-surface-700 dark:text-surface-300">Continue previous sessions from dashboard</span>
+                            <span class="text-surface-700 dark:text-surface-300">Continue previous chats from dashboard</span>
                         </div>
                         <div class="flex items-start gap-2">
                             <iconify-icon icon="tabler:switch-horizontal" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14"></iconify-icon>
@@ -187,24 +187,11 @@
         </div>
 
         <!-- Try It Now -->
-        <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                    <iconify-icon icon="tabler:play" class="text-white" width="20" height="20"></iconify-icon>
-                </div>
-                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Try It Now</h2>
-            </div>
-
-            <p class="text-surface-700 dark:text-surface-300 mb-6">
-                Ready to start your first conversation? Click below to begin chatting with Wippy.
-            </p>
-
-            <button @click="startConversation()"
-                    class="w-full px-6 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:scale-105 transform flex items-center justify-center gap-3">
-                <iconify-icon icon="tabler:message-circle-2" width="20" height="20"></iconify-icon>
-                <span>Start Conversation with Wippy</span>
-            </button>
-        </div>
+        <button @click="startConversation()"
+                class="w-full px-8 py-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-xl rounded-xl transition-all hover:shadow-lg hover:scale-105 transform flex items-center justify-center gap-3">
+            <iconify-icon icon="tabler:message-circle-2" width="24" height="24"></iconify-icon>
+            <span>Start a conversation with Wippy</span>
+        </button>
 
     </div>
 

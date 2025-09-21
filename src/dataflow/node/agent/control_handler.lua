@@ -2,6 +2,7 @@ local json = require("json")
 local uuid = require("uuid")
 local agent_consts = require("agent_consts")
 local data_reader = require("data_reader")
+local consts = require("consts")
 
 local control_handler = {}
 
@@ -141,11 +142,11 @@ function control_handler.process_artifacts(control, node_sdk, iteration)
 
     for _, artifact in ipairs(control.artifacts) do
         if artifact.content then
-            local content_type = artifact.content_type or "text/plain"
+            local content_type = artifact.content_type or consts.CONTENT_TYPE.TEXT
             local artifact_id = uuid.v7()
             local title = artifact.title or "Untitled"
 
-            node_sdk:data("workflow.artifact", artifact.content, {
+            node_sdk:data(consts.DATA_TYPE.ARTIFACT, artifact.content, {
                 data_id = artifact_id,
                 key = title,
                 content_type = content_type,
@@ -176,10 +177,16 @@ function control_handler.process_commands(control, node_sdk)
     end
 
     local command_changes = {}
+    local created_node_ids = {}
 
     for _, cmd in ipairs(control.commands) do
         if cmd.type and cmd.payload then
             node_sdk:command(cmd)
+
+            if cmd.type == consts.COMMAND_TYPES.CREATE_NODE and cmd.payload.node_id then
+                table.insert(created_node_ids, cmd.payload.node_id)
+            end
+
             table.insert(command_changes, {
                 type = cmd.type,
                 payload_summary = control_handler._summarize_command_payload(cmd.payload)
@@ -187,7 +194,10 @@ function control_handler.process_commands(control, node_sdk)
         end
     end
 
-    return command_changes
+    return {
+        commands = command_changes,
+        created_nodes = created_node_ids
+    }
 end
 
 -- Create summary of command payload for logging
@@ -264,9 +274,10 @@ function control_handler.process_control_directive(tool_result, node_sdk, iterat
     end
 
     -- Process direct commands
-    local command_changes = control_handler.process_commands(control, node_sdk)
-    if #command_changes > 0 then
-        control_response.changes_applied.commands = command_changes
+    local command_result = control_handler.process_commands(control, node_sdk)
+    if command_result.commands and #command_result.commands > 0 then
+        control_response.changes_applied.commands = command_result.commands
+        control_response.changes_applied.created_nodes = command_result.created_nodes
     end
 
     -- Handle configuration changes (agent/model)

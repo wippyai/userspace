@@ -7,6 +7,7 @@ local prompt_builder = require("prompt_builder")
 local control_handler = require("control_handler")
 local delegation_handler = require("delegation_handler")
 local agent_consts = require("agent_consts")
+local consts = require("consts")
 local tools = require("tools")
 
 local function merge_contexts(base_context, input_context)
@@ -294,7 +295,7 @@ local function store_agent_action(n, agent_result, iteration, agent_id, model_na
 
     n:data(agent_consts.DATA_TYPE.AGENT_ACTION, action_content, {
         key = action_key,
-        content_type = "application/json",
+        content_type = consts.CONTENT_TYPE.JSON,
         node_id = n.node_id,
         metadata = metadata
     })
@@ -307,7 +308,7 @@ local function store_memory_recall(n, agent_result, iteration)
 
     n:data(agent_consts.DATA_TYPE.AGENT_MEMORY, agent_result.memory_prompt.content, {
         key = iteration .. "_memory",
-        content_type = "text/plain",
+        content_type = consts.CONTENT_TYPE.TEXT,
         node_id = n.node_id,
         metadata = {
             iteration = iteration,
@@ -366,12 +367,12 @@ local function create_tool_viz_nodes(n, tool_calls, iteration, show_tool_calls, 
         end
 
         n:command({
-            type = "CREATE_NODE",
+            type = consts.COMMAND_TYPES.CREATE_NODE,
             payload = {
                 node_id = viz_node_id,
                 node_type = "tool.call",
                 parent_node_id = n.node_id,
-                status = "running",
+                status = consts.STATUS.RUNNING,
                 config = {},
                 metadata = metadata
             }
@@ -402,10 +403,10 @@ local function update_tool_viz_nodes(n, tool_results, tool_call_to_node_id)
                 output_size = string.len(output_json)
             end
 
-            local final_status = tool_error and "failed" or "completed"
+            local final_status = tool_error and consts.STATUS.COMPLETED_FAILURE or consts.STATUS.COMPLETED_SUCCESS
 
             n:command({
-                type = "UPDATE_NODE",
+                type = consts.COMMAND_TYPES.UPDATE_NODE,
                 payload = {
                     node_id = viz_node_id,
                     status = final_status,
@@ -494,7 +495,7 @@ local function process_tool_results(n, tool_results, iteration, exit_tool_name, 
 
                     n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, obs_content, {
                         key = tool_key,
-                        content_type = type(obs_content) == "table" and "application/json" or "text/plain",
+                        content_type = type(obs_content) == "table" and consts.CONTENT_TYPE.JSON or consts.CONTENT_TYPE.TEXT,
                         node_id = n.node_id,
                         metadata = {
                             iteration = iteration,
@@ -545,7 +546,7 @@ local function check_completion(tool_calling, agent_result, iteration, min_itera
                 local feedback = agent_consts.FEEDBACK.NO_TOOLS_CALLED
                 n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, feedback, {
                     key = iteration .. "_no_tools_called",
-                    content_type = "text/plain",
+                    content_type = consts.CONTENT_TYPE.TEXT,
                     node_id = n.node_id,
                     metadata = {
                         iteration = iteration
@@ -561,7 +562,7 @@ local function check_completion(tool_calling, agent_result, iteration, min_itera
             end
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, feedback, {
                 key = iteration .. "_no_tools_called",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration
@@ -614,6 +615,7 @@ local function run(args)
     local arena_context = config.arena.context or {}
     local session_context = {
         dataflow_id = n.dataflow_id,
+        node_id = n.node_id,
     }
     for k, v in pairs(arena_context) do
         session_context[k] = v
@@ -762,7 +764,7 @@ local function run(args)
             local warning_msg = string.format(agent_consts.FEEDBACK.ITERATIONS_WARNING, remaining_iterations)
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, warning_msg, {
                 key = iteration .. "_iterations_warning",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration,
@@ -773,7 +775,7 @@ local function run(args)
             local warning_msg = agent_consts.FEEDBACK.FINAL_ITERATION
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, warning_msg, {
                 key = iteration .. "_final_warning",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration,
@@ -784,7 +786,7 @@ local function run(args)
             local warning_msg = agent_consts.FEEDBACK.CRITICAL_FINAL
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, warning_msg, {
                 key = iteration .. "_critical_warning",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration,
@@ -837,6 +839,61 @@ local function run(args)
                     code = agent_consts.ERROR.STEP_FUNCTION_FAILED,
                     message = changes_err
                 }, changes_err)
+            end
+
+            -- Collect any nodes created by control commands
+            local created_node_ids = {}
+            for _, response in ipairs(control_responses) do
+                if response.changes_applied and response.changes_applied.commands and response.changes_applied.created_nodes then
+                    for _, node_id in ipairs(response.changes_applied.created_nodes) do
+                        table.insert(created_node_ids, node_id)
+                    end
+                end
+            end
+
+            -- If commands created nodes, yield and collect their outputs
+            if #created_node_ids > 0 then
+                local yield_result, yield_err = n:yield({ run_nodes = created_node_ids })
+                if yield_result then
+                    -- Collect NODE_OUTPUT data from created nodes
+                    local reader = n:query()
+                        :with_nodes(created_node_ids)
+                        :with_data_types(consts.DATA_TYPE.NODE_OUTPUT)
+                        :fetch_options({ replace_references = true })
+
+                    local output_data = reader:all()
+
+                    if output_data and #output_data > 0 then
+                        local output_content = output_data[1].content
+                        if #output_data > 1 then
+                            local all_outputs = {}
+                            for _, output in ipairs(output_data) do
+                                table.insert(all_outputs, output.content)
+                            end
+                            output_content = all_outputs
+                        end
+
+                        n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, output_content, {
+                            key = iteration .. "_commands_output",
+                            content_type = type(output_content) == "table" and consts.CONTENT_TYPE.JSON or consts.CONTENT_TYPE.TEXT,
+                            node_id = n.node_id,
+                            metadata = {
+                                iteration = iteration,
+                                created_nodes = created_node_ids
+                            }
+                        })
+                    end
+                elseif yield_err then
+                    n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, "Command execution failed: " .. yield_err, {
+                        key = iteration .. "_commands_error",
+                        content_type = consts.CONTENT_TYPE.TEXT,
+                        node_id = n.node_id,
+                        metadata = {
+                            iteration = iteration,
+                            is_error = true
+                        }
+                    })
+                end
             end
         end
 

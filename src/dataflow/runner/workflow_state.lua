@@ -323,7 +323,7 @@ function methods:_update_input_availability()
                 self.input_tracker.available[input.node_id] = {}
             end
 
-            local key = input.key or "default"
+            local key = input.discriminator or input.key or "default"
             self.input_tracker.available[input.node_id][key] = true
         end
     end
@@ -434,7 +434,7 @@ function methods:_update_state_from_results(results)
                 if not self.input_tracker.available[payload.node_id] then
                     self.input_tracker.available[payload.node_id] = {}
                 end
-                local key = payload.key or "default"
+                local key = payload.discriminator or payload.key or "default"
                 self.input_tracker.available[payload.node_id][key] = true
             end
         end

@@ -79,7 +79,7 @@ entries:
       consts: userspace.dataflow:consts
       iterator: userspace.dataflow.node.map_reduce:iterator
       node: userspace.dataflow:node
-      template_graph: userspace.dataflow.node.map_reduce:template_graph
+      template_graph: userspace.dataflow.template:graph
     method: run
     
   # userspace.dataflow.node.map_reduce:map_reduce_test
@@ -113,52 +113,3 @@ entries:
       map_reduce: userspace.dataflow.node.map_reduce:map_reduce
       test: wippy.test:test
     method: run_tests
-    
-  # userspace.dataflow.node.map_reduce:template_graph
-  - name: template_graph
-    kind: library.lua
-    meta:
-      name: Template Graph Builder
-      comment: Pure library for discovering and building template dependency graphs
-      tags:
-        - dataflow
-        - map-reduce
-        - template
-        - graph
-        - dependency
-        - pure
-      description: |
-        Pure function library for discovering template nodes and building dependency graphs.
-        Handles template discovery, dependency analysis, and root node identification
-        for map-reduce operations. Highly testable with no side effects.
-    source: file://template_graph.lua
-    imports:
-      consts: userspace.dataflow:consts
-      node_reader: userspace.dataflow.persist:node_reader
-    
-  # userspace.dataflow.node.map_reduce:template_graph_test
-  - name: template_graph_test
-    kind: function.lua
-    meta:
-      name: Template Graph Tests
-      type: test
-      comment: Unit tests for template graph building and dependency analysis
-      group: Workflow / Map-Reduce
-      tags:
-        - dataflow
-        - map-reduce
-        - template
-        - graph
-        - tests
-      description: |
-        Comprehensive tests for template discovery, dependency graph construction,
-        root node identification, and circular dependency detection.
-    source: file://template_graph_test.lua
-    modules:
-      - uuid
-    imports:
-      consts: userspace.dataflow:consts
-      template_graph: userspace.dataflow.node.map_reduce:template_graph
-      test: wippy.test:test
-    method: run_tests
-    
