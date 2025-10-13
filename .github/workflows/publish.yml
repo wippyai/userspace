@@ -1,4 +1,4 @@
-name: Release Module
+name: Publish Userspace components
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  release:
+  userspace:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -17,9 +17,7 @@ jobs:
       - name: Release module
         uses: wippyai/action-module-release@main
         with:
-          repository: ${{ github.repository }}
+          directory: .
           tag: ${{ github.ref_name }}
-          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
-          module_id: ${{ secrets.MODULE_ID }}
           username: ${{ secrets.WIPPY_USERNAME }}
           password: ${{ secrets.WIPPY_PASSWORD }}
