@@ -6,6 +6,25 @@ on:
       - 'v*'
 
 jobs:
+  components:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - { folder: dataflow }
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Publishing
+        uses: wippyai/action-module-release@main
+        with:
+          directory: src/${{ matrix.package.folder }}
+          tag: ${{ github.ref_name }}
+          username: ${{ secrets.WIPPY_USERNAME }}
+          password: ${{ secrets.WIPPY_PASSWORD }}
   userspace:
     runs-on: ubuntu-latest
     permissions:
