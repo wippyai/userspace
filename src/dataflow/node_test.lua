@@ -868,7 +868,7 @@ local function define_tests()
             end)
 
             it("should update metadata properly", function()
-                local result = test_node:metadata({ key1 = "value1", key2 = "value2" })
+                local result = test_node:update_metadata({ key1 = "value1", key2 = "value2" })
 
                 expect(result).to_equal(test_node)
                 expect(test_node._metadata.key1).to_equal("value1")
@@ -880,7 +880,7 @@ local function define_tests()
             it("should merge metadata without overwriting existing values", function()
                 test_node._metadata = { existing = "value", shared = "original" }
 
-                test_node:metadata({ shared = "updated", new_key = "new_value" })
+                test_node:update_metadata({ shared = "updated", new_key = "new_value" })
 
                 expect(test_node._metadata.existing).to_equal("value")
                 expect(test_node._metadata.shared).to_equal("updated")
@@ -888,10 +888,10 @@ local function define_tests()
             end)
 
             it("should handle nil and empty metadata updates gracefully", function()
-                test_node:metadata(nil)
+                test_node:update_metadata(nil)
                 expect(#test_node._queued_commands).to_equal(0)
 
-                test_node:metadata({})
+                test_node:update_metadata({})
                 expect(#test_node._queued_commands).to_equal(1)
             end)
 
@@ -982,7 +982,7 @@ local function define_tests()
 
             it("should submit queued commands without yielding", function()
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test1" })
-                test_node:metadata({ status = "processing" })
+                test_node:update_metadata({ status = "processing" })
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test2" })
 
                 expect(#test_node._queued_commands).to_equal(3)
@@ -1043,7 +1043,7 @@ local function define_tests()
                 expect(#test_node._queued_commands).to_equal(0)
 
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test2" })
-                test_node:metadata({ status = "updated" })
+                test_node:update_metadata({ status = "updated" })
                 expect(#test_node._queued_commands).to_equal(2)
 
                 success, err = test_node:submit()
@@ -1055,7 +1055,7 @@ local function define_tests()
 
             it("should preserve command order when submitting", function()
                 test_node:data("type1", "content1")
-                test_node:metadata({ key1 = "value1" })
+                test_node:update_metadata({ key1 = "value1" })
                 test_node:data("type2", "content2")
 
                 local success, err = test_node:submit()

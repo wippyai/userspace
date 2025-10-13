@@ -13,7 +13,6 @@ local node = {}
 local methods = {}
 local mt = { __index = methods }
 
--- Merge metadata tables
 local function merge_metadata(existing, new_fields)
     local existing_count = 0
     local new_count = 0
@@ -45,7 +44,6 @@ local function merge_metadata(existing, new_fields)
     return result
 end
 
--- Create clean transform environment
 local function create_transform_env(raw_inputs)
     local input_count = 0
     for _ in pairs(raw_inputs) do
@@ -77,6 +75,32 @@ local function create_transform_env(raw_inputs)
         input = primary_input,
         inputs = inputs_by_key
     }
+end
+
+local function is_dataflow_reference(value)
+    return type(value) == "table" and value._dataflow_ref ~= nil
+end
+
+local function create_reference_data(self, target, ref_id)
+    local data_id = uuid.v7()
+    table.insert(self._created_data_ids, data_id)
+
+    local command = {
+        type = consts.COMMAND_TYPES.CREATE_DATA,
+        payload = {
+            data_id = data_id,
+            data_type = target.data_type,
+            key = ref_id,
+            content = "",
+            content_type = "dataflow/reference",
+            discriminator = target.discriminator,
+            node_id = target.node_id or self.node_id,
+            metadata = target.metadata
+        }
+    }
+
+    table.insert(self._queued_commands, command)
+    return data_id
 end
 
 function node.new(args, deps)
@@ -161,8 +185,7 @@ function methods:_transform_inputs_with_expr(raw_inputs, transform_config)
         result[field_name] = {
             content = content,
             metadata = {},
-            key = field_name,
-            discriminator = nil
+            discriminator = field_name
         }
     end
     return result, nil
@@ -187,7 +210,7 @@ function methods:_load_raw_inputs()
             end
         end
 
-        local map_key = input.discriminator or input.key or ""
+        local map_key = input.discriminator or ""
         inputs_map[map_key] = {
             content = parsed_content,
             metadata = input.metadata or {},
@@ -272,7 +295,7 @@ function methods:data(data_type, content, options)
     return self, nil
 end
 
-function methods:metadata(updates)
+function methods:update_metadata(updates)
     if not updates or type(updates) ~= "table" then
         return self, nil
     end
@@ -284,6 +307,25 @@ function methods:metadata(updates)
         payload = {
             node_id = self.node_id,
             metadata = self._metadata
+        }
+    }
+
+    table.insert(self._queued_commands, command)
+    return self, nil
+end
+
+function methods:update_config(updates)
+    if not updates or type(updates) ~= "table" then
+        return self, nil
+    end
+
+    self._config = merge_metadata(self._config, updates)
+
+    local command = {
+        type = consts.COMMAND_TYPES.UPDATE_NODE,
+        payload = {
+            node_id = self.node_id,
+            config = self._config
         }
     }
 
@@ -406,20 +448,34 @@ function methods:_route_outputs(content)
             output_content = transformed
         end
 
-        local data_id = uuid.v7()
-        data_id_count = data_id_count + 1
-        routed_data_ids[data_id_count] = data_id
+        if is_dataflow_reference(output_content) then
+            local ref_id = create_reference_data(self, target, output_content._dataflow_ref)
+            data_id_count = data_id_count + 1
+            routed_data_ids[data_id_count] = ref_id
+        elseif type(output_content) == "table" and #output_content > 0 and is_dataflow_reference(output_content[1]) then
+            for _, ref_item in ipairs(output_content) do
+                if is_dataflow_reference(ref_item) then
+                    local ref_id = create_reference_data(self, target, ref_item._dataflow_ref)
+                    data_id_count = data_id_count + 1
+                    routed_data_ids[data_id_count] = ref_id
+                end
+            end
+        else
+            local data_id = uuid.v7()
+            data_id_count = data_id_count + 1
+            routed_data_ids[data_id_count] = data_id
 
-        local _, data_err = self:data(target.data_type, output_content, {
-            data_id = data_id,
-            key = target.key,
-            discriminator = target.discriminator,
-            node_id = target.node_id or self.node_id,
-            content_type = target.content_type,
-            metadata = target.metadata
-        })
-        if data_err then
-            return nil, data_err
+            local _, data_err = self:data(target.data_type, output_content, {
+                data_id = data_id,
+                key = target.key,
+                discriminator = target.discriminator,
+                node_id = target.node_id or self.node_id,
+                content_type = target.content_type,
+                metadata = target.metadata
+            })
+            if data_err then
+                return nil, data_err
+            end
         end
 
         ::continue::
@@ -491,7 +547,7 @@ end
 
 function methods:complete(output_content, message, extra_metadata)
     if extra_metadata then
-        local _, meta_err = self:metadata(extra_metadata)
+        local _, meta_err = self:update_metadata(extra_metadata)
         if meta_err then
             return {
                 success = false,
@@ -503,7 +559,7 @@ function methods:complete(output_content, message, extra_metadata)
     end
 
     if message then
-        local _, msg_err = self:metadata({ status_message = message })
+        local _, msg_err = self:update_metadata({ status_message = message })
         if msg_err then
             return {
                 success = false,
@@ -558,7 +614,7 @@ function methods:fail(error_details, message, extra_metadata)
         error_metadata = merge_metadata(error_metadata, extra_metadata)
     end
 
-    self:metadata(error_metadata)
+    self:update_metadata(error_metadata)
 
     local data_ids = table.create(#self.error_targets, 0)
     if error_details ~= nil then

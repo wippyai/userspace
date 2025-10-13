@@ -15,11 +15,7 @@ entries:
         - multi-input
         - collection
         - parallel
-      description: |
-        Collects multiple inputs and structures them using expr transformations.
-        Waits for all required inputs before proceeding. Used internally by 
-        Flow Builder for parallel operations and diamond patterns.
-        Supports standard input_transform and data_targets routing.
+      description: "Collects multiple inputs and structures them using expr transformations.\nWaits for all required inputs before proceeding. Used internally by \nFlow Builder for parallel operations and diamond patterns.\nSupports standard input_transform and data_targets routing.\n"
       default_host: app:processes
     source: file://state.lua
     modules:
@@ -29,7 +25,7 @@ entries:
       consts: userspace.dataflow:consts
       node: userspace.dataflow:node
     method: run
-
+    
   # userspace.dataflow.node.state:state_test
   - name: state_test
     kind: function.lua
@@ -58,3 +54,4 @@ entries:
       data_reader: userspace.dataflow.persist:data_reader
       test: wippy.test:test
     method: run_tests
+    

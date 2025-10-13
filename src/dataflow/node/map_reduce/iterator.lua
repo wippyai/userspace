@@ -120,11 +120,6 @@ function iterator.create_iteration(parent_node, template_graph, input_item, iter
         merged_metadata.iteration = iteration_index
         merged_metadata.template_source = template_id
 
-        -- Handle title with iteration suffix
-        if merged_metadata.title then
-            merged_metadata.title = merged_metadata.title .. " (#" .. iteration_index .. ")"
-        end
-
         parent_node:command({
             type = consts.COMMAND_TYPES.CREATE_NODE,
             payload = {

@@ -261,7 +261,7 @@ function delegation_handler.execute_delegation_batch(delegation_infos, parent_no
         }
     end
 
-    parent_node_sdk:metadata({
+    parent_node_sdk:update_metadata({
         active_delegations = delegation_context
     })
 
@@ -288,7 +288,7 @@ function delegation_handler.execute_delegation_batch(delegation_infos, parent_no
         end
     end
 
-    parent_node_sdk:metadata({
+    parent_node_sdk:update_metadata({
         active_delegations = nil
     })
 

@@ -227,6 +227,7 @@ function prompt_builder:build_prompt(system_prompt, initial_input)
     local builder = prompt_lib.new()
 
     builder:add_system(system_prompt)
+    print("SYSTEM PROMPT:\n" .. system_prompt .. "\n---")
     builder:add_cache_marker("system_complete")
 
     if self._arena_config then
@@ -255,6 +256,7 @@ function prompt_builder:build_prompt(system_prompt, initial_input)
         end
         builder:add_user(input_text)
     end
+    print("USER PROMPT:\n" .. (input_content or "") .. "\n---")
     builder:add_cache_marker("user_complete")
     
     for i, item in ipairs(history_items) do

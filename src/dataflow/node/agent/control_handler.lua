@@ -30,7 +30,7 @@ function control_handler.process_session_context(control, node_sdk)
     end
 
     if next(changes) then
-        node_sdk:metadata({ session_context = current_metadata })
+        node_sdk:update_metadata({ session_context = current_metadata })
         return { session_context = changes }
     end
 
@@ -78,7 +78,7 @@ function control_handler.process_public_metadata(control, node_sdk)
     end
 
     if next(changes) then
-        node_sdk:metadata({ public_meta = current_public_meta })
+        node_sdk:update_metadata({ public_meta = current_public_meta })
         return { public_meta = changes }
     end
 

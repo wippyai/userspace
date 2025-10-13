@@ -2,18 +2,18 @@ local json = require("json")
 local uuid = require("uuid")
 local expr = require("expr")
 
-local ERROR_MISSING_FUNC_ID = "MISSING_FUNC_ID"
-local ERROR_NO_INPUT_DATA = "NO_INPUT_DATA"
-local ERROR_FUNCTION_CANCELED = "FUNCTION_CANCELED"
-local ERROR_FUNCTION_EXECUTION_FAILED = "FUNCTION_EXECUTION_FAILED"
-local ERROR_MAX_ITERATIONS_EXCEEDED = "MAX_ITERATIONS_EXCEEDED"
-local ERROR_TEMPLATE_DISCOVERY_FAILED = "TEMPLATE_DISCOVERY_FAILED"
-local ERROR_NO_TEMPLATES = "NO_TEMPLATES"
-local ERROR_TEMPLATE_EXECUTION_FAILED = "TEMPLATE_EXECUTION_FAILED"
-local ERROR_CONTINUE_CONDITION_FAILED = "CONTINUE_CONDITION_FAILED"
-local ERROR_INVALID_CONTINUATION_CONFIG = "INVALID_CONTINUATION_CONFIG"
-
 local cycle = {}
+
+cycle.ERROR = table.freeze({
+    MISSING_FUNC_ID = "MISSING_FUNC_ID",
+    NO_INPUT_DATA = "NO_INPUT_DATA",
+    FUNCTION_CANCELED = "FUNCTION_CANCELED",
+    FUNCTION_EXECUTION_FAILED = "FUNCTION_EXECUTION_FAILED",
+    MAX_ITERATIONS_EXCEEDED = "MAX_ITERATIONS_EXCEEDED",
+    TEMPLATE_DISCOVERY_FAILED = "TEMPLATE_DISCOVERY_FAILED",
+    NO_TEMPLATES = "NO_TEMPLATES",
+    TEMPLATE_EXECUTION_FAILED = "TEMPLATE_EXECUTION_FAILED"
+})
 
 cycle._deps = {
     node = require("node"),
@@ -23,12 +23,13 @@ cycle._deps = {
     data_reader = require("data_reader")
 }
 
-cycle.DEFAULTS = {
+cycle.DEFAULTS = table.freeze({
     MAX_ITERATIONS = 100,
     INITIAL_STATE = {}
-}
+})
 
 cycle.CYCLE_STATE_DATA_TYPE = "cycle.state"
+cycle.CYCLE_FUNCTION_RESULT_DATA_TYPE = "cycle.function_result"
 
 local function build_cycle_context(base_context, dataflow_id, node_id, path, iteration_number)
     local execution_context = {}
@@ -53,6 +54,17 @@ local function persist_state(n, state, iteration_number)
         key = "cycle_state",
         metadata = {
             iteration = iteration_number
+        }
+    })
+end
+
+local function persist_function_result(n, result, iteration_number)
+    n:data(cycle.CYCLE_FUNCTION_RESULT_DATA_TYPE, result, {
+        node_id = n.node_id,
+        key = "function_result_" .. iteration_number,
+        metadata = {
+            iteration = iteration_number,
+            timestamp = os.time()
         }
     })
 end
@@ -104,17 +116,17 @@ local function execute_function_iteration(executor, func_id, context, events_cha
         local event = result.value
         if event.kind == process.event.CANCEL then
             command:cancel()
-            return nil, ERROR_FUNCTION_CANCELED, "Function execution was canceled by system event"
+            return nil, cycle.ERROR.FUNCTION_CANCELED, "Function execution was canceled by system event"
         end
     end
 
     if command:is_canceled() then
-        return nil, ERROR_FUNCTION_CANCELED, "Function execution was canceled"
+        return nil, cycle.ERROR.FUNCTION_CANCELED, "Function execution was canceled"
     end
 
     local payload, result_err = command:result()
     if result_err then
-        return nil, ERROR_FUNCTION_EXECUTION_FAILED, "Function execution failed: " .. result_err
+        return nil, cycle.ERROR.FUNCTION_EXECUTION_FAILED, "Function execution failed: " .. result_err
     end
 
     return payload:data(), nil, nil
@@ -167,7 +179,7 @@ end
 
 local function parse_content(content, content_type)
     if (content_type == cycle._deps.consts.CONTENT_TYPE.JSON or content_type == "application/json")
-       and type(content) == "string" then
+        and type(content) == "string" then
         local parsed, err = json.decode(content)
         if not err then
             return parsed
@@ -222,19 +234,16 @@ end
 local function execute_template_iteration(n, template_graph, current_state, last_result, iteration_number, original_input)
     local uuid_mapping = {}
 
-    -- Get sorted template IDs for deterministic order
     local template_ids = {}
     for template_id, _ in pairs(template_graph.nodes) do
         table.insert(template_ids, template_id)
     end
     table.sort(template_ids)
 
-    -- Create UUID mapping in sorted order
     for _, template_id in ipairs(template_ids) do
         uuid_mapping[template_id] = uuid.v7()
     end
 
-    -- Process templates in sorted order
     for _, template_id in ipairs(template_ids) do
         local template = template_graph.nodes[template_id]
         local actual_node_id = uuid_mapping[template_id]
@@ -316,7 +325,7 @@ local function process_control_commands(n, control_commands, iteration_number)
                 if not cmd.payload.metadata then
                     cmd.payload.metadata = {}
                 end
-                cmd.payload.metadata.created_in_iteration = iteration_number
+                cmd.payload.metadata.iteration = iteration_number
             end
 
             n:command(cmd)
@@ -348,7 +357,7 @@ local function process_control_commands(n, control_commands, iteration_number)
                 local content = output_data[1].content
 
                 if output_data[1].content_type == "application/json" or
-                   output_data[1].content_type == cycle._deps.consts.CONTENT_TYPE.JSON then
+                    output_data[1].content_type == cycle._deps.consts.CONTENT_TYPE.JSON then
                     if type(content) == "string" then
                         local parsed, parse_err = json.decode(content)
                         if not parse_err and parsed then
@@ -364,7 +373,7 @@ local function process_control_commands(n, control_commands, iteration_number)
                     local content = output.content
 
                     if output.content_type == "application/json" or
-                       output.content_type == cycle._deps.consts.CONTENT_TYPE.JSON then
+                        output.content_type == cycle._deps.consts.CONTENT_TYPE.JSON then
                         if type(content) == "string" then
                             local parsed, parse_err = json.decode(content)
                             if not parse_err and parsed then
@@ -388,7 +397,7 @@ local function update_node_metadata(n, metadata_updates)
         return
     end
 
-    n:metadata(metadata_updates)
+    n:update_metadata(metadata_updates)
 end
 
 local function run(args)
@@ -400,21 +409,8 @@ local function run(args)
     local config = n:config()
 
     local func_id = config.func_id
-    local continue_func_id = config.continue_func_id
-    local continue_condition = config.continue_condition
     local use_template = false
     local template_graph = nil
-
-    local continuation_methods = 0
-    if continue_condition then continuation_methods = continuation_methods + 1 end
-    if continue_func_id then continuation_methods = continuation_methods + 1 end
-
-    if continuation_methods > 1 then
-        return n:fail({
-            code = ERROR_INVALID_CONTINUATION_CONFIG,
-            message = "Only one continuation method allowed: continue_condition OR continue_func_id"
-        }, "Multiple continuation methods specified")
-    end
 
     if func_id then
         use_template = false
@@ -422,14 +418,14 @@ local function run(args)
         template_graph, template_err = cycle._deps.template_graph.build_for_node(n)
         if template_err then
             return n:fail({
-                code = ERROR_TEMPLATE_DISCOVERY_FAILED,
+                code = cycle.ERROR.TEMPLATE_DISCOVERY_FAILED,
                 message = "Template discovery failed: " .. template_err
             }, "Failed to discover template nodes")
         end
 
         if template_graph:is_empty() then
             return n:fail({
-                code = ERROR_MISSING_FUNC_ID,
+                code = cycle.ERROR.MISSING_FUNC_ID,
                 message = "Cycle requires either func_id or template nodes"
             }, "No execution target specified")
         end
@@ -440,12 +436,19 @@ local function run(args)
     local max_iterations = config.max_iterations or cycle.DEFAULTS.MAX_ITERATIONS
     local initial_state = config.initial_state or cycle.DEFAULTS.INITIAL_STATE
 
-    local inputs = n:inputs()
+    local inputs, inputs_err = n:inputs()
+    if inputs_err then
+        return n:fail({
+            code = "INPUT_VALIDATION_FAILED",
+            message = inputs_err
+        }, inputs_err)
+    end
+
     local original_input = nil
 
     if next(inputs) == nil then
         return n:fail({
-            code = ERROR_NO_INPUT_DATA,
+            code = cycle.ERROR.NO_INPUT_DATA,
             message = "No input data provided for cycle node"
         }, "Cycle node requires input data")
     elseif inputs.default then
@@ -483,13 +486,14 @@ local function run(args)
     end
 
     for iteration_number = start_iteration, max_iterations do
-        local iteration_result, iter_err
+        local iteration_result, iter_err, iter_err_detail
 
         if use_template then
             iteration_result, iter_err = execute_template_iteration(
                 n, template_graph, current_state, last_result,
                 iteration_number, original_input
             )
+            iter_err_detail = iter_err
         else
             local execution_context = build_cycle_context(
                 base_context,
@@ -508,19 +512,23 @@ local function run(args)
                 iteration = iteration_number
             }
 
-            iteration_result, iter_err = execute_function_iteration(
+            iteration_result, iter_err, iter_err_detail = execute_function_iteration(
                 executor, func_id, function_context, events_channel
             )
+
+            if iteration_result then
+                persist_function_result(n, iteration_result, iteration_number)
+            end
         end
 
         if iter_err then
-            local error_code = use_template and ERROR_TEMPLATE_EXECUTION_FAILED or iter_err
-            local error_message = use_template and ("Template execution failed: " .. iter_err) or iter_err
+            local error_code = iter_err
+            local error_message = iter_err_detail or iter_err
 
             return n:fail({
                 code = error_code,
                 message = error_message
-            }, "Execution failed in iteration " .. iteration_number)
+            }, "Execution failed in iteration " .. iteration_number .. ": " .. error_message)
         end
 
         local should_continue = false
@@ -535,36 +543,6 @@ local function run(args)
 
             if iteration_result.continue ~= nil then
                 should_continue = iteration_result.continue
-            elseif continue_condition then
-                local env = {
-                    state = new_state,
-                    result = current_result,
-                    iteration = iteration_number,
-                    input = original_input,
-                    max_iterations = max_iterations
-                }
-                local ok, continue_result, expr_err = pcall(expr.eval, continue_condition, env)
-                if not ok then
-                    return n:fail({
-                        code = ERROR_CONTINUE_CONDITION_FAILED,
-                        message = "Continue condition evaluation failed: " .. tostring(continue_result)
-                    }, "Continue condition failed in iteration " .. iteration_number)
-                end
-                if expr_err then
-                    return n:fail({
-                        code = ERROR_CONTINUE_CONDITION_FAILED,
-                        message = "Continue condition evaluation failed: " .. expr_err
-                    }, "Continue condition failed in iteration " .. iteration_number)
-                end
-                should_continue = continue_result == true
-            elseif continue_func_id and not use_template then
-                local continue_context = {
-                    state = new_state,
-                    result = current_result,
-                    iteration = iteration_number
-                }
-                local continue_result = executor:call(continue_func_id, continue_context)
-                should_continue = continue_result == true
             else
                 should_continue = (new_state ~= current_state)
             end
@@ -588,22 +566,38 @@ local function run(args)
             local child_result, cmd_err = process_control_commands(n, control_commands, iteration_number)
             if cmd_err then
                 return n:fail({
-                    code = ERROR_FUNCTION_EXECUTION_FAILED,
+                    code = cycle.ERROR.FUNCTION_EXECUTION_FAILED,
                     message = cmd_err
                 }, "Failed to execute control commands in iteration " .. iteration_number)
             end
-            last_result = child_result or current_result
+
+            if type(child_result) == "table" then
+                new_state = child_result.state or new_state
+                current_result = child_result.result
+                if child_result.continue ~= nil then
+                    should_continue = child_result.continue
+                end
+                current_state = new_state
+            end
+
+            last_result = current_result
         else
             last_result = current_result
         end
 
         if not should_continue then
-            return n:complete(current_result, "Cycle completed after " .. iteration_number .. " iterations")
+            local final_result = control_commands and last_result or current_result
+            return n:complete(final_result, "Cycle completed after " .. iteration_number .. " iterations")
+        end
+
+        if iteration_number >= max_iterations then
+            local final_result = control_commands and last_result or current_result
+            return n:complete(final_result, "Cycle completed at maximum iterations (" .. max_iterations .. ")")
         end
     end
 
     return n:fail({
-        code = ERROR_MAX_ITERATIONS_EXCEEDED,
+        code = cycle.ERROR.MAX_ITERATIONS_EXCEEDED,
         message = "Maximum iterations (" .. max_iterations .. ") exceeded"
     }, "Cycle exceeded maximum iterations limit")
 end

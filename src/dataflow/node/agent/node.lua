@@ -9,6 +9,7 @@ local delegation_handler = require("delegation_handler")
 local agent_consts = require("agent_consts")
 local consts = require("consts")
 local tools = require("tools")
+local registry = require("registry")
 
 local function merge_contexts(base_context, input_context)
     local merged = {}
@@ -72,62 +73,52 @@ local function build_status_message(iteration, max_iterations, total_tokens, too
     return table.concat(status_parts, " - ")
 end
 
-local function process_multiple_inputs(inputs, input_config)
-    local config = input_config or {}
-    local context_key = config.context_key
-    local agent_id_key = config.agent_id_key
-    local prompt_key = config.prompt_key or agent_consts.INPUT_DEFAULTS.PROMPT_KEY
-    local required = config.required or agent_consts.INPUT_DEFAULTS.REQUIRED
-
-    for _, req_key in ipairs(required) do
-        if not inputs[req_key] then
-            return nil, nil, nil, string.format(agent_consts.ERROR_MSG.INPUT_MISSING, req_key)
-        end
-    end
-
+local function process_multiple_inputs(inputs)
     local input_context = nil
-    if context_key and inputs[context_key] then
-        local context_content = inputs[context_key].content
+    if inputs.context then
+        local context_content = inputs.context.content
         if type(context_content) ~= "table" then
-            return nil, nil, nil,
-                string.format(agent_consts.ERROR_MSG.INPUT_VALIDATION_FAILED, "context must be a table/object")
+            return nil, nil, nil, nil, "context must be a table/object"
         end
         input_context = context_content
     end
 
     local agent_id_override = nil
-    if agent_id_key and inputs[agent_id_key] then
-        local agent_id_content = inputs[agent_id_key].content
+    if inputs.agent_id then
+        local agent_id_content = inputs.agent_id.content
         if type(agent_id_content) ~= "string" or agent_id_content == "" then
-            return nil, nil, nil,
-                string.format(agent_consts.ERROR_MSG.INPUT_VALIDATION_FAILED, "agent_id must be a non-empty string")
+            return nil, nil, nil, nil, "agent_id must be a non-empty string"
         end
         agent_id_override = agent_id_content
     end
 
-    local input_data = ""
-    if prompt_key and prompt_key ~= "" then
-        if inputs[prompt_key] then
-            input_data = inputs[prompt_key].content
+    local model_override = nil
+    if inputs.model then
+        local model_content = inputs.model.content
+        if type(model_content) ~= "string" or model_content == "" then
+            return nil, nil, nil, nil, "model must be a non-empty string"
         end
-    else
-        if inputs[""] then
-            input_data = inputs[""].content
-        elseif inputs.default then
-            input_data = inputs.default.content
-        else
-            for key, input in pairs(inputs) do
-                input_data = input.content
-                break
+        model_override = model_content
+    end
+
+    local parts = {}
+    for key, input in pairs(inputs) do
+        if key ~= "context" and key ~= "agent_id" and key ~= "model" then
+            local content = input.content
+            if type(content) == "table" then
+                content = json.encode(content)
+            else
+                content = tostring(content)
             end
+            table.insert(parts, string.format('<input key="%s">\n%s\n</input>', key, content))
         end
     end
 
-    if input_data == nil then
-        input_data = ""
+    if #parts == 0 then
+        return input_context, agent_id_override, model_override, "", nil
     end
 
-    return input_context, agent_id_override, input_data, nil
+    return input_context, agent_id_override, model_override, table.concat(parts, "\n\n"), nil
 end
 
 local function validate_and_resolve_config(config)
@@ -135,44 +126,8 @@ local function validate_and_resolve_config(config)
         return nil, agent_consts.ERROR_MSG.INVALID_CONFIG
     end
 
-    if not config.agent then
-        return nil, "Agent configuration is required"
-    end
-
     if not config.arena then
         return nil, "Arena configuration is required"
-    end
-
-    if not config.arena.prompt then
-        return nil, "Arena prompt is required"
-    end
-
-    if config.inputs then
-        local inputs_config = config.inputs
-
-        if inputs_config.context_key and type(inputs_config.context_key) ~= "string" then
-            return nil, "inputs.context_key must be a string"
-        end
-
-        if inputs_config.agent_id_key and type(inputs_config.agent_id_key) ~= "string" then
-            return nil, "inputs.agent_id_key must be a string"
-        end
-
-        if inputs_config.prompt_key and type(inputs_config.prompt_key) ~= "string" then
-            return nil, "inputs.prompt_key must be a string"
-        end
-
-        if inputs_config.required and type(inputs_config.required) ~= "table" then
-            return nil, "inputs.required must be an array"
-        end
-
-        if inputs_config.required then
-            for i, req_key in ipairs(inputs_config.required) do
-                if type(req_key) ~= "string" then
-                    return nil, string.format("inputs.required[%d] must be a string", i)
-                end
-            end
-        end
     end
 
     local tool_calling = config.arena.tool_calling or agent_consts.DEFAULTS.TOOL_CALLING
@@ -255,7 +210,7 @@ local function update_node_progress(n, iteration, max_iterations, total_tokens, 
         tool_calls = tool_calls_count
     }
 
-    n:metadata({
+    n:update_metadata({
         status_message = status_message,
         state = state_info
     })
@@ -602,8 +557,15 @@ local function run(args)
         }, config_err)
     end
 
-    local inputs = n:inputs()
-    local input_context, agent_id_override, input_data, input_err = process_multiple_inputs(inputs, config.inputs)
+    local inputs, inputs_err = n:inputs()
+    if inputs_err then
+        return n:fail({
+            code = agent_consts.ERROR.INPUT_VALIDATION_FAILED,
+            message = inputs_err
+        }, inputs_err)
+    end
+
+    local input_context, agent_id_override, model_override, input_data, input_err = process_multiple_inputs(inputs)
     if input_err then
         return n:fail({
             code = agent_consts.ERROR.INPUT_VALIDATION_FAILED,
@@ -611,6 +573,19 @@ local function run(args)
         }, input_err)
     end
 
+    if agent_id_override then
+        n:update_config({ agent = agent_id_override })
+
+        local entry = registry.get(agent_id_override)
+        if entry and entry.meta and (entry.meta.title or entry.meta.name) then
+            local title = entry.meta.title or entry.meta.name
+            n:update_metadata({title = title})
+        else
+            n:update_metadata({title = "Agent: " .. agent_id_override})
+        end
+    end
+
+    model_override = model_override or config.model or config.arena.model
 
     local arena_context = config.arena.context or {}
     local session_context = {
@@ -629,13 +604,27 @@ local function run(args)
             default_schema = agent_consts.DELEGATE_DEFAULTS.SCHEMA
         }
     }
+
+    if model_override then
+        base_context.model = model_override
+    end
+
     local merged_context = merge_contexts(base_context, input_context)
     local agent_ctx = agent_context.new(merged_context)
 
     local exit_tool_name = setup_exit_tool(agent_ctx, config.arena)
 
     local agent_to_load = agent_id_override or config.agent
-    local agent_instance, agent_err = agent_ctx:load_agent(agent_to_load)
+
+    if not agent_to_load or agent_to_load == "" then
+        return n:fail({
+            code = agent_consts.ERROR.AGENT_LOAD_FAILED,
+            message = "Agent ID not specified in config or inputs"
+        }, "Agent ID not specified in config or inputs")
+    end
+
+    local load_options = model_override and {model = model_override} or nil
+    local agent_instance, agent_err = agent_ctx:load_agent(agent_to_load, load_options)
     if not agent_instance then
         return n:fail({
             code = agent_consts.ERROR.AGENT_LOAD_FAILED,
@@ -841,7 +830,6 @@ local function run(args)
                 }, changes_err)
             end
 
-            -- Collect any nodes created by control commands
             local created_node_ids = {}
             for _, response in ipairs(control_responses) do
                 if response.changes_applied and response.changes_applied.commands and response.changes_applied.created_nodes then
@@ -851,11 +839,9 @@ local function run(args)
                 end
             end
 
-            -- If commands created nodes, yield and collect their outputs
             if #created_node_ids > 0 then
                 local yield_result, yield_err = n:yield({ run_nodes = created_node_ids })
                 if yield_result then
-                    -- Collect NODE_OUTPUT data from created nodes
                     local reader = n:query()
                         :with_nodes(created_node_ids)
                         :with_data_types(consts.DATA_TYPE.NODE_OUTPUT)
@@ -925,7 +911,7 @@ local function run(args)
 
     local delegation_data_id = get_delegation_data_id(n)
     if delegation_data_id then
-        n:metadata({
+        n:update_metadata({
             delegation_output_data_id = delegation_data_id
         })
     end

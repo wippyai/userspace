@@ -10,22 +10,25 @@ local function run(args)
         error(err)
     end
 
-    -- Simply collect all available inputs
-    local inputs = n:inputs()
+    local inputs, inputs_err = n:inputs()
+    if inputs_err then
+        return n:fail({
+            code = "INPUT_VALIDATION_FAILED",
+            message = inputs_err
+        }, inputs_err)
+    end
 
     if next(inputs) == nil then
         return n:fail("No input data provided", "State node requires input data")
     end
 
-    -- Collect inputs into structured object
     local collected = {}
     for key, input in pairs(inputs) do
-        if key ~= "" then  -- Skip empty keys
+        if key ~= "" then
             collected[key] = input.content
         end
     end
 
-    -- If only one input and no meaningful key, return content directly
     if next(collected) == nil then
         for _, input in pairs(inputs) do
             return n:complete(input.content, "State collection completed")

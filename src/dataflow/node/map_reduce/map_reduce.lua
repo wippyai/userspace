@@ -1,6 +1,5 @@
 local map_reduce = {}
 
--- Exposed dependencies for testing
 map_reduce._deps = {
     node = require("node"),
     template_graph = require("template_graph"),
@@ -8,7 +7,6 @@ map_reduce._deps = {
     funcs = require("funcs")
 }
 
--- Constants
 map_reduce.DEFAULTS = {
     BATCH_SIZE = 1,
     ITERATION_INPUT_KEY = "default",
@@ -57,7 +55,6 @@ map_reduce.ERRORS = {
     INCOMPATIBLE_PIPELINE_DATA = "INCOMPATIBLE_PIPELINE_DATA"
 }
 
--- Built-in extractors that convert map-reduce structures to business data
 local extractors = {
     [map_reduce.EXTRACTORS.SUCCESSES] = function(map_reduce_result)
         local items = {}
@@ -143,7 +140,6 @@ local function validate_item_pipeline_step(step)
         return false, "Item pipeline step requires func_id"
     end
 
-    -- Validate per-step context
     if step.context and type(step.context) ~= "table" then
         return false, "Step context must be a table if provided"
     end
@@ -191,7 +187,6 @@ local function validate_reduction_pipeline_step(step, expected_data_type)
         end
     end
 
-    -- Validate per-step context
     if step.context and type(step.context) ~= "table" then
         return false, "Step context must be a table if provided"
     end
@@ -228,7 +223,6 @@ end
 local function execute_item_pipeline_step(step, data)
     local step_type = step.type
 
-    -- Create executor with per-step context
     local executor = map_reduce._deps.funcs.new()
     if step.context then
         executor = executor:with_context(step.context)
@@ -255,7 +249,6 @@ local function execute_reduction_pipeline_step(step, data)
             local item_executor = map_reduce._deps.funcs.new()
             local merged_context = {}
 
-            -- Merge step context if available
             if step.context then
                 for k, v in pairs(step.context) do
                     merged_context[k] = v
@@ -272,7 +265,6 @@ local function execute_reduction_pipeline_step(step, data)
             local item_executor = map_reduce._deps.funcs.new()
             local merged_context = {}
 
-            -- Merge step context if available
             if step.context then
                 for k, v in pairs(step.context) do
                     merged_context[k] = v
@@ -340,7 +332,6 @@ local function execute_reduction_pipeline_step(step, data)
         return results, nil
 
     else
-        -- For all other step types, create base executor with step context
         local base_executor = map_reduce._deps.funcs.new()
         if step.context then
             base_executor = base_executor:with_context(step.context)
@@ -554,7 +545,6 @@ local function run(args)
 
     local config = n:config()
 
-    -- New config format only
     local source_array_key = config.source_array_key
     if not source_array_key or source_array_key == "" then
         return n:fail({
@@ -626,7 +616,14 @@ local function run(args)
         end
     end
 
-    local inputs = n:inputs()
+    local inputs, inputs_err = n:inputs()
+    if inputs_err then
+        return n:fail({
+            code = "INPUT_VALIDATION_FAILED",
+            message = inputs_err
+        }, inputs_err)
+    end
+
     local input_data = nil
 
     if inputs.default then
