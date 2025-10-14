@@ -7,7 +7,9 @@ local prompt_builder = require("prompt_builder")
 local control_handler = require("control_handler")
 local delegation_handler = require("delegation_handler")
 local agent_consts = require("agent_consts")
+local consts = require("consts")
 local tools = require("tools")
+local registry = require("registry")
 
 local function merge_contexts(base_context, input_context)
     local merged = {}
@@ -71,62 +73,52 @@ local function build_status_message(iteration, max_iterations, total_tokens, too
     return table.concat(status_parts, " - ")
 end
 
-local function process_multiple_inputs(inputs, input_config)
-    local config = input_config or {}
-    local context_key = config.context_key
-    local agent_id_key = config.agent_id_key
-    local prompt_key = config.prompt_key or agent_consts.INPUT_DEFAULTS.PROMPT_KEY
-    local required = config.required or agent_consts.INPUT_DEFAULTS.REQUIRED
-
-    for _, req_key in ipairs(required) do
-        if not inputs[req_key] then
-            return nil, nil, nil, string.format(agent_consts.ERROR_MSG.INPUT_MISSING, req_key)
-        end
-    end
-
+local function process_multiple_inputs(inputs)
     local input_context = nil
-    if context_key and inputs[context_key] then
-        local context_content = inputs[context_key].content
+    if inputs.context then
+        local context_content = inputs.context.content
         if type(context_content) ~= "table" then
-            return nil, nil, nil,
-                string.format(agent_consts.ERROR_MSG.INPUT_VALIDATION_FAILED, "context must be a table/object")
+            return nil, nil, nil, nil, "context must be a table/object"
         end
         input_context = context_content
     end
 
     local agent_id_override = nil
-    if agent_id_key and inputs[agent_id_key] then
-        local agent_id_content = inputs[agent_id_key].content
+    if inputs.agent_id then
+        local agent_id_content = inputs.agent_id.content
         if type(agent_id_content) ~= "string" or agent_id_content == "" then
-            return nil, nil, nil,
-                string.format(agent_consts.ERROR_MSG.INPUT_VALIDATION_FAILED, "agent_id must be a non-empty string")
+            return nil, nil, nil, nil, "agent_id must be a non-empty string"
         end
         agent_id_override = agent_id_content
     end
 
-    local input_data = ""
-    if prompt_key and prompt_key ~= "" then
-        if inputs[prompt_key] then
-            input_data = inputs[prompt_key].content
+    local model_override = nil
+    if inputs.model then
+        local model_content = inputs.model.content
+        if type(model_content) ~= "string" or model_content == "" then
+            return nil, nil, nil, nil, "model must be a non-empty string"
         end
-    else
-        if inputs[""] then
-            input_data = inputs[""].content
-        elseif inputs.default then
-            input_data = inputs.default.content
-        else
-            for key, input in pairs(inputs) do
-                input_data = input.content
-                break
+        model_override = model_content
+    end
+
+    local parts = {}
+    for key, input in pairs(inputs) do
+        if key ~= "context" and key ~= "agent_id" and key ~= "model" then
+            local content = input.content
+            if type(content) == "table" then
+                content = json.encode(content)
+            else
+                content = tostring(content)
             end
+            table.insert(parts, string.format('<input key="%s">\n%s\n</input>', key, content))
         end
     end
 
-    if input_data == nil then
-        input_data = ""
+    if #parts == 0 then
+        return input_context, agent_id_override, model_override, "", nil
     end
 
-    return input_context, agent_id_override, input_data, nil
+    return input_context, agent_id_override, model_override, table.concat(parts, "\n\n"), nil
 end
 
 local function validate_and_resolve_config(config)
@@ -134,44 +126,8 @@ local function validate_and_resolve_config(config)
         return nil, agent_consts.ERROR_MSG.INVALID_CONFIG
     end
 
-    if not config.agent then
-        return nil, "Agent configuration is required"
-    end
-
     if not config.arena then
         return nil, "Arena configuration is required"
-    end
-
-    if not config.arena.prompt then
-        return nil, "Arena prompt is required"
-    end
-
-    if config.inputs then
-        local inputs_config = config.inputs
-
-        if inputs_config.context_key and type(inputs_config.context_key) ~= "string" then
-            return nil, "inputs.context_key must be a string"
-        end
-
-        if inputs_config.agent_id_key and type(inputs_config.agent_id_key) ~= "string" then
-            return nil, "inputs.agent_id_key must be a string"
-        end
-
-        if inputs_config.prompt_key and type(inputs_config.prompt_key) ~= "string" then
-            return nil, "inputs.prompt_key must be a string"
-        end
-
-        if inputs_config.required and type(inputs_config.required) ~= "table" then
-            return nil, "inputs.required must be an array"
-        end
-
-        if inputs_config.required then
-            for i, req_key in ipairs(inputs_config.required) do
-                if type(req_key) ~= "string" then
-                    return nil, string.format("inputs.required[%d] must be a string", i)
-                end
-            end
-        end
     end
 
     local tool_calling = config.arena.tool_calling or agent_consts.DEFAULTS.TOOL_CALLING
@@ -254,7 +210,7 @@ local function update_node_progress(n, iteration, max_iterations, total_tokens, 
         tool_calls = tool_calls_count
     }
 
-    n:metadata({
+    n:update_metadata({
         status_message = status_message,
         state = state_info
     })
@@ -294,7 +250,7 @@ local function store_agent_action(n, agent_result, iteration, agent_id, model_na
 
     n:data(agent_consts.DATA_TYPE.AGENT_ACTION, action_content, {
         key = action_key,
-        content_type = "application/json",
+        content_type = consts.CONTENT_TYPE.JSON,
         node_id = n.node_id,
         metadata = metadata
     })
@@ -307,7 +263,7 @@ local function store_memory_recall(n, agent_result, iteration)
 
     n:data(agent_consts.DATA_TYPE.AGENT_MEMORY, agent_result.memory_prompt.content, {
         key = iteration .. "_memory",
-        content_type = "text/plain",
+        content_type = consts.CONTENT_TYPE.TEXT,
         node_id = n.node_id,
         metadata = {
             iteration = iteration,
@@ -366,12 +322,12 @@ local function create_tool_viz_nodes(n, tool_calls, iteration, show_tool_calls, 
         end
 
         n:command({
-            type = "CREATE_NODE",
+            type = consts.COMMAND_TYPES.CREATE_NODE,
             payload = {
                 node_id = viz_node_id,
                 node_type = "tool.call",
                 parent_node_id = n.node_id,
-                status = "running",
+                status = consts.STATUS.RUNNING,
                 config = {},
                 metadata = metadata
             }
@@ -402,10 +358,10 @@ local function update_tool_viz_nodes(n, tool_results, tool_call_to_node_id)
                 output_size = string.len(output_json)
             end
 
-            local final_status = tool_error and "failed" or "completed"
+            local final_status = tool_error and consts.STATUS.COMPLETED_FAILURE or consts.STATUS.COMPLETED_SUCCESS
 
             n:command({
-                type = "UPDATE_NODE",
+                type = consts.COMMAND_TYPES.UPDATE_NODE,
                 payload = {
                     node_id = viz_node_id,
                     status = final_status,
@@ -494,7 +450,7 @@ local function process_tool_results(n, tool_results, iteration, exit_tool_name, 
 
                     n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, obs_content, {
                         key = tool_key,
-                        content_type = type(obs_content) == "table" and "application/json" or "text/plain",
+                        content_type = type(obs_content) == "table" and consts.CONTENT_TYPE.JSON or consts.CONTENT_TYPE.TEXT,
                         node_id = n.node_id,
                         metadata = {
                             iteration = iteration,
@@ -545,7 +501,7 @@ local function check_completion(tool_calling, agent_result, iteration, min_itera
                 local feedback = agent_consts.FEEDBACK.NO_TOOLS_CALLED
                 n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, feedback, {
                     key = iteration .. "_no_tools_called",
-                    content_type = "text/plain",
+                    content_type = consts.CONTENT_TYPE.TEXT,
                     node_id = n.node_id,
                     metadata = {
                         iteration = iteration
@@ -561,7 +517,7 @@ local function check_completion(tool_calling, agent_result, iteration, min_itera
             end
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, feedback, {
                 key = iteration .. "_no_tools_called",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration
@@ -601,8 +557,15 @@ local function run(args)
         }, config_err)
     end
 
-    local inputs = n:inputs()
-    local input_context, agent_id_override, input_data, input_err = process_multiple_inputs(inputs, config.inputs)
+    local inputs, inputs_err = n:inputs()
+    if inputs_err then
+        return n:fail({
+            code = agent_consts.ERROR.INPUT_VALIDATION_FAILED,
+            message = inputs_err
+        }, inputs_err)
+    end
+
+    local input_context, agent_id_override, model_override, input_data, input_err = process_multiple_inputs(inputs)
     if input_err then
         return n:fail({
             code = agent_consts.ERROR.INPUT_VALIDATION_FAILED,
@@ -610,10 +573,24 @@ local function run(args)
         }, input_err)
     end
 
+    if agent_id_override then
+        n:update_config({ agent = agent_id_override })
+
+        local entry = registry.get(agent_id_override)
+        if entry and entry.meta and (entry.meta.title or entry.meta.name) then
+            local title = entry.meta.title or entry.meta.name
+            n:update_metadata({title = title})
+        else
+            n:update_metadata({title = "Agent: " .. agent_id_override})
+        end
+    end
+
+    model_override = model_override or config.model or config.arena.model
 
     local arena_context = config.arena.context or {}
     local session_context = {
         dataflow_id = n.dataflow_id,
+        node_id = n.node_id,
     }
     for k, v in pairs(arena_context) do
         session_context[k] = v
@@ -627,13 +604,27 @@ local function run(args)
             default_schema = agent_consts.DELEGATE_DEFAULTS.SCHEMA
         }
     }
+
+    if model_override then
+        base_context.model = model_override
+    end
+
     local merged_context = merge_contexts(base_context, input_context)
     local agent_ctx = agent_context.new(merged_context)
 
     local exit_tool_name = setup_exit_tool(agent_ctx, config.arena)
 
     local agent_to_load = agent_id_override or config.agent
-    local agent_instance, agent_err = agent_ctx:load_agent(agent_to_load)
+
+    if not agent_to_load or agent_to_load == "" then
+        return n:fail({
+            code = agent_consts.ERROR.AGENT_LOAD_FAILED,
+            message = "Agent ID not specified in config or inputs"
+        }, "Agent ID not specified in config or inputs")
+    end
+
+    local load_options = model_override and {model = model_override} or nil
+    local agent_instance, agent_err = agent_ctx:load_agent(agent_to_load, load_options)
     if not agent_instance then
         return n:fail({
             code = agent_consts.ERROR.AGENT_LOAD_FAILED,
@@ -762,7 +753,7 @@ local function run(args)
             local warning_msg = string.format(agent_consts.FEEDBACK.ITERATIONS_WARNING, remaining_iterations)
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, warning_msg, {
                 key = iteration .. "_iterations_warning",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration,
@@ -773,7 +764,7 @@ local function run(args)
             local warning_msg = agent_consts.FEEDBACK.FINAL_ITERATION
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, warning_msg, {
                 key = iteration .. "_final_warning",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration,
@@ -784,7 +775,7 @@ local function run(args)
             local warning_msg = agent_consts.FEEDBACK.CRITICAL_FINAL
             n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, warning_msg, {
                 key = iteration .. "_critical_warning",
-                content_type = "text/plain",
+                content_type = consts.CONTENT_TYPE.TEXT,
                 node_id = n.node_id,
                 metadata = {
                     iteration = iteration,
@@ -838,6 +829,58 @@ local function run(args)
                     message = changes_err
                 }, changes_err)
             end
+
+            local created_node_ids = {}
+            for _, response in ipairs(control_responses) do
+                if response.changes_applied and response.changes_applied.commands and response.changes_applied.created_nodes then
+                    for _, node_id in ipairs(response.changes_applied.created_nodes) do
+                        table.insert(created_node_ids, node_id)
+                    end
+                end
+            end
+
+            if #created_node_ids > 0 then
+                local yield_result, yield_err = n:yield({ run_nodes = created_node_ids })
+                if yield_result then
+                    local reader = n:query()
+                        :with_nodes(created_node_ids)
+                        :with_data_types(consts.DATA_TYPE.NODE_OUTPUT)
+                        :fetch_options({ replace_references = true })
+
+                    local output_data = reader:all()
+
+                    if output_data and #output_data > 0 then
+                        local output_content = output_data[1].content
+                        if #output_data > 1 then
+                            local all_outputs = {}
+                            for _, output in ipairs(output_data) do
+                                table.insert(all_outputs, output.content)
+                            end
+                            output_content = all_outputs
+                        end
+
+                        n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, output_content, {
+                            key = iteration .. "_commands_output",
+                            content_type = type(output_content) == "table" and consts.CONTENT_TYPE.JSON or consts.CONTENT_TYPE.TEXT,
+                            node_id = n.node_id,
+                            metadata = {
+                                iteration = iteration,
+                                created_nodes = created_node_ids
+                            }
+                        })
+                    end
+                elseif yield_err then
+                    n:data(agent_consts.DATA_TYPE.AGENT_OBSERVATION, "Command execution failed: " .. yield_err, {
+                        key = iteration .. "_commands_error",
+                        content_type = consts.CONTENT_TYPE.TEXT,
+                        node_id = n.node_id,
+                        metadata = {
+                            iteration = iteration,
+                            is_error = true
+                        }
+                    })
+                end
+            end
         end
 
         if not task_complete and not has_delegations then
@@ -868,7 +911,7 @@ local function run(args)
 
     local delegation_data_id = get_delegation_data_id(n)
     if delegation_data_id then
-        n:metadata({
+        n:update_metadata({
             delegation_output_data_id = delegation_data_id
         })
     end

@@ -69,7 +69,8 @@ consts.ERROR_MSG = {
     PROMPT_BUILD_FAILED = "Failed to build prompt: %s",
     INPUT_MISSING = "Required input not found: %s",
     INPUT_VALIDATION_FAILED = "Input validation failed: %s",
-    DELEGATION_FAILED = "Delegation failed: %s"
+    DELEGATION_FAILED = "Delegation failed: %s",
+    NO_INPUTS_PROVIDED = "No inputs provided to the agent node",
 }
 
 -- Feedback Messages

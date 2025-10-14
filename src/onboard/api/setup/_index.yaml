@@ -2,6 +2,64 @@ version: "1.0"
 namespace: userspace.onboard.api.setup
 
 entries:
+  # userspace.onboard.api.setup:openrouter
+  - name: openrouter
+    kind: function.lua
+    meta:
+      comment: Sets up OpenRouter API connection and validates key
+      depends_on:
+        - ns:app
+      router: app:api
+    source: file://openrouter.lua
+    modules:
+      - http
+      - json
+      - security
+      - env
+      - http_client
+    method: handler
+
+  # userspace.onboard.api.setup:openrouter.endpoint
+  - name: openrouter.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint for OpenRouter API key setup and validation
+      depends_on:
+        - ns:app
+      router: app:api
+    method: POST
+    func: openrouter
+    path: /onboard/setup/openrouter
+
+  # userspace.onboard.api.setup:embeddings
+  - name: embeddings
+    kind: function.lua
+    meta:
+      comment: Sets up OpenAI API for embeddings and validates key
+      depends_on:
+        - ns:app
+      router: app:api
+    source: file://embeddings.lua
+    modules:
+      - http
+      - json
+      - security
+      - env
+      - http_client
+    method: handler
+
+  # userspace.onboard.api.setup:embeddings.endpoint
+  - name: embeddings.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint for OpenAI embeddings setup and validation
+      depends_on:
+        - ns:app
+      router: app:api
+    method: POST
+    func: embeddings
+    path: /onboard/setup/embeddings
+
   # userspace.onboard.api.setup:capabilities
   - name: capabilities
     kind: function.lua
@@ -18,7 +76,7 @@ entries:
       - env
       - http_client
     method: handler
-    
+
   # userspace.onboard.api.setup:capabilities.endpoint
   - name: capabilities.endpoint
     kind: http.endpoint
@@ -30,33 +88,3 @@ entries:
     method: POST
     func: capabilities
     path: /onboard/setup/capabilities
-    
-  # userspace.onboard.api.setup:providers
-  - name: providers
-    kind: function.lua
-    meta:
-      comment: Sets up AI providers with OpenRouter (required) and OpenAI (optional)
-      depends_on:
-        - ns:app
-      router: app:api
-    source: file://providers.lua
-    modules:
-      - http
-      - json
-      - security
-      - env
-      - http_client
-    method: handler
-    
-  # userspace.onboard.api.setup:providers.endpoint
-  - name: providers.endpoint
-    kind: http.endpoint
-    meta:
-      comment: Endpoint for AI provider setup with real-time status via SSE
-      depends_on:
-        - ns:app
-      router: app:api
-    method: POST
-    func: providers
-    path: /onboard/setup/providers
-    

@@ -2,42 +2,6 @@ version: "1.0"
 namespace: userspace.onboard.views.setup
 
 entries:
-  # userspace.onboard.views.setup:capabilities
-  - name: capabilities
-    kind: template.jet
-    meta:
-      name: capabilities
-      type: onboard.step
-      title: Additional Capabilities
-      description: Configure optional features like web search and enhanced research capabilities
-      order: 3
-      optional: true
-    source: file://capabilities.jet
-    set: userspace.onboard.views:templates
-    resources:
-      - userspace.onboard.views:tailwindcss
-      - userspace.onboard.views:alpine.js
-      - userspace.onboard.views:wippy-api
-      - userspace.onboard.views:iconify
-    
-  # userspace.onboard.views.setup:providers
-  - name: providers
-    kind: template.jet
-    meta:
-      name: providers
-      type: onboard.step
-      title: AI Providers
-      description: Configure your AI model providers for the best Wippy experience
-      order: 2
-      optional: false
-    source: file://providers.jet
-    set: userspace.onboard.views:templates
-    resources:
-      - userspace.onboard.views:tailwindcss
-      - userspace.onboard.views:alpine.js
-      - userspace.onboard.views:wippy-api
-      - userspace.onboard.views:iconify
-    
   # userspace.onboard.views.setup:welcome
   - name: welcome
     kind: template.jet
@@ -55,4 +19,57 @@ entries:
       - userspace.onboard.views:alpine.js
       - userspace.onboard.views:wippy-api
       - userspace.onboard.views:iconify
-    
+
+  # userspace.onboard.views.setup:openrouter
+  - name: openrouter
+    kind: template.jet
+    meta:
+      name: openrouter
+      type: onboard.step
+      title: OpenRouter
+      description: Connect to OpenRouter for access to Claude 4, GPT-5, Gemini, and other leading AI models
+      order: 2
+      optional: false
+    source: file://openrouter.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+
+  # userspace.onboard.views.setup:openai_embeddings
+  - name: openai_embeddings
+    kind: template.jet
+    meta:
+      name: openai_embeddings
+      type: onboard.step
+      title: OpenAI Embeddings
+      description: Optional OpenAI setup for intelligent search and content discovery in knowledge bases
+      order: 3
+      optional: true
+    source: file://openai_embeddings.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+
+  # userspace.onboard.views.setup:capabilities
+  - name: capabilities
+    kind: template.jet
+    meta:
+      name: capabilities
+      type: onboard.step
+      title: Additional Capabilities
+      description: Configure optional features like web search and enhanced research capabilities
+      order: 4
+      optional: true
+    source: file://capabilities.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify

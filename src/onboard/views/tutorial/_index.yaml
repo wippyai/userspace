@@ -40,84 +40,6 @@ entries:
       - userspace.onboard.views:wippy-api
       - userspace.onboard.views:iconify
     
-  # userspace.onboard.views.tutorial:ui_guide
-  - name: ui_guide
-    kind: template.jet
-    meta:
-      name: ui_guide
-      type: onboard.step
-      title: Wippy Interface Guide
-      description: Complete overview of the Wippy interface, navigation, and key features
-      order: 1
-      optional: true
-      tutorial: true
-    source: file://ui_guide.jet
-    set: userspace.onboard.views:templates
-    resources:
-      - userspace.onboard.views:tailwindcss
-      - userspace.onboard.views:alpine.js
-      - userspace.onboard.views:wippy-api
-      - userspace.onboard.views:iconify
-
-  # Add to userspace.onboard.views.tutorial/_index.yaml
-
-  # userspace.onboard.views.tutorial:file_uploads
-  - name: file_uploads
-    kind: template.jet
-    meta:
-      name: file_uploads
-      type: onboard.step
-      title: File Uploads and Processing
-      description: Learn how Wippy processes and stores your uploaded files for intelligent agent access
-      order: 4
-      optional: false
-      tutorial: true
-    source: file://file_uploads.jet
-    set: userspace.onboard.views:templates
-    resources:
-      - userspace.onboard.views:tailwindcss
-      - userspace.onboard.views:alpine.js
-      - userspace.onboard.views:wippy-api
-      - userspace.onboard.views:iconify
-
-  # userspace.onboard.views.tutorial:knowledge_bases
-  - name: knowledge_bases
-    kind: template.jet
-    meta:
-      name: knowledge_bases
-      type: onboard.step
-      title: Knowledge Bases and Information Storage
-      description: Organize information into searchable knowledge bases that any agent can access and use
-      order: 5
-      optional: false
-      tutorial: true
-    source: file://knowledge_bases.jet
-    set: userspace.onboard.views:templates
-    resources:
-      - userspace.onboard.views:tailwindcss
-      - userspace.onboard.views:alpine.js
-      - userspace.onboard.views:wippy-api
-      - userspace.onboard.views:iconify
-
-  # userspace.onboard.views.tutorial:projects
-  - name: projects
-    kind: template.jet
-    meta:
-      name: projects
-      type: onboard.step
-      title: Projects and Structured Workflows
-      description: Create structured project templates with agent coordination for organized work across sessions
-      order: 6
-      optional: false
-      tutorial: true
-    source: file://projects.jet
-    set: userspace.onboard.views:templates
-    resources:
-      - userspace.onboard.views:tailwindcss
-      - userspace.onboard.views:alpine.js
-      - userspace.onboard.views:wippy-api
-      - userspace.onboard.views:iconify
-
   # userspace.onboard.views.tutorial:faq
   - name: faq
     kind: template.jet
@@ -136,3 +58,80 @@ entries:
       - userspace.onboard.views:alpine.js
       - userspace.onboard.views:wippy-api
       - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views.tutorial:file_uploads
+  - name: file_uploads
+    kind: template.jet
+    meta:
+      name: file_uploads
+      type: onboard.step
+      title: File Uploads and Processing
+      description: Learn how Wippy processes and stores your uploaded files for intelligent agent access
+      order: 4
+      optional: false
+      tutorial: true
+    source: file://file_uploads.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views.tutorial:knowledge_bases
+  - name: knowledge_bases
+    kind: template.jet
+    meta:
+      name: knowledge_bases
+      type: onboard.step
+      title: Knowledge Bases and Information Storage
+      description: Organize information into searchable knowledge bases that any agent can access and use
+      order: 5
+      optional: false
+      tutorial: true
+    source: file://knowledge_bases.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views.tutorial:projects
+  - name: projects
+    kind: template.jet
+    meta:
+      name: projects
+      type: onboard.step
+      title: Projects and Structured Workflows
+      description: Create structured project templates with agent coordination for organized work across sessions
+      order: 6
+      optional: false
+      tutorial: true
+    source: file://projects.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    
+  # userspace.onboard.views.tutorial:ui_guide
+  - name: ui_guide
+    kind: template.jet
+    meta:
+      name: ui_guide
+      type: onboard.step
+      title: Wippy Interface Guide
+      description: Complete overview of the Wippy interface, navigation, and key features
+      order: 1
+      optional: true
+      tutorial: true
+    source: file://ui_guide.jet
+    set: userspace.onboard.views:templates
+    resources:
+      - userspace.onboard.views:tailwindcss
+      - userspace.onboard.views:alpine.js
+      - userspace.onboard.views:wippy-api
+      - userspace.onboard.views:iconify
+    

@@ -10,17 +10,22 @@
     {{ if isset(resources.style) }}
     {{ range resources.style }}
     {{ if isset(.url) }}
-    <link rel="stylesheet" href="{{ .url }}"{{ if isset(.crossorigin) }} crossorigin="{{ .crossorigin }}"{{ end }}>
+    <link rel="stylesheet" href="{{ .url }}" {{ if isset(.crossorigin) }} crossorigin="{{ .crossorigin }}" {{ end }}>
     {{ end }}
     {{ if isset(.inline) }}
-    <style>{{ .inline }}</style>
+    <style>{
+    {
+    .inline
+
+    }
+    }</style>
     {{ end }}
     {{ end }}
     {{ end }}
     {{ if isset(resources.script) }}
     {{ range resources.script }}
     {{ if isset(.url) }}
-    <script src="{{ .url }}"{{ if isset(.defer) }} defer{{ end }}{{ if isset(.async) }} async{{ end }}></script>
+    <script src="{{ .url }}" {{ if isset(.defer) }} defer{{ end }}{{ if isset(.async) }} async{{ end }}></script>
     {{ end }}
     {{ end }}
     {{ end }}
@@ -28,34 +33,66 @@
         * {
             box-sizing: border-box;
         }
+
         body {
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
+
         .dataflow-tree {
             position: relative;
         }
+
         .tree-node {
             position: relative;
             margin-bottom: 0.5rem;
             transition: all 0.3s ease;
         }
+
         .tree-node:last-child {
             margin-bottom: 0;
         }
-        /* Simple indentation - not too much */
-        .tree-node.child-level-1 { margin-left: 1.5rem; }
-        .tree-node.child-level-2 { margin-left: 3rem; }
-        .tree-node.child-level-3 { margin-left: 4.5rem; }
-        .tree-node.child-level-4 { margin-left: 6rem; }
-        .tree-node.child-level-5 { margin-left: 7.5rem; }
+
+        .tree-node.child-level-1 {
+            margin-left: 1.5rem;
+        }
+
+        .tree-node.child-level-2 {
+            margin-left: 3rem;
+        }
+
+        .tree-node.child-level-3 {
+            margin-left: 4.5rem;
+        }
+
+        .tree-node.child-level-4 {
+            margin-left: 6rem;
+        }
+
+        .tree-node.child-level-5 {
+            margin-left: 7.5rem;
+        }
+
+        .tree-node.child-level-6 {
+            margin-left: 9rem;
+        }
+
+        .tree-node.child-level-7 {
+            margin-left: 10.5rem;
+        }
+
+        .tree-node.child-level-8 {
+            margin-left: 12rem;
+        }
+
         .node-row {
             display: flex;
             align-items: center;
             min-height: 24px;
             padding: 2px 0;
         }
+
         .icon-wrapper {
             display: flex;
             align-items: center;
@@ -65,14 +102,15 @@
             margin-right: 8px;
             flex-shrink: 0;
         }
+
         .content-wrapper {
             display: flex;
             align-items: center;
             flex: 1;
             gap: 12px;
         }
-        /* Status icons with proper theme colors */
-        .status-icon {
+
+        .node-icon {
             width: 16px;
             height: 16px;
             font-size: 14px;
@@ -80,24 +118,162 @@
             align-items: center;
             justify-content: center;
         }
-        .status-icon.completed { color: rgb(5 150 105); }
-        .dark .status-icon.completed { color: rgb(74 222 128); }
-        .status-icon.failed { color: rgb(220 38 38); }
-        .dark .status-icon.failed { color: rgb(248 113 113); }
-        .status-icon.running { color: rgb(37 99 235); }
-        .dark .status-icon.running { color: rgb(147 197 253); }
-        .status-icon.pending { color: rgb(107 114 128); }
-        .dark .status-icon.pending { color: rgb(156 163 175); }
+
+        .node-icon.completed {
+            color: rgb(5 150 105);
+        }
+
+        .dark .node-icon.completed {
+            color: rgb(74 222 128);
+        }
+
+        .node-icon.failed {
+            color: rgb(220 38 38);
+        }
+
+        .dark .node-icon.failed {
+            color: rgb(248 113 113);
+        }
+
+        .node-icon.cancelled {
+            color: rgb(156 163 175);
+        }
+
+        .dark .node-icon.cancelled {
+            color: rgb(107 114 128);
+        }
+
+        .node-icon.running {
+            color: rgb(37 99 235);
+        }
+
+        .dark .node-icon.running {
+            color: rgb(147 197 253);
+        }
+
         .svg-spinner {
             width: 14px;
             height: 14px;
         }
-        /* Agent metrics with tighter spacing */
+
+        .nested-items {
+            margin-left: 1.5rem;
+            margin-top: 0.2rem;
+        }
+
+        .collapse-toggle {
+            background: none;
+            border: none;
+            color: rgb(107 114 128);
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        .dark .collapse-toggle {
+            color: rgb(156 163 175);
+        }
+
+        .collapse-toggle:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .dark .collapse-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .collapse-icon {
+            width: 12px;
+            height: 12px;
+            margin-right: 4px;
+            transition: transform 0.2s;
+        }
+
+        .collapse-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .nested-content {
+            overflow: hidden;
+        }
+
+        .nested-content.collapsed {
+            display: none;
+        }
+
+        .iteration-group {
+            margin-bottom: 0.25rem;
+            padding: 0 0 0 8px;
+            border-left: 2px solid rgba(59, 130, 246, 0.3);
+            margin-left: 4px;
+        }
+
+        .dark .iteration-group {
+            border-left-color: rgba(59, 130, 246, 0.25);
+        }
+
+        .tree-node.iteration-node {
+            font-size: max(0.75rem, 11px);
+            margin-bottom: 0.1rem;
+            padding: 1px 0;
+            background: none;
+        }
+
+        .iteration-node .content-wrapper {
+            gap: 6px;
+        }
+
+        .iteration-node .icon-wrapper {
+            width: 14px;
+            height: 14px;
+        }
+
+        .iteration-node .node-icon {
+            width: 12px;
+            height: 12px;
+            font-size: 11px;
+        }
+
+        .iteration-node .metric-item {
+            font-size: max(0.625rem, 9px);
+        }
+
+        .iteration-node .metric-icon {
+            width: 7px;
+            height: 7px;
+            font-size: 7px;
+        }
+
+        .iteration-node .status-message {
+            font-size: max(0.625rem, 9px);
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-text {
+            font-size: 11px;
+            color: rgb(107 114 128);
+            font-weight: 500;
+        }
+
+        .dark .progress-text {
+            color: rgb(156 163 175);
+        }
+
         .agent-metrics {
             display: flex;
             align-items: center;
             gap: 8px;
         }
+
         .metric-item {
             display: flex;
             align-items: center;
@@ -106,6 +282,7 @@
             font-weight: 600;
             line-height: 1;
         }
+
         .metric-icon {
             width: 9px;
             height: 9px;
@@ -114,17 +291,47 @@
             align-items: center;
             justify-content: center;
         }
-        .metric-prompt { color: rgb(59 130 246); }
-        .dark .metric-prompt { color: rgb(147 197 253); }
-        .metric-completion { color: rgb(147 51 234); }
-        .dark .metric-completion { color: rgb(196 181 253); }
-        .metric-thinking { color: rgb(217 119 6); }
-        .dark .metric-thinking { color: rgb(253 186 116); }
-        .metric-tools { color: rgb(14 165 233); }
-        .dark .metric-tools { color: rgb(56 189 248); }
-        .metric-cache { color: rgb(5 150 105); }
-        .dark .metric-cache { color: rgb(74 222 128); }
-        /* Tool sizes with better colors and threshold */
+
+        .metric-prompt {
+            color: rgb(59 130 246);
+        }
+
+        .dark .metric-prompt {
+            color: rgb(147 197 253);
+        }
+
+        .metric-completion {
+            color: rgb(147 51 234);
+        }
+
+        .dark .metric-completion {
+            color: rgb(196 181 253);
+        }
+
+        .metric-thinking {
+            color: rgb(217 119 6);
+        }
+
+        .dark .metric-thinking {
+            color: rgb(253 186 116);
+        }
+
+        .metric-tools {
+            color: rgb(14 165 233);
+        }
+
+        .dark .metric-tools {
+            color: rgb(56 189 248);
+        }
+
+        .metric-cache {
+            color: rgb(5 150 105);
+        }
+
+        .dark .metric-cache {
+            color: rgb(74 222 128);
+        }
+
         .tool-sizes {
             display: flex;
             align-items: center;
@@ -132,34 +339,41 @@
             font-size: 11px;
             font-weight: 500;
         }
+
         .size-item {
             display: flex;
             align-items: center;
             gap: 2px;
         }
+
         .size-input {
             color: rgb(59 130 246);
         }
+
         .dark .size-input {
             color: rgb(147 197 253);
         }
+
         .size-output {
             color: rgb(5 150 105);
         }
+
         .dark .size-output {
             color: rgb(74 222 128);
         }
+
         .size-icon {
             width: 9px;
             height: 9px;
             font-size: 9px;
         }
-        /* Collapsible metrics */
+
         .metrics-container {
             display: flex;
             align-items: center;
             gap: 8px;
         }
+
         .metrics-toggle {
             background: none;
             border: none;
@@ -171,34 +385,40 @@
             align-items: center;
             font-size: 10px;
         }
+
         .dark .metrics-toggle {
             color: rgb(156 163 175);
         }
+
         .metrics-toggle:hover {
             background: rgba(0, 0, 0, 0.05);
         }
+
         .dark .metrics-toggle:hover {
             background: rgba(255, 255, 255, 0.05);
         }
+
         .metrics-expanded {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             margin-top: 4px;
         }
+
         .metrics-collapsed {
             display: none;
         }
-        /* Status messages */
+
         .status-message {
             font-size: 11px;
             color: rgb(107 114 128);
             font-style: italic;
         }
+
         .dark .status-message {
             color: rgb(156 163 175);
         }
-        /* Loading overlay */
+
         .loading-overlay {
             position: absolute;
             top: 0;
@@ -211,10 +431,11 @@
             align-items: center;
             z-index: 10;
         }
-        /* New node animation */
+
         .tree-node.new-node {
             animation: newNodeFade 2s ease-out;
         }
+
         @keyframes newNodeFade {
             0% {
                 background-color: rgba(59, 130, 246, 0.1);
@@ -228,7 +449,6 @@
 </head>
 <body class="bg-surface-50 dark:bg-surface-900">
 <div class="min-h-screen" x-data="dataflowStateApp">
-    <!-- SVG Definitions -->
     <svg width="0" height="0" class="hidden">
         <symbol id="svg-spinners--gooey-balls-2" viewBox="0 0 24 24">
             <defs>
@@ -240,18 +460,20 @@
             </defs>
             <g filter="url(#svgSpinnersGooeyBalls20)">
                 <circle cx="5" cy="12" r="4" fill="currentColor">
-                    <animate attributeName="cx" calcMode="spline" dur="2s" keySplines=".36,.62,.43,.99;.79,0,.58,.57" repeatCount="indefinite" values="5;8;5"/>
+                    <animate attributeName="cx" calcMode="spline" dur="2s" keySplines=".36,.62,.43,.99;.79,0,.58,.57"
+                             repeatCount="indefinite" values="5;8;5"/>
                 </circle>
                 <circle cx="19" cy="12" r="4" fill="currentColor">
-                    <animate attributeName="cx" calcMode="spline" dur="2s" keySplines=".36,.62,.43,.99;.79,0,.58,.57" repeatCount="indefinite" values="19;16;19"/>
+                    <animate attributeName="cx" calcMode="spline" dur="2s" keySplines=".36,.62,.43,.99;.79,0,.58,.57"
+                             repeatCount="indefinite" values="19;16;19"/>
                 </circle>
-                <animateTransform attributeName="transform" dur="0.75s" repeatCount="indefinite" type="rotate" values="0 12 12;360 12 12"/>
+                <animateTransform attributeName="transform" dur="0.75s" repeatCount="indefinite" type="rotate"
+                                  values="0 12 12;360 12 12"/>
             </g>
         </symbol>
     </svg>
     <main class="w-full">
         <div class="bg-surface-50 dark:bg-surface-800 shadow-sm relative">
-            <!-- Initial loading overlay -->
             <div x-show="initialLoading" class="loading-overlay">
                 <div class="flex flex-col items-center">
                     <div class="w-8 h-8 text-blue-500">
@@ -262,7 +484,6 @@
                     <p class="mt-2 text-sm text-gray-400">Loading dataflow...</p>
                 </div>
             </div>
-            <!-- Error State -->
             <div x-show="error" class="p-4 border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-700">
                 <div class="flex">
                     <div class="flex-shrink-0">
@@ -273,7 +494,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Workflow Nodes -->
             <div x-show="!initialLoading && !error" class="p-3 dataflow-tree">
                 <template x-for="node in flatNodes" :key="node.node_id">
                     <div x-html="renderNode(node)"></div>
@@ -285,7 +505,6 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('dataflowStateApp', () => ({
-            // State
             initialLoading: true,
             isUpdating: false,
             dataflow: {},
@@ -296,8 +515,8 @@
             eventsSubscribed: false,
             nodeMap: {},
             expandedMetrics: {},
+            collapsedSections: {},
 
-            // Initialization
             init() {
                 this.initWippyApi();
                 this.$nextTick(() => {
@@ -352,32 +571,35 @@
                     }, 300);
                 }
             },
+            shouldShowNode(node) {
+                return node.status !== 'template';
+            },
             processNodes(nodes) {
-                // Build node map first
                 this.nodeMap = {};
                 nodes.forEach(node => {
+                    if (node.status === 'template') {
+                        return;
+                    }
                     this.nodeMap[node.node_id] = {
                         ...node,
                         level: 0,
                         isNew: false
                     };
                 });
-                // Calculate hierarchy levels - ensure parents are processed first
+
                 const calculateAndSetLevels = () => {
                     let changed = true;
-                    let maxIterations = 10; // Prevent infinite loops
+                    let maxIterations = 10;
                     while (changed && maxIterations > 0) {
                         changed = false;
                         maxIterations--;
                         Object.values(this.nodeMap).forEach(node => {
                             if (!node.parent_node_id) {
-                                // Root node
                                 if (node.level !== 0) {
                                     node.level = 0;
                                     changed = true;
                                 }
                             } else {
-                                // Child node - find parent level
                                 const parent = this.nodeMap[node.parent_node_id];
                                 if (parent) {
                                     const expectedLevel = parent.level + 1;
@@ -390,24 +612,26 @@
                         });
                     }
                 };
-                // Run level calculation
+
                 calculateAndSetLevels();
-                // Build tree structure maintaining parent-child relationships
+
                 const buildTreeOrder = () => {
                     const result = [];
                     const visited = new Set();
                     const addNodeAndChildren = (nodeId) => {
                         if (visited.has(nodeId) || !this.nodeMap[nodeId]) return;
                         const node = this.nodeMap[nodeId];
+                        if (!this.shouldShowNode(node)) return;
+
                         visited.add(nodeId);
                         result.push(node);
-                        // Find and add children
                         const children = Object.values(this.nodeMap)
-                            .filter(n => n.parent_node_id === nodeId)
+                            .filter(n => n.parent_node_id === nodeId &&
+                                !this.isMapReduceParent(this.nodeMap[nodeId]) &&
+                                !this.isCycleParent(this.nodeMap[nodeId]))
                             .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
                         children.forEach(child => addNodeAndChildren(child.node_id));
                     };
-                    // Start with root nodes
                     const rootNodes = Object.values(this.nodeMap)
                         .filter(n => !n.parent_node_id)
                         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -415,7 +639,7 @@
                     return result;
                 };
                 this.flatNodes = buildTreeOrder();
-                // Clear new flags after animation
+
                 setTimeout(() => {
                     this.flatNodes.forEach(node => {
                         node.isNew = false;
@@ -423,41 +647,388 @@
                     this.flatNodes = [...this.flatNodes];
                 }, 2000);
             },
+            getNodeTypeAndStatus(node) {
+                let iconClass = 'ti ti-circle-dot';
+
+                if (!node || !node.type) {
+                    if (node.status === 'completed') {
+                        iconClass = 'ti ti-circle-check';
+                    } else if (node.status === 'failed') {
+                        iconClass = 'ti ti-circle-x';
+                    } else if (node.status === 'cancelled') {
+                        iconClass = 'ti ti-circle-minus';
+                    } else {
+                        iconClass = 'ti ti-circle-dot';
+                    }
+                } else if (node.type.includes('agent')) {
+                    iconClass = 'ti ti-brain';
+                } else if (node.type.includes('map_reduce')) {
+                    iconClass = 'ti ti-topology-star-ring-3';
+                } else if (node.type.includes('cycle')) {
+                    iconClass = 'ti ti-refresh';
+                } else if (node.type.includes('func')) {
+                    iconClass = 'ti ti-function';
+                } else {
+                    if (node.status === 'completed') {
+                        iconClass = 'ti ti-circle-check';
+                    } else if (node.status === 'failed') {
+                        iconClass = 'ti ti-circle-x';
+                    } else if (node.status === 'cancelled') {
+                        iconClass = 'ti ti-circle-minus';
+                    } else {
+                        iconClass = 'ti ti-circle-dot';
+                    }
+                }
+
+                const statusClass = node.status || 'running';
+
+                return {iconClass, statusClass};
+            },
+            isMapReduceParent(node) {
+                return node && node.type && node.type.includes('map_reduce');
+            },
+            isCycleParent(node) {
+                return node && node.type && node.type.includes('cycle');
+            },
+            getMapReduceChildren(parentId) {
+                return Object.values(this.nodeMap)
+                    .filter(n => n.parent_node_id === parentId && this.shouldShowNode(n))
+                    .sort((a, b) => {
+                        const aIter = (a.metadata && a.metadata.iteration) || 0;
+                        const bIter = (b.metadata && b.metadata.iteration) || 0;
+                        return aIter - bIter;
+                    });
+            },
+            getCycleChildren(parentId) {
+                return Object.values(this.nodeMap)
+                    .filter(n => n.parent_node_id === parentId && this.shouldShowNode(n))
+                    .sort((a, b) => {
+                        const aIter = (a.metadata && (a.metadata.iteration || a.metadata.created_in_iteration)) || 0;
+                        const bIter = (b.metadata && (b.metadata.iteration || b.metadata.created_in_iteration)) || 0;
+                        return aIter - bIter;
+                    });
+            },
+            getNodeChildren(nodeId) {
+                return Object.values(this.nodeMap)
+                    .filter(n => n.parent_node_id === nodeId && this.shouldShowNode(n))
+                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            },
+            getMapReduceIterations(parentId) {
+                const children = this.getMapReduceChildren(parentId);
+                const iterations = {};
+
+                children.forEach(child => {
+                    const iterNum = (child.metadata && child.metadata.iteration) || 0;
+                    if (!iterations[iterNum]) {
+                        iterations[iterNum] = [];
+                    }
+                    iterations[iterNum].push(child);
+                });
+
+                return iterations;
+            },
+            getCycleIterations(parentId) {
+                const children = this.getCycleChildren(parentId);
+                const iterations = {};
+
+                children.forEach(child => {
+                    const iterNum = (child.metadata && (child.metadata.iteration || child.metadata.created_in_iteration)) || 0;
+                    if (!iterations[iterNum]) {
+                        iterations[iterNum] = [];
+                    }
+                    iterations[iterNum].push(child);
+                });
+
+                return iterations;
+            },
+            getMapReduceProgress(parentId) {
+                const parent = this.nodeMap[parentId];
+                if (parent && parent.metadata && parent.metadata.map_reduce_progress) {
+                    const progress = parent.metadata.map_reduce_progress;
+                    return {
+                        completed: progress.items_completed || 0,
+                        total: progress.items_total || 0,
+                        percentage: progress.percentage_complete || 0
+                    };
+                }
+
+                const iterations = this.getMapReduceIterations(parentId);
+                const iterationCount = Object.keys(iterations).length;
+
+                if (iterationCount === 0) {
+                    return {completed: 0, total: 0, percentage: 0};
+                }
+
+                let completedIterations = 0;
+                Object.values(iterations).forEach(iterNodes => {
+                    const allCompleted = iterNodes.every(node => node.status === 'completed');
+                    if (allCompleted) {
+                        completedIterations++;
+                    }
+                });
+
+                const percentage = Math.round((completedIterations / iterationCount) * 100);
+
+                return {
+                    completed: completedIterations,
+                    total: iterationCount,
+                    percentage
+                };
+            },
+            getCycleProgress(parentId) {
+                const iterations = this.getCycleIterations(parentId);
+                const iterationCount = Object.keys(iterations).length;
+
+                if (iterationCount === 0) {
+                    return {completed: 0, total: 0, percentage: 0};
+                }
+
+                let completedIterations = 0;
+                Object.values(iterations).forEach(iterNodes => {
+                    const allCompleted = iterNodes.every(node => node.status === 'completed');
+                    if (allCompleted) {
+                        completedIterations++;
+                    }
+                });
+
+                const percentage = Math.round((completedIterations / iterationCount) * 100);
+
+                return {
+                    completed: completedIterations,
+                    total: iterationCount,
+                    percentage
+                };
+            },
+            renderIterationNodeChildren(nodeId) {
+                const children = this.getNodeChildren(nodeId);
+                if (children.length === 0) return '';
+
+                let html = '<div class="nested-items">';
+                children.forEach(child => {
+                    const {iconClass: childIconClass, statusClass: childStatusClass} = this.getNodeTypeAndStatus(child);
+                    const childTitle = this.getNodeTitle(child);
+                    const childMetrics = this.getMetrics(child);
+
+                    let childIconHtml;
+                    if (childStatusClass === 'running') {
+                        childIconHtml = `<div class="node-icon ${childStatusClass}"><svg class="svg-spinner"><use href="#svg-spinners--gooey-balls-2"></use></svg></div>`;
+                    } else {
+                        childIconHtml = `<i class="node-icon ${childStatusClass} ${childIconClass}"></i>`;
+                    }
+
+                    html += `
+                        <div class="tree-node iteration-node">
+                            <div class="node-row">
+                                <div class="icon-wrapper">${childIconHtml}</div>
+                                <div class="content-wrapper">
+                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                                        ${childTitle}
+                                    </span>
+                                    ${childMetrics}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                return html;
+            },
             renderNode(node) {
-                const levelClass = node.level > 0 ? `child-level-${Math.min(node.level, 5)}` : '';
+                if (!this.shouldShowNode(node)) {
+                    return '';
+                }
+
+                const levelClass = node.level > 0 ? `child-level-${Math.min(node.level, 8)}` : '';
                 const newClass = node.isNew ? 'new-node' : '';
                 const titleColorClass = node.level > 0 ?
                     'text-surface-700 dark:text-surface-300' :
                     'text-surface-900 dark:text-surface-50';
-                const statusIcon = this.getStatusIcon(node);
+
+                const {iconClass, statusClass} = this.getNodeTypeAndStatus(node);
                 const nodeTitle = this.getNodeTitle(node);
                 const metrics = this.getMetrics(node);
                 const toolSizes = this.getToolSizes(node);
                 const statusMsg = this.getStatusMessage(node);
-                return `
+
+                let nodeHtml = `
                     <div class="tree-node ${levelClass} ${newClass}">
                         <div class="node-row">
-                            <div class="icon-wrapper">${statusIcon}</div>
+                            <div class="icon-wrapper">
+                `;
+
+                if (statusClass === 'running') {
+                    nodeHtml += `<div class="node-icon ${statusClass}"><svg class="svg-spinner"><use href="#svg-spinners--gooey-balls-2"></use></svg></div>`;
+                } else {
+                    nodeHtml += `<i class="node-icon ${statusClass} ${iconClass}"></i>`;
+                }
+
+                nodeHtml += `
+                            </div>
                             <div class="content-wrapper">
                                 <span class="text-sm font-medium ${titleColorClass}">${nodeTitle}</span>
                                 ${metrics}
                                 ${toolSizes}
                                 ${statusMsg}
+                `;
+
+                if (this.isMapReduceParent(node)) {
+                    const progress = this.getMapReduceProgress(node.node_id);
+                    const iterations = this.getMapReduceIterations(node.node_id);
+                    const iterationCount = Object.keys(iterations).length;
+                    const isCollapsed = this.collapsedSections[node.node_id] !== false;
+
+                    if (progress.total > 0) {
+                        nodeHtml += `
+                                <div class="progress-container">
+                                    <span class="progress-text">${progress.completed}/${progress.total}</span>
+                                </div>
+                        `;
+                    }
+
+                    if (iterationCount > 0) {
+                        nodeHtml += `
+                                <button class="collapse-toggle" onclick="this.dispatchEvent(new CustomEvent('toggle-section', { detail: '${node.node_id}', bubbles: true }))">
+                                    <i class="collapse-icon ti ti-chevron-right ${isCollapsed ? '' : 'expanded'}"></i>
+                                    <span>${iterationCount} iterations</span>
+                                </button>
+                        `;
+                    }
+
+                    nodeHtml += `
                             </div>
                         </div>
-                    </div>
-                `;
-            },
-            getStatusIcon(node) {
-                if (node.status === 'completed') {
-                    return `<i class="ti ti-circle-check status-icon completed"></i>`;
-                } else if (node.status === 'failed') {
-                    return `<i class="ti ti-circle-x status-icon failed"></i>`;
-                } else if (node.status === 'running') {
-                    return `<div class="status-icon running"><svg class="svg-spinner"><use href="#svg-spinners--gooey-balls-2"></use></svg></div>`;
+                    `;
+
+                    if (iterationCount > 0) {
+                        nodeHtml += `
+                        <div class="nested-items">
+                            <div class="nested-content ${isCollapsed ? 'collapsed' : ''}">
+                        `;
+
+                        Object.keys(iterations).sort((a, b) => parseInt(a) - parseInt(b)).forEach(iterNum => {
+                            const iterNodes = iterations[iterNum];
+
+                            nodeHtml += `<div class="iteration-group" data-iteration="${iterNum}">`;
+
+                            iterNodes.forEach(child => {
+                                const {
+                                    iconClass: childIconClass,
+                                    statusClass: childStatusClass
+                                } = this.getNodeTypeAndStatus(child);
+                                const childTitle = this.getNodeTitle(child);
+                                const childMetrics = this.getMetrics(child);
+
+                                let childIconHtml;
+                                if (childStatusClass === 'running') {
+                                    childIconHtml = `<div class="node-icon ${childStatusClass}"><svg class="svg-spinner"><use href="#svg-spinners--gooey-balls-2"></use></svg></div>`;
+                                } else {
+                                    childIconHtml = `<i class="node-icon ${childStatusClass} ${childIconClass}"></i>`;
+                                }
+
+                                nodeHtml += `
+                                    <div class="tree-node iteration-node">
+                                        <div class="node-row">
+                                            <div class="icon-wrapper">${childIconHtml}</div>
+                                            <div class="content-wrapper">
+                                                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                                                    ${childTitle}
+                                                </span>
+                                                ${childMetrics}
+                                            </div>
+                                        </div>
+                                        ${this.renderIterationNodeChildren(child.node_id)}
+                                    </div>
+                                `;
+                            });
+
+                            nodeHtml += `</div>`;
+                        });
+
+                        nodeHtml += `
+                            </div>
+                        </div>
+                        `;
+                    }
+                } else if (this.isCycleParent(node)) {
+                    const progress = this.getCycleProgress(node.node_id);
+                    const iterations = this.getCycleIterations(node.node_id);
+                    const iterationCount = Object.keys(iterations).length;
+                    const isCollapsed = this.collapsedSections[node.node_id] !== false;
+
+                    if (iterationCount > 0) {
+                        nodeHtml += `
+                                <button class="collapse-toggle" onclick="this.dispatchEvent(new CustomEvent('toggle-section', { detail: '${node.node_id}', bubbles: true }))">
+                                    <i class="collapse-icon ti ti-chevron-right ${isCollapsed ? '' : 'expanded'}"></i>
+                                    <span>${iterationCount} iterations</span>
+                                </button>
+                        `;
+                    }
+
+                    nodeHtml += `
+                            </div>
+                        </div>
+                    `;
+
+                    if (iterationCount > 0) {
+                        nodeHtml += `
+                        <div class="nested-items">
+                            <div class="nested-content ${isCollapsed ? 'collapsed' : ''}">
+                        `;
+
+                        Object.keys(iterations).sort((a, b) => parseInt(a) - parseInt(b)).forEach(iterNum => {
+                            const iterNodes = iterations[iterNum];
+
+                            nodeHtml += `<div class="iteration-group" data-iteration="${iterNum}">`;
+
+                            iterNodes.forEach(child => {
+                                const {
+                                    iconClass: childIconClass,
+                                    statusClass: childStatusClass
+                                } = this.getNodeTypeAndStatus(child);
+                                const childTitle = this.getNodeTitle(child);
+                                const childMetrics = this.getMetrics(child);
+
+                                let childIconHtml;
+                                if (childStatusClass === 'running') {
+                                    childIconHtml = `<div class="node-icon ${childStatusClass}"><svg class="svg-spinner"><use href="#svg-spinners--gooey-balls-2"></use></svg></div>`;
+                                } else {
+                                    childIconHtml = `<i class="node-icon ${childStatusClass} ${childIconClass}"></i>`;
+                                }
+
+                                nodeHtml += `
+                                    <div class="tree-node iteration-node">
+                                        <div class="node-row">
+                                            <div class="icon-wrapper">${childIconHtml}</div>
+                                            <div class="content-wrapper">
+                                                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                                                    ${childTitle}
+                                                </span>
+                                                ${childMetrics}
+                                            </div>
+                                        </div>
+                                        ${this.renderIterationNodeChildren(child.node_id)}
+                                    </div>
+                                `;
+                            });
+
+                            nodeHtml += `</div>`;
+                        });
+
+                        nodeHtml += `
+                            </div>
+                        </div>
+                        `;
+                    }
                 } else {
-                    return `<i class="ti ti-circle-dot status-icon pending"></i>`;
+                    nodeHtml += `
+                            </div>
+                        </div>
+                    `;
                 }
+
+                nodeHtml += `</div>`;
+
+                return nodeHtml;
             },
             getNodeTitle(node) {
                 if (!node) return "Unknown Node";
@@ -539,7 +1110,7 @@
 
                     const nodeId = node.node_id;
                     const isExpanded = this.expandedMetrics[nodeId];
-                    const toggleIcon = isExpanded ? 'ti-chevron-up' : 'ti-chevron-down';
+                    const toggleIcon = isExpanded ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
 
                     return `
                         <div class="metrics-container">
@@ -560,7 +1131,6 @@
                 const inputSize = node.metadata.input_size_bytes;
                 const outputSize = node.metadata.output_size_bytes;
 
-                // Hide sizes below 2KB threshold
                 const threshold = 2048;
                 const showInput = inputSize !== undefined && inputSize >= threshold;
                 const showOutput = outputSize !== undefined && outputSize >= threshold;
@@ -590,7 +1160,7 @@
                 return sizes.length > 0 ? `<div class="tool-sizes">${sizes.join('')}</div>` : '';
             },
             getStatusMessage(node) {
-                if (this.isAgentNode(node)) return '';
+                if (!this.isAgentNode(node)) return '';
                 if (node.metadata && node.metadata.status_message) {
                     return `<span class="status-message">${node.metadata.status_message}</span>`;
                 }
@@ -615,7 +1185,7 @@
                         total: tokens.total_tokens || 0
                     };
                 }
-                return { prompt: 0, completion: 0, thinking: 0, cache_read: 0, cache_write: 0, total: 0 };
+                return {prompt: 0, completion: 0, thinking: 0, cache_read: 0, cache_write: 0, total: 0};
             },
             getAgentToolCalls(node) {
                 if (node.metadata && node.metadata.state && node.metadata.state.tool_calls) {
@@ -641,16 +1211,21 @@
                 this.wippyApi.on(`dataflow:${this.dataflowId}`, this.handleWorkflowEvent.bind(this));
                 this.eventsSubscribed = true;
 
-                // Add event listener for metrics toggle
                 document.addEventListener('toggle-metrics', (e) => {
                     const nodeId = e.detail;
                     this.expandedMetrics[nodeId] = !this.expandedMetrics[nodeId];
                     this.expandedMetrics = {...this.expandedMetrics};
-                    // Re-render the specific node
                     const nodeIndex = this.flatNodes.findIndex(n => n.node_id === nodeId);
                     if (nodeIndex >= 0) {
                         this.flatNodes = [...this.flatNodes];
                     }
+                });
+
+                document.addEventListener('toggle-section', (e) => {
+                    const nodeId = e.detail;
+                    this.collapsedSections[nodeId] = !this.collapsedSections[nodeId];
+                    this.collapsedSections = {...this.collapsedSections};
+                    this.flatNodes = [...this.flatNodes];
                 });
             },
             unsubscribeFromWorkflowEvents() {
@@ -660,6 +1235,10 @@
                 this.eventsSubscribed = false;
             },
             addNewNode(nodeData) {
+                if (nodeData.status === 'template' || nodeData.status === 'pending') {
+                    return false;
+                }
+
                 if (this.nodeMap[nodeData.node_id]) return false;
                 nodeData.isNew = true;
                 let level = 0;
@@ -668,17 +1247,20 @@
                 }
                 nodeData.level = level;
                 this.nodeMap[nodeData.node_id] = nodeData;
-                // Rebuild tree order when adding new nodes
                 const buildTreeOrder = () => {
                     const result = [];
                     const visited = new Set();
                     const addNodeAndChildren = (nodeId) => {
                         if (visited.has(nodeId) || !this.nodeMap[nodeId]) return;
                         const node = this.nodeMap[nodeId];
+                        if (!this.shouldShowNode(node)) return;
+
                         visited.add(nodeId);
                         result.push(node);
                         const children = Object.values(this.nodeMap)
-                            .filter(n => n.parent_node_id === nodeId)
+                            .filter(n => n.parent_node_id === nodeId &&
+                                !this.isMapReduceParent(this.nodeMap[nodeId]) &&
+                                !this.isCycleParent(this.nodeMap[nodeId]))
                             .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
                         children.forEach(child => addNodeAndChildren(child.node_id));
                     };
@@ -705,7 +1287,7 @@
                 }
                 const nodeIndex = this.flatNodes.findIndex(n => n.node_id === nodeId);
                 if (nodeIndex >= 0) {
-                    this.flatNodes[nodeIndex] = { ...node };
+                    this.flatNodes[nodeIndex] = {...node};
                     this.flatNodes = [...this.flatNodes];
                 }
                 return true;
@@ -718,11 +1300,14 @@
                     let needsUpdate = false;
                     if (eventData.node_id) {
                         if (eventData.op_type === 'CREATE_NODE') {
+                            if (eventData.status === 'template' || eventData.status === 'pending') {
+                                return;
+                            }
                             const newNodeAdded = this.addNewNode({
                                 node_id: eventData.node_id,
                                 parent_node_id: eventData.parent_node_id,
                                 type: eventData.node_type,
-                                status: eventData.status || 'pending',
+                                status: eventData.status || 'running',
                                 metadata: eventData.metadata || {},
                                 config: eventData.config || {},
                                 created_at: new Date().toISOString(),

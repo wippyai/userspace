@@ -383,8 +383,12 @@ local function handle_yield_request(state, msg_payload, from_pid)
             child_path = child_path
         }
 
+        -- Only track non-template nodes in pending_children
         for _, child_id in ipairs(run_nodes) do
-            yield_info.pending_children[child_id] = consts.STATUS.PENDING
+            local child_node = state.workflow_state:get_node(child_id)
+            if child_node and child_node.status ~= consts.STATUS.TEMPLATE then
+                yield_info.pending_children[child_id] = consts.STATUS.PENDING
+            end
         end
 
         state.workflow_state:track_yield(node_id, yield_info)

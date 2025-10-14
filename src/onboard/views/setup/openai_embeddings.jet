@@ -1,0 +1,197 @@
+{{ extends "onboard/step" }}
+
+{{ block title() }}Enable OpenAI Embeddings{{ end }}
+
+{{ block stepContent() }}
+<div class="max-w-3xl mx-auto" x-data="openaiEmbeddingsStep()">
+
+    <!-- Header -->
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-surface-900 dark:text-surface-100 mb-6">
+            Enable OpenAI Embeddings
+        </h1>
+        <p class="text-lg text-surface-600 dark:text-surface-400 max-w-2xl mx-auto">
+            Add your OpenAI key to make your knowledge bases searchable and intelligent. This feature cannot be provided by OpenRouter.
+        </p>
+    </div>
+
+    <!-- OpenAI Embeddings Configuration -->
+    <div class="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-8 mb-8">
+        <div class="flex items-center gap-4 mb-8">
+            <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <iconify-icon icon="tabler:brain" class="text-white" width="32" height="32"></iconify-icon>
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold text-surface-900 dark:text-surface-100 mb-2">OpenAI Embeddings</h3>
+                <p class="text-surface-600 dark:text-surface-400 text-lg">Transform your knowledge bases into intelligent, searchable resources</p>
+            </div>
+        </div>
+
+        <input
+                type="password"
+                x-model="apiKey"
+                placeholder="sk-..."
+                class="w-full px-6 py-5 border border-surface-300 dark:border-surface-600 rounded-xl bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors mb-8 text-lg">
+
+        <a href="https://platform.openai.com/api-keys" target="_blank" class="inline-flex items-center gap-3 text-blue-600 dark:text-blue-400 hover:underline font-medium text-lg">
+            <span>Get your OpenAI API key</span>
+            <iconify-icon icon="tabler:external-link" width="20" height="20"></iconify-icon>
+        </a>
+    </div>
+
+    <!-- Setup Button -->
+    <div x-show="canSetup()" x-transition class="text-center mb-6">
+        <button @click="setupEmbeddings()" :disabled="isSettingUp"
+                class="px-10 py-5 bg-primary-600 hover:bg-primary-700 disabled:bg-surface-300 disabled:dark:bg-surface-700 text-white font-semibold rounded-xl transition-colors disabled:cursor-not-allowed flex items-center gap-3 mx-auto text-lg">
+            <iconify-icon :icon="isSettingUp ? 'tabler:loader-2' : 'tabler:brain'" :class="{'animate-spin': isSettingUp}" width="24" height="24"></iconify-icon>
+            <span x-text="isSettingUp ? 'Connecting...' : 'Connect OpenAI'"></span>
+        </button>
+    </div>
+
+    <!-- Skip Button -->
+    <div x-show="!isSettingUp && !setupComplete" class="text-center mb-8">
+        <button @click="skipEmbeddings()" class="px-6 py-3 text-surface-500 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors text-sm">
+            Skip for now - I'll set this up later
+        </button>
+    </div>
+
+    <!-- Error Display -->
+    <div x-show="setupError" x-transition class="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3">
+            <iconify-icon icon="tabler:alert-circle" class="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" width="20" height="20"></iconify-icon>
+            <div class="text-sm text-red-800 dark:text-red-200" x-text="setupError"></div>
+        </div>
+    </div>
+
+    <!-- Success Display -->
+    <div x-show="setupComplete && setupSuccess && !skipped" x-transition class="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-6">
+        <div class="flex items-center justify-center gap-3">
+            <iconify-icon icon="tabler:check-circle" class="text-green-600 dark:text-green-400" width="24" height="24"></iconify-icon>
+            <h3 class="text-lg font-bold text-green-800 dark:text-green-200">Embeddings Enabled Successfully!</h3>
+        </div>
+        <p class="text-center text-sm text-green-700 dark:text-green-300 mt-2">
+            Your knowledge bases now have enhanced search and discovery capabilities.
+        </p>
+    </div>
+
+    <!-- Skipped Display -->
+    <div x-show="setupComplete && skipped" x-transition class="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-6">
+        <div class="flex items-center justify-center gap-3">
+            <iconify-icon icon="tabler:info-circle" class="text-blue-600 dark:text-blue-400" width="24" height="24"></iconify-icon>
+            <h3 class="text-lg font-bold text-blue-800 dark:text-blue-200">Embeddings Skipped</h3>
+        </div>
+        <p class="text-center text-sm text-blue-700 dark:text-blue-300 mt-2">
+            You can enable embeddings later through Settings when you're ready.
+        </p>
+    </div>
+
+    <!-- Failed Setup Display -->
+    <div x-show="setupComplete && !setupSuccess && !skipped" x-transition class="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl p-6 mb-6">
+        <div class="flex items-start gap-3 mb-4">
+            <iconify-icon icon="tabler:alert-circle" class="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" width="24" height="24"></iconify-icon>
+            <div>
+                <h3 class="text-lg font-bold text-red-800 dark:text-red-200 mb-2">Setup Failed</h3>
+                <div class="space-y-1">
+                    <template x-for="item in setupSummary">
+                        <div class="text-sm text-red-700 dark:text-red-300" x-text="item"></div>
+                    </template>
+                </div>
+            </div>
+        </div>
+        <p class="text-sm text-red-700 dark:text-red-300">
+            Please check your API key and try again.
+        </p>
+    </div>
+
+    <!-- Information Box -->
+    <div x-show="!setupComplete" class="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+        <h4 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">What does this do?</h4>
+        <p class="text-blue-800 dark:text-blue-200 text-sm leading-relaxed mb-4">
+            Embeddings help your AI understand the meaning of your documents and files. Without this, your knowledge bases are just storage - with it, they become intelligent and searchable.
+        </p>
+        <ul class="text-blue-800 dark:text-blue-200 text-sm space-y-2">
+            <li class="flex items-start gap-3">
+                <iconify-icon icon="tabler:upload" class="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <span>Upload documents and they become searchable by meaning</span>
+            </li>
+            <li class="flex items-start gap-3">
+                <iconify-icon icon="tabler:search" class="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <span>Ask questions and find answers even without exact keywords</span>
+            </li>
+            <li class="flex items-start gap-3">
+                <iconify-icon icon="tabler:robot" class="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" width="16" height="16"></iconify-icon>
+                <span>AI agents can understand and work with your specific data</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Footer Information -->
+    <div x-show="!setupComplete" class="text-center mt-8">
+        <div class="bg-surface-50 dark:bg-surface-900 rounded-xl p-4">
+            <p class="text-sm text-surface-500 dark:text-surface-500">
+                Your API key is stored securely and used only for embedding generation
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openaiEmbeddingsStep() {
+        return {
+            apiKey: '',
+            isSettingUp: false,
+            setupError: null,
+            setupComplete: false,
+            setupSuccess: false,
+            skipped: false,
+            setupSummary: [],
+            api: null,
+
+            async init() {
+                this.api = await $W.api();
+            },
+
+            canSetup() {
+                return this.apiKey && this.apiKey.length > 0;
+            },
+
+            async setupEmbeddings() {
+                this.isSettingUp = true;
+                this.setupError = null;
+                this.setupComplete = false;
+                this.setupSuccess = false;
+                this.skipped = false;
+
+                try {
+                    const response = await this.api.post('/api/v1/onboard/setup/embeddings', {
+                        openai_key: this.apiKey
+                    });
+                    const data = response.data;
+
+                    this.setupComplete = true;
+                    this.setupSuccess = data.success;
+                    this.setupSummary = data.summary || [];
+
+                } catch (error) {
+                    this.setupComplete = true;
+                    this.setupSuccess = false;
+
+                    if (error.response?.data?.summary) {
+                        this.setupSummary = error.response.data.summary;
+                    } else {
+                        this.setupError = error.response?.data?.error || error.message || 'Setup failed';
+                    }
+                }
+
+                this.isSettingUp = false;
+            },
+
+            skipEmbeddings() {
+                this.setupComplete = true;
+                this.setupSuccess = false;
+                this.skipped = true;
+            }
+        }
+    }
+</script>
+{{ end }}

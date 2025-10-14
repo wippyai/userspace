@@ -272,10 +272,6 @@ local function process_rows(rows, replace_references)
             row.content = row.ref_content
             row.content_type = row.ref_content_type
 
-            if row.ref_discriminator then
-                row.discriminator = row.ref_discriminator
-            end
-
             if row.ref_key then
                 row.key = row.ref_key
             end

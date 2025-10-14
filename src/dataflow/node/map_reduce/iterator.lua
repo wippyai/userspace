@@ -77,7 +77,16 @@ function iterator.create_iteration(parent_node, template_graph, input_item, iter
     deps = deps or default_deps
 
     local uuid_mapping = {}
+
+    -- Get sorted template IDs for deterministic order
+    local template_ids = {}
     for template_id, _ in pairs(template_graph.nodes) do
+        table.insert(template_ids, template_id)
+    end
+    table.sort(template_ids)
+
+    -- Create UUID mapping in sorted order
+    for _, template_id in ipairs(template_ids) do
         uuid_mapping[template_id] = uuid.v7()
     end
 
@@ -90,7 +99,9 @@ function iterator.create_iteration(parent_node, template_graph, input_item, iter
     local root_nodes = {}
     local template_roots = template_graph:get_roots()
 
-    for template_id, template in pairs(template_graph.nodes) do
+    -- Process templates in sorted order
+    for _, template_id in ipairs(template_ids) do
+        local template = template_graph.nodes[template_id]
         local actual_node_id = uuid_mapping[template_id]
 
         local remapped_config = iterator.remap_template_config(template.config, uuid_mapping)
@@ -108,11 +119,6 @@ function iterator.create_iteration(parent_node, template_graph, input_item, iter
         -- Add iteration-specific metadata
         merged_metadata.iteration = iteration_index
         merged_metadata.template_source = template_id
-
-        -- Handle title with iteration suffix
-        if merged_metadata.title then
-            merged_metadata.title = merged_metadata.title .. " (#" .. iteration_index .. ")"
-        end
 
         parent_node:command({
             type = consts.COMMAND_TYPES.CREATE_NODE,
@@ -206,7 +212,7 @@ local function parse_content(content, content_type)
     return content
 end
 
----Collect results from an iteration (FIXED VERSION with JSON parsing)
+---Collect results from an iteration
 ---@param parent_node any Parent node instance
 ---@param iteration_info IterationInfo Iteration information
 ---@param deps table|nil Optional dependencies for testing
@@ -241,19 +247,19 @@ function iterator.collect_results(parent_node, iteration_info, deps)
 
     local results = {}
     for _, output in ipairs(output_data) do
-        -- FIXED: Parse content based on content_type
+        -- Parse content based on content_type
         local parsed_content = parse_content(output.content, output.content_type)
 
         table.insert(results, {
             key = output.key,
-            content = parsed_content,  -- Now properly parsed
+            content = parsed_content,
             node_id = output.node_id,
             discriminator = output.discriminator
         })
     end
 
     if #results == 1 then
-        return results[1].content, nil  -- Returns parsed content
+        return results[1].content, nil
     else
         return results, nil
     end

@@ -73,7 +73,7 @@ local function define_tests()
                 -- Verify metadata preservation and title enhancement
                 local created_node = parent_node._commands[1].payload
                 expect(created_node.metadata).not_to_be_nil()
-                expect(created_node.metadata.title).to_equal("Test Function Node (#1)")
+                expect(created_node.metadata.title).to_equal("Test Function Node")
                 expect(created_node.metadata.description).to_equal("A test node for validation")
                 expect(created_node.metadata.iteration).to_equal(1)
                 expect(created_node.metadata.template_source).to_equal("template1")
@@ -261,9 +261,9 @@ local function define_tests()
                 expect(template2_cmd).not_to_be_nil()
 
                 -- Verify title enhancement for both nodes
-                expect(template1_cmd.payload.metadata.title).to_equal("First Node (#4)")
+                expect(template1_cmd.payload.metadata.title).to_equal("First Node")
                 expect(template1_cmd.payload.metadata.order).to_equal(1)
-                expect(template2_cmd.payload.metadata.title).to_equal("Second Node (#4)")
+                expect(template2_cmd.payload.metadata.title).to_equal("Second Node")
                 expect(template2_cmd.payload.metadata.order).to_equal(2)
 
                 -- Verify UUID remapping
@@ -334,7 +334,7 @@ local function define_tests()
 
                 -- Verify title enhancement for each iteration
                 for i, cmd in ipairs(parent_node._commands) do
-                    expect(cmd.payload.metadata.title).to_equal("Batch Processing Node (#" .. i .. ")")
+                    expect(cmd.payload.metadata.title).to_equal("Batch Processing Node")
                     expect(cmd.payload.metadata.iteration).to_equal(i)
                 end
             end)
@@ -390,9 +390,9 @@ local function define_tests()
                 expect(iterations[3].input_item).to_equal("d")
 
                 -- Verify correct iteration numbering in titles
-                expect(parent_node._commands[1].payload.metadata.title).to_equal("Partial Batch Node (#2)")
-                expect(parent_node._commands[2].payload.metadata.title).to_equal("Partial Batch Node (#3)")
-                expect(parent_node._commands[3].payload.metadata.title).to_equal("Partial Batch Node (#4)")
+                expect(parent_node._commands[1].payload.metadata.title).to_equal("Partial Batch Node")
+                expect(parent_node._commands[2].payload.metadata.title).to_equal("Partial Batch Node")
+                expect(parent_node._commands[3].payload.metadata.title).to_equal("Partial Batch Node")
             end)
 
             it("should validate batch parameters", function()
@@ -801,7 +801,7 @@ local function define_tests()
                 local metadata = created_node.metadata
 
                 -- Verify all original metadata is preserved
-                expect(metadata.title).to_equal("Complex Node (#5)")
+                expect(metadata.title).to_equal("Complex Node")
                 expect(metadata.description).to_equal("A node with lots of metadata")
                 expect(metadata.version).to_equal("1.2.3")
                 expect(metadata.author).to_equal("test_user")
@@ -833,22 +833,22 @@ local function define_tests()
                     {
                         original = "Simple Title",
                         iteration = 1,
-                        expected = "Simple Title (#1)"
+                        expected = "Simple Title"
                     },
                     {
                         original = "Title with (parentheses)",
                         iteration = 42,
-                        expected = "Title with (parentheses) (#42)"
+                        expected = "Title with (parentheses)"
                     },
                     {
                         original = "Title with #hash",
                         iteration = 7,
-                        expected = "Title with #hash (#7)"
+                        expected = "Title with #hash"
                     },
                     {
                         original = "",
                         iteration = 3,
-                        expected = " (#3)"
+                        expected = ""
                     }
                 }
 

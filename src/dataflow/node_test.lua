@@ -12,7 +12,6 @@ local function define_tests()
         local captured_calls
 
         before_each(function()
-            -- Reset captured calls
             captured_calls = {
                 commit_submit = {},
                 process_send = {},
@@ -20,7 +19,6 @@ local function define_tests()
                 data_reader_calls = {}
             }
 
-            -- Create mock dependencies
             mock_deps = {
                 commit = {
                     submit = function(dataflow_id, op_id, commands)
@@ -47,7 +45,6 @@ local function define_tests()
                                                 return {
                                                     all = function()
                                                         table.insert(captured_calls.data_reader_calls, { method = "all" })
-                                                        -- Return test input data
                                                         return {
                                                             {
                                                                 content = '{"message": "hello"}',
@@ -87,7 +84,6 @@ local function define_tests()
                         table.insert(captured_calls.process_listen, { topic = topic })
                         return {
                             receive = function()
-                                -- Return mock yield response for tests that need it
                                 return {
                                     response_data = {
                                         run_node_results = {
@@ -233,15 +229,15 @@ local function define_tests()
                 local inputs = test_node:inputs()
 
                 expect(inputs).not_to_be_nil()
-                expect(inputs.input1).not_to_be_nil()
-                expect(inputs.input1.content.message).to_equal("hello")
+                -- Input with discriminator="primary" is stored as inputs["primary"]
+                expect(inputs.primary).not_to_be_nil()
+                expect(inputs.primary.content.message).to_equal("hello")
+                -- Input with no discriminator is stored by key
                 expect(inputs.input2).not_to_be_nil()
                 expect(inputs.input2.content).to_equal("plain text")
 
-                -- Verify data_reader was called
                 expect(#captured_calls.data_reader_calls).to_be_greater_than(0)
 
-                -- Verify caching - second call shouldn't trigger data_reader again
                 local call_count = #captured_calls.data_reader_calls
                 local inputs2 = test_node:inputs()
                 expect(inputs2).to_equal(inputs)
@@ -249,7 +245,7 @@ local function define_tests()
             end)
 
             it("should get specific input by key", function()
-                local input = test_node:input("input1")
+                local input = test_node:input("primary")
 
                 expect(input).not_to_be_nil()
                 expect(input.content.message).to_equal("hello")
@@ -267,6 +263,591 @@ local function define_tests()
             end)
         end)
 
+        describe("Expr Input Transformation", function()
+            local expr_mock_deps
+
+            before_each(function()
+                expr_mock_deps = {
+                    commit = mock_deps.commit,
+                    process = mock_deps.process,
+                    data_reader = {
+                        with_dataflow = function(dataflow_id)
+                            table.insert(captured_calls.data_reader_calls, { method = "with_dataflow", dataflow_id = dataflow_id })
+                            return {
+                                with_nodes = function(node_id)
+                                    table.insert(captured_calls.data_reader_calls, { method = "with_nodes", node_id = node_id })
+                                    return {
+                                        with_data_types = function(data_type)
+                                            table.insert(captured_calls.data_reader_calls, { method = "with_data_types", data_type = data_type })
+                                            return {
+                                                fetch_options = function(options)
+                                                    table.insert(captured_calls.data_reader_calls, { method = "fetch_options", options = options })
+                                                    return {
+                                                        all = function()
+                                                            table.insert(captured_calls.data_reader_calls, { method = "all" })
+                                                            return {
+                                                                {
+                                                                    content = '{"name": "John", "age": 30, "score": 85}',
+                                                                    content_type = consts.CONTENT_TYPE.JSON,
+                                                                    key = "user_data",
+                                                                    metadata = { source = "api" },
+                                                                    discriminator = nil
+                                                                },
+                                                                {
+                                                                    content = '{"price": 100, "quantity": 3}',
+                                                                    content_type = consts.CONTENT_TYPE.JSON,
+                                                                    key = "order_data",
+                                                                    metadata = {},
+                                                                    discriminator = nil
+                                                                },
+                                                                {
+                                                                    content = "Hello World",
+                                                                    content_type = consts.CONTENT_TYPE.TEXT,
+                                                                    key = "message",
+                                                                    metadata = {},
+                                                                    discriminator = nil
+                                                                }
+                                                            }
+                                                        end
+                                                    }
+                                                end
+                                            }
+                                        end
+                                    }
+                                end
+                            }
+                        end
+                    }
+                }
+            end)
+
+            it("should transform inputs with simple string expression", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = "input.user_data.content.name + ' is ' + string(input.user_data.content.age) + ' years old'"
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_deps)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs["default"]).not_to_be_nil()
+                expect(inputs["default"].content).to_equal("John is 30 years old")
+                expect(inputs["default"].key).to_equal("default")
+            end)
+
+            it("should transform inputs with field mapping", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                user_name = "input.user_data.content.name",
+                                user_age = "input.user_data.content.age",
+                                total_cost = "input.order_data.content.price * input.order_data.content.quantity",
+                                is_adult = "input.user_data.content.age >= 18",
+                                greeting = "input.message.content + ', ' + input.user_data.content.name"
+                            }
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_deps)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.user_name.content).to_equal("John")
+                expect(inputs.user_age.content).to_equal(30)
+                expect(inputs.total_cost.content).to_equal(300)
+                expect(inputs.is_adult.content).to_be_true()
+                expect(inputs.greeting.content).to_equal("Hello World, John")
+            end)
+
+            it("should handle array operations in expressions", function()
+                local complex_data_mock = {
+                    commit = mock_deps.commit,
+                    process = mock_deps.process,
+                    data_reader = {
+                        with_dataflow = function(dataflow_id)
+                            return {
+                                with_nodes = function(node_id)
+                                    return {
+                                        with_data_types = function(data_type)
+                                            return {
+                                                fetch_options = function(options)
+                                                    return {
+                                                        all = function()
+                                                            return {
+                                                                {
+                                                                    content = '{"items": [{"price": 10}, {"price": 20}, {"price": 30}]}',
+                                                                    content_type = consts.CONTENT_TYPE.JSON,
+                                                                    key = "inventory",
+                                                                    metadata = {},
+                                                                    discriminator = nil
+                                                                }
+                                                            }
+                                                        end
+                                                    }
+                                                end
+                                            }
+                                        end
+                                    }
+                                end
+                            }
+                        end
+                    }
+                }
+
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                item_count = "len(input.inventory.content.items)",
+                                has_expensive_items = "any(input.inventory.content.items, {.price > 25})",
+                                cheap_items = "filter(input.inventory.content.items, {.price <= 15})"
+                            }
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, complex_data_mock)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.item_count.content).to_equal(3)
+                expect(inputs.has_expensive_items.content).to_be_true()
+                expect(type(inputs.cheap_items.content)).to_equal("table")
+                expect(#inputs.cheap_items.content).to_equal(1)
+            end)
+
+            it("should handle mathematical expressions", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                calculated_score = "input.user_data.content.score * 1.2",
+                                rounded_score = "round(input.user_data.content.score * 1.15)",
+                                score_grade = "input.user_data.content.score >= 90 ? 'A' : input.user_data.content.score >= 80 ? 'B' : 'C'",
+                                power_calc = "input.user_data.content.age ** 2",
+                                abs_diff = "abs(input.user_data.content.score - 90)"
+                            }
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_deps)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.calculated_score.content).to_equal(102)
+                expect(inputs.rounded_score.content).to_equal(98)
+                expect(inputs.score_grade.content).to_equal("B")
+                expect(inputs.power_calc.content).to_equal(900)
+                expect(inputs.abs_diff.content).to_equal(5)
+            end)
+
+            it("should handle string operations", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                upper_name = "upper(input.user_data.content.name)",
+                                name_length = "len(input.user_data.content.name)",
+                                contains_john = "input.user_data.content.name contains 'John'",
+                                starts_with_j = "input.user_data.content.name startsWith 'J'",
+                                trimmed_message = "trim('  ' + input.message.content + '  ')"
+                            }
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_deps)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.upper_name.content).to_equal("JOHN")
+                expect(inputs.name_length.content).to_equal(4)
+                expect(inputs.contains_john.content).to_be_true()
+                expect(inputs.starts_with_j.content).to_be_true()
+                expect(inputs.trimmed_message.content).to_equal("Hello World")
+            end)
+
+            it("should preserve metadata structure in transformed inputs", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                processed_name = "upper(input.user_data.content.name)"
+                            }
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_deps)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.processed_name).not_to_be_nil()
+                expect(inputs.processed_name.content).to_equal("JOHN")
+                expect(inputs.processed_name.key).to_equal("processed_name")
+                expect(type(inputs.processed_name.metadata)).to_equal("table")
+                expect(inputs.processed_name.discriminator).to_be_nil()
+            end)
+
+            it("should return original inputs when no transform config", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456"
+                }
+
+                local test_node, err = node.new(args, expr_mock_deps)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.user_data).not_to_be_nil()
+                expect(inputs.user_data.content.name).to_equal("John")
+                expect(inputs.order_data).not_to_be_nil()
+                expect(inputs.message).not_to_be_nil()
+            end)
+
+            it("should cache transformed inputs", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = "input.user_data.content.name"
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_deps)
+                expect(err).to_be_nil()
+
+                local inputs1 = test_node:inputs()
+                local call_count = #captured_calls.data_reader_calls
+
+                local inputs2 = test_node:inputs()
+                expect(inputs2).to_equal(inputs1)
+                expect(#captured_calls.data_reader_calls).to_equal(call_count)
+            end)
+        end)
+
+        describe("Expr Error Handling", function()
+            it("should handle invalid expressions gracefully", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = "invalid + syntax +"
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, mock_deps)
+                expect(err).to_be_nil()
+
+                local success, error_msg = pcall(function()
+                    test_node:inputs()
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("Input transformation failed")
+            end)
+
+            it("should handle undefined variables in expressions", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = "undefined_variable.property"
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, mock_deps)
+                expect(err).to_be_nil()
+
+                local success, error_msg = pcall(function()
+                    test_node:inputs()
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("Input transformation failed")
+            end)
+
+            it("should handle field mapping errors individually", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                invalid_field = "invalid + syntax +"
+                            }
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, mock_deps)
+                expect(err).to_be_nil()
+
+                local success, error_msg = pcall(function()
+                    test_node:inputs()
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("Transform failed for invalid_field")
+            end)
+
+            it("should handle type conversion errors", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = "int('not_a_number')"
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, mock_deps)
+                expect(err).to_be_nil()
+
+                local success, error_msg = pcall(function()
+                    test_node:inputs()
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("Input transformation failed")
+            end)
+
+            it("should validate transform config types", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = 123
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, mock_deps)
+                expect(err).to_be_nil()
+
+                local success, error_msg = pcall(function()
+                    test_node:inputs()
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("input_transform must be string or table")
+            end)
+        end)
+
+        describe("Complex Expr Scenarios", function()
+            it("should handle nested object access", function()
+                local complex_mock = {
+                    commit = mock_deps.commit,
+                    process = mock_deps.process,
+                    data_reader = {
+                        with_dataflow = function(dataflow_id)
+                            return {
+                                with_nodes = function(node_id)
+                                    return {
+                                        with_data_types = function(data_type)
+                                            return {
+                                                fetch_options = function(options)
+                                                    return {
+                                                        all = function()
+                                                            return {
+                                                                {
+                                                                    content = '{"user": {"profile": {"settings": {"theme": "dark"}}}}',
+                                                                    content_type = consts.CONTENT_TYPE.JSON,
+                                                                    key = "nested_data",
+                                                                    metadata = {},
+                                                                    discriminator = nil
+                                                                }
+                                                            }
+                                                        end
+                                                    }
+                                                end
+                                            }
+                                        end
+                                    }
+                                end
+                            }
+                        end
+                    }
+                }
+
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                theme = "input.nested_data.content.user.profile.settings.theme",
+                                has_dark_theme = "input.nested_data.content.user.profile.settings.theme == 'dark'"
+                            }
+                        }
+                    }
+                }
+
+                local test_node, err = node.new(args, complex_mock)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.theme.content).to_equal("dark")
+                expect(inputs.has_dark_theme.content).to_be_true()
+            end)
+
+            it("should handle basic conditional operations", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                current_time = "now()",
+                                age_category = "input.user_data.content.age >= 65 ? 'senior' : input.user_data.content.age >= 18 ? 'adult' : 'minor'"
+                            }
+                        }
+                    }
+                }
+
+                local expr_mock_with_user_data = {
+                    commit = mock_deps.commit,
+                    process = mock_deps.process,
+                    data_reader = {
+                        with_dataflow = function(dataflow_id)
+                            return {
+                                with_nodes = function(node_id)
+                                    return {
+                                        with_data_types = function(data_type)
+                                            return {
+                                                fetch_options = function(options)
+                                                    return {
+                                                        all = function()
+                                                            return {
+                                                                {
+                                                                    content = '{"name": "John", "age": 30, "score": 85}',
+                                                                    content_type = consts.CONTENT_TYPE.JSON,
+                                                                    key = "user_data",
+                                                                    metadata = { source = "api" },
+                                                                    discriminator = nil
+                                                                }
+                                                            }
+                                                        end
+                                                    }
+                                                end
+                                            }
+                                        end
+                                    }
+                                end
+                            }
+                        end
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_with_user_data)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.age_category.content).to_equal("adult")
+                expect(type(inputs.current_time.content)).to_equal("number")
+            end)
+
+            it("should handle regex matching", function()
+                local args = {
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            input_transform = {
+                                is_valid_name = "input.user_data.content.name matches '^[A-Za-z]+$'",
+                                contains_digits = "input.message.content matches '\\\\d+'"
+                            }
+                        }
+                    }
+                }
+
+                local expr_mock_with_both = {
+                    commit = mock_deps.commit,
+                    process = mock_deps.process,
+                    data_reader = {
+                        with_dataflow = function(dataflow_id)
+                            return {
+                                with_nodes = function(node_id)
+                                    return {
+                                        with_data_types = function(data_type)
+                                            return {
+                                                fetch_options = function(options)
+                                                    return {
+                                                        all = function()
+                                                            return {
+                                                                {
+                                                                    content = '{"name": "John", "age": 30, "score": 85}',
+                                                                    content_type = consts.CONTENT_TYPE.JSON,
+                                                                    key = "user_data",
+                                                                    metadata = { source = "api" },
+                                                                    discriminator = nil
+                                                                },
+                                                                {
+                                                                    content = "Hello World",
+                                                                    content_type = consts.CONTENT_TYPE.TEXT,
+                                                                    key = "message",
+                                                                    metadata = {},
+                                                                    discriminator = nil
+                                                                }
+                                                            }
+                                                        end
+                                                    }
+                                                end
+                                            }
+                                        end
+                                    }
+                                end
+                            }
+                        end
+                    }
+                }
+
+                local test_node, err = node.new(args, expr_mock_with_both)
+                expect(err).to_be_nil()
+
+                local inputs = test_node:inputs()
+                expect(inputs).not_to_be_nil()
+                expect(inputs.is_valid_name.content).to_be_true()
+                expect(inputs.contains_digits.content).to_be_false()
+            end)
+        end)
+
         describe("Data and Metadata Methods", function()
             local test_node
 
@@ -280,14 +861,14 @@ local function define_tests()
             it("should create data with proper command queuing", function()
                 local result = test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test" })
 
-                expect(result).to_equal(test_node) -- Should return self for chaining
+                expect(result).to_equal(test_node)
                 expect(#test_node._queued_commands).to_equal(1)
                 expect(test_node._queued_commands[1].type).to_equal(consts.COMMAND_TYPES.CREATE_DATA)
                 expect(test_node._queued_commands[1].payload.data_type).to_equal(consts.DATA_TYPE.NODE_OUTPUT)
             end)
 
             it("should update metadata properly", function()
-                local result = test_node:metadata({ key1 = "value1", key2 = "value2" })
+                local result = test_node:update_metadata({ key1 = "value1", key2 = "value2" })
 
                 expect(result).to_equal(test_node)
                 expect(test_node._metadata.key1).to_equal("value1")
@@ -299,7 +880,7 @@ local function define_tests()
             it("should merge metadata without overwriting existing values", function()
                 test_node._metadata = { existing = "value", shared = "original" }
 
-                test_node:metadata({ shared = "updated", new_key = "new_value" })
+                test_node:update_metadata({ shared = "updated", new_key = "new_value" })
 
                 expect(test_node._metadata.existing).to_equal("value")
                 expect(test_node._metadata.shared).to_equal("updated")
@@ -307,10 +888,10 @@ local function define_tests()
             end)
 
             it("should handle nil and empty metadata updates gracefully", function()
-                test_node:metadata(nil)
+                test_node:update_metadata(nil)
                 expect(#test_node._queued_commands).to_equal(0)
 
-                test_node:metadata({})
+                test_node:update_metadata({})
                 expect(#test_node._queued_commands).to_equal(1)
             end)
 
@@ -373,7 +954,6 @@ local function define_tests()
                 expect(child_ids[1]).to_equal("child-1")
                 expect(child_ids[2]).to_equal("child-2")
 
-                -- Check that config is passed through
                 expect(test_node._queued_commands[1].payload.config).not_to_be_nil()
                 expect(test_node._queued_commands[1].payload.config.timeout).to_equal(60)
                 expect(test_node._queued_commands[2].payload.config.parallel).to_be_true()
@@ -401,9 +981,8 @@ local function define_tests()
             end)
 
             it("should submit queued commands without yielding", function()
-                -- Queue some commands first
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test1" })
-                test_node:metadata({ status = "processing" })
+                test_node:update_metadata({ status = "processing" })
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test2" })
 
                 expect(#test_node._queued_commands).to_equal(3)
@@ -412,13 +991,11 @@ local function define_tests()
 
                 expect(success).to_be_true()
                 expect(err).to_be_nil()
-                expect(#test_node._queued_commands).to_equal(0) -- Queue should be cleared
+                expect(#test_node._queued_commands).to_equal(0)
 
-                -- Should call commit.submit once
                 expect(#captured_calls.commit_submit).to_equal(1)
                 expect(#captured_calls.commit_submit[1].commands).to_equal(3)
 
-                -- Should NOT call process.send (no yield signal)
                 expect(#captured_calls.process_send).to_equal(0)
             end)
 
@@ -430,12 +1007,10 @@ local function define_tests()
                 expect(success).to_be_true()
                 expect(err).to_be_nil()
 
-                -- Should not call commit.submit for empty queue
                 expect(#captured_calls.commit_submit).to_equal(0)
             end)
 
             it("should handle commit failures gracefully", function()
-                -- Create failing dependencies
                 local failing_deps = {
                     commit = {
                         submit = function()
@@ -451,7 +1026,6 @@ local function define_tests()
                     dataflow_id = "test-dataflow-456"
                 }, failing_deps)
 
-                -- Queue a command
                 failing_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test" })
                 expect(#failing_node._queued_commands).to_equal(1)
 
@@ -459,32 +1033,29 @@ local function define_tests()
 
                 expect(success).to_be_false()
                 expect(err).to_equal("Database connection failed")
-                expect(#failing_node._queued_commands).to_equal(1) -- Queue should not be cleared on failure
+                expect(#failing_node._queued_commands).to_equal(1)
             end)
 
             it("should be chainable after submit success", function()
-                -- Queue and submit some commands
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test1" })
                 local success, err = test_node:submit()
                 expect(success).to_be_true()
                 expect(#test_node._queued_commands).to_equal(0)
 
-                -- Should be able to queue more commands after submit
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test2" })
-                test_node:metadata({ status = "updated" })
+                test_node:update_metadata({ status = "updated" })
                 expect(#test_node._queued_commands).to_equal(2)
 
                 success, err = test_node:submit()
                 expect(success).to_be_true()
                 expect(#test_node._queued_commands).to_equal(0)
 
-                -- Should have called commit.submit twice
                 expect(#captured_calls.commit_submit).to_equal(2)
             end)
 
             it("should preserve command order when submitting", function()
                 test_node:data("type1", "content1")
-                test_node:metadata({ key1 = "value1" })
+                test_node:update_metadata({ key1 = "value1" })
                 test_node:data("type2", "content2")
 
                 local success, err = test_node:submit()
@@ -528,10 +1099,8 @@ local function define_tests()
                 expect(result).not_to_be_nil()
                 expect(type(result)).to_equal("table")
 
-                -- Should call commit.submit once
                 expect(#captured_calls.commit_submit).to_equal(1)
 
-                -- Should call process.send once for yield signal
                 expect(#captured_calls.process_send).to_equal(1)
                 expect(captured_calls.process_send[1].topic).to_equal(consts.MESSAGE_TOPIC.YIELD_REQUEST)
             end)
@@ -544,7 +1113,6 @@ local function define_tests()
                 expect(result["child-1"]).not_to_be_nil()
                 expect(result["child-1"].status).to_equal("completed")
 
-                -- Should call commit.submit and process.send
                 expect(#captured_calls.commit_submit).to_equal(1)
                 expect(#captured_calls.process_send).to_equal(1)
             end)
@@ -561,15 +1129,12 @@ local function define_tests()
             end)
 
             it("should differ from submit in that it sends process signals", function()
-                -- Test submit vs yield behavior difference
                 test_node:data(consts.DATA_TYPE.NODE_OUTPUT, { message = "test" })
 
-                -- Submit should not send process signals
                 local success, err = test_node:submit()
                 expect(success).to_be_true()
                 expect(#captured_calls.process_send).to_equal(0)
 
-                -- Reset and test yield
                 captured_calls.process_send = {}
                 captured_calls.commit_submit = {}
 
@@ -577,7 +1142,7 @@ local function define_tests()
                 local result, yield_err = test_node:yield()
 
                 expect(yield_err).to_be_nil()
-                expect(#captured_calls.process_send).to_equal(1) -- Should send yield signal
+                expect(#captured_calls.process_send).to_equal(1)
                 expect(captured_calls.process_send[1].topic).to_equal(consts.MESSAGE_TOPIC.YIELD_REQUEST)
             end)
         end)
@@ -611,7 +1176,6 @@ local function define_tests()
 
                 expect(#captured_calls.commit_submit).to_equal(1)
 
-                -- First call should have routing commands
                 local first_submit = captured_calls.commit_submit[1]
                 local data_commands = 0
                 for _, cmd in ipairs(first_submit.commands) do
@@ -619,7 +1183,7 @@ local function define_tests()
                         data_commands = data_commands + 1
                     end
                 end
-                expect(data_commands).to_equal(2) -- Should have 2 data routing commands
+                expect(data_commands).to_equal(2)
             end)
 
             it("should route errors via error_targets from config on fail", function()
@@ -628,7 +1192,6 @@ local function define_tests()
                 expect(result.success).to_be_false()
                 expect(#captured_calls.commit_submit).to_equal(1)
 
-                -- First call should have error routing commands
                 local first_submit = captured_calls.commit_submit[1]
                 local data_commands = 0
                 for _, cmd in ipairs(first_submit.commands) do
@@ -636,7 +1199,7 @@ local function define_tests()
                         data_commands = data_commands + 1
                     end
                 end
-                expect(data_commands).to_equal(2) -- Should have 2 error routing commands
+                expect(data_commands).to_equal(2)
             end)
 
             it("should handle complete without output content", function()
@@ -659,13 +1222,11 @@ local function define_tests()
             end)
 
             it("should verify config-based targets are loaded correctly", function()
-                -- Verify that data_targets and error_targets come from config
                 expect(#test_node.data_targets).to_equal(2)
                 expect(#test_node.error_targets).to_equal(2)
                 expect(test_node.data_targets[1].data_type).to_equal("output.result")
                 expect(test_node.error_targets[1].data_type).to_equal("error.details")
 
-                -- Verify config accessor returns the same data
                 local config = test_node:config()
                 expect(#config.data_targets).to_equal(2)
                 expect(#config.error_targets).to_equal(2)
@@ -682,7 +1243,6 @@ local function define_tests()
                     dataflow_id = "test-dataflow-456"
                 }, mock_deps)
 
-                -- Create failing dependencies for error tests
                 failing_deps = {
                     commit = {
                         submit = function()
@@ -712,9 +1272,8 @@ local function define_tests()
             end)
 
             it("should handle process send failures", function()
-                -- Create deps where commit succeeds but process.send fails
                 local process_fail_deps = {
-                    commit = mock_deps.commit, -- Use working commit
+                    commit = mock_deps.commit,
                     process = {
                         send = function() return false end,
                         listen = mock_deps.process.listen
@@ -734,11 +1293,10 @@ local function define_tests()
             end)
 
             it("should handle yield channel failures", function()
-                -- Create deps where commit and send succeed but channel fails
                 local channel_fail_deps = {
-                    commit = mock_deps.commit, -- Use working commit
+                    commit = mock_deps.commit,
                     process = {
-                        send = mock_deps.process.send, -- Use working send
+                        send = mock_deps.process.send,
                         listen = function()
                             return {
                                 receive = function() return nil, false end
@@ -777,6 +1335,761 @@ local function define_tests()
                 expect(type(query_builder.with_nodes)).to_equal("function")
             end)
         end)
+
+describe("Expr Output Routing", function()
+            local test_node
+
+            before_each(function()
+                test_node, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "workflow.output",
+                                    key = "transformed_result",
+                                    transform = "{ processed: output.message, timestamp: now() }"
+                                },
+                                {
+                                    data_type = "metrics.count",
+                                    key = "word_count",
+                                    transform = "len(split(output.message, ' '))"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+            end)
+
+            it("should apply transforms to output content", function()
+                local result = test_node:complete({ message = "hello world test" }, "Processing complete")
+
+                expect(result.success).to_be_true()
+                expect(#captured_calls.commit_submit).to_equal(1)
+
+                local submit_call = captured_calls.commit_submit[1]
+                expect(#submit_call.commands).to_equal(3) -- metadata + 2 data targets
+
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(2)
+
+                local transformed_cmd = nil
+                local word_count_cmd = nil
+                for _, cmd in ipairs(data_commands) do
+                    if cmd.payload.key == "transformed_result" then
+                        transformed_cmd = cmd
+                    elseif cmd.payload.key == "word_count" then
+                        word_count_cmd = cmd
+                    end
+                end
+
+                expect(transformed_cmd).not_to_be_nil()
+                expect(type(transformed_cmd.payload.content)).to_equal("table")
+                expect(transformed_cmd.payload.content.processed).to_equal("hello world test")
+                expect(type(transformed_cmd.payload.content.timestamp)).to_equal("number")
+
+                expect(word_count_cmd).not_to_be_nil()
+                expect(word_count_cmd.payload.content).to_equal(3)
+            end)
+
+            it("should handle simple value transforms", function()
+                local test_node_simple, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "simple.output",
+                                    key = "upper_message",
+                                    transform = "upper(output.message)"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_simple:complete({ message = "hello world" })
+
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_cmd = nil
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        data_cmd = cmd
+                        break
+                    end
+                end
+
+                expect(data_cmd).not_to_be_nil()
+                expect(data_cmd.payload.content).to_equal("HELLO WORLD")
+            end)
+
+            it("should pass through untransformed content when no transform specified", function()
+                local test_node_no_transform, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "raw.output",
+                                    key = "original"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local output_content = { message = "original content", score = 85 }
+                local result = test_node_no_transform:complete(output_content)
+
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_cmd = nil
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        data_cmd = cmd
+                        break
+                    end
+                end
+
+                expect(data_cmd).not_to_be_nil()
+                expect(data_cmd.payload.content).to_equal(output_content)
+            end)
+
+            it("should handle mathematical and string operations in transforms", function()
+                local test_node_complex, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "calculated.output",
+                                    key = "math_result",
+                                    transform = "{ score_doubled: output.score * 2, grade: output.score >= 90 ? 'A' : 'B', name_upper: upper(output.name) }"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_complex:complete({ score = 85, name = "john" })
+
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_cmd = nil
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        data_cmd = cmd
+                        break
+                    end
+                end
+
+                expect(data_cmd).not_to_be_nil()
+                expect(data_cmd.payload.content.score_doubled).to_equal(170)
+                expect(data_cmd.payload.content.grade).to_equal("B")
+                expect(data_cmd.payload.content.name_upper).to_equal("JOHN")
+            end)
+        end)
+
+        describe("Conditional Output Routing", function()
+            local test_node
+
+            before_each(function()
+                test_node, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "high_score.output",
+                                    key = "high_score",
+                                    condition = "output.score >= 80",
+                                    transform = "{ message: 'Great job!', score: output.score }"
+                                },
+                                {
+                                    data_type = "low_score.output",
+                                    key = "low_score",
+                                    condition = "output.score < 80",
+                                    transform = "{ message: 'Keep trying!', score: output.score }"
+                                },
+                                {
+                                    data_type = "always.output",
+                                    key = "summary",
+                                    transform = "{ total_attempts: 1, final_score: output.score }"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+            end)
+
+            it("should create data only when condition is true", function()
+                local result = test_node:complete({ score = 85 })
+
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(2)
+
+                local keys = {}
+                for _, cmd in ipairs(data_commands) do
+                    table.insert(keys, cmd.payload.key)
+                end
+
+                local has_high_score = false
+                local has_summary = false
+                local has_low_score = false
+
+                for _, key in ipairs(keys) do
+                    if key == "high_score" then has_high_score = true end
+                    if key == "summary" then has_summary = true end
+                    if key == "low_score" then has_low_score = true end
+                end
+
+                expect(has_high_score).to_be_true()
+                expect(has_summary).to_be_true()
+                expect(has_low_score).to_be_false()
+            end)
+
+            it("should evaluate different conditions correctly", function()
+                local test_node_low, _ = node.new({
+                    node_id = "test-node-456",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "high_score.output",
+                                    key = "high_score",
+                                    condition = "output.score >= 80"
+                                },
+                                {
+                                    data_type = "low_score.output",
+                                    key = "low_score",
+                                    condition = "output.score < 80"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_low:complete({ score = 65 })
+
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(1)
+                expect(data_commands[1].payload.key).to_equal("low_score")
+            end)
+
+            it("should handle complex conditional expressions", function()
+                local test_node_complex, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "qualified.output",
+                                    key = "qualified",
+                                    condition = "output.score >= 70 && output.attendance > 0.8",
+                                    transform = "{ qualified: true, final_grade: output.score }"
+                                },
+                                {
+                                    data_type = "failed.output",
+                                    key = "failed",
+                                    condition = "output.score < 70 || output.attendance <= 0.8",
+                                    transform = "{ qualified: false, reason: output.score < 70 ? 'low_score' : 'poor_attendance' }"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_complex:complete({ score = 75, attendance = 0.9 })
+
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(1)
+                expect(data_commands[1].payload.key).to_equal("qualified")
+                expect(data_commands[1].payload.content.qualified).to_be_true()
+            end)
+
+            it("should skip target when condition evaluates to false and handle empty commits", function()
+                local test_node_skip, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "never.output",
+                                    key = "never_created",
+                                    condition = "false",
+                                    transform = "{ should_not_exist: true }"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_skip:complete({ message = "test" })
+
+                expect(result.success).to_be_true()
+
+                -- When no data targets are created and no metadata is updated, no commit happens
+                expect(#captured_calls.commit_submit).to_equal(0)
+            end)
+
+            it("should handle mixed conditions with some true and some false", function()
+                local test_node_mixed, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "true_condition.output",
+                                    key = "should_create",
+                                    condition = "true"
+                                },
+                                {
+                                    data_type = "false_condition.output",
+                                    key = "should_not_create",
+                                    condition = "false"
+                                },
+                                {
+                                    data_type = "no_condition.output",
+                                    key = "always_create"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_mixed:complete({ message = "test" })
+
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(2)
+
+                local keys = {}
+                for _, cmd in ipairs(data_commands) do
+                    table.insert(keys, cmd.payload.key)
+                end
+
+                local has_should_create = false
+                local has_always_create = false
+                local has_should_not_create = false
+
+                for _, key in ipairs(keys) do
+                    if key == "should_create" then has_should_create = true end
+                    if key == "always_create" then has_always_create = true end
+                    if key == "should_not_create" then has_should_not_create = true end
+                end
+
+                expect(has_should_create).to_be_true()
+                expect(has_always_create).to_be_true()
+                expect(has_should_not_create).to_be_false()
+            end)
+        end)
+
+        describe("Error Target Expr Support", function()
+            local test_node
+
+            before_each(function()
+                test_node, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            error_targets = {
+                                {
+                                    data_type = "user.notification",
+                                    key = "user_message",
+                                    transform = "error.code == 'TIMEOUT' ? 'Service temporarily unavailable' : 'An error occurred'"
+                                },
+                                {
+                                    data_type = "system.alert",
+                                    key = "alert",
+                                    condition = "error.severity == 'high'",
+                                    transform = "{ error_code: error.code, timestamp: now(), details: error.message }"
+                                },
+                                {
+                                    data_type = "audit.log",
+                                    key = "error_log",
+                                    transform = "{ error: error.message, node_id: node.node_id }"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+            end)
+
+            it("should apply transforms to error content", function()
+                local error_details = { code = "TIMEOUT", message = "Request timed out", severity = "medium" }
+                local result = test_node:fail(error_details, "Operation failed")
+
+                expect(result.success).to_be_false()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(2)
+
+                local user_msg_cmd = nil
+                local audit_cmd = nil
+                for _, cmd in ipairs(data_commands) do
+                    if cmd.payload.key == "user_message" then
+                        user_msg_cmd = cmd
+                    elseif cmd.payload.key == "error_log" then
+                        audit_cmd = cmd
+                    end
+                end
+
+                expect(user_msg_cmd).not_to_be_nil()
+                expect(user_msg_cmd.payload.content).to_equal("Service temporarily unavailable")
+
+                expect(audit_cmd).not_to_be_nil()
+                expect(audit_cmd.payload.content.error).to_equal("Request timed out")
+                expect(audit_cmd.payload.content.node_id).to_equal("test-node-123")
+            end)
+
+            it("should handle conditional error targets", function()
+                local error_details = { code = "DATABASE_ERROR", message = "Connection failed", severity = "high" }
+                local result = test_node:fail(error_details, "Database error")
+
+                expect(result.success).to_be_false()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(3)
+
+                local alert_cmd = nil
+                for _, cmd in ipairs(data_commands) do
+                    if cmd.payload.key == "alert" then
+                        alert_cmd = cmd
+                        break
+                    end
+                end
+
+                expect(alert_cmd).not_to_be_nil()
+                expect(alert_cmd.payload.content.error_code).to_equal("DATABASE_ERROR")
+                expect(type(alert_cmd.payload.content.timestamp)).to_equal("number")
+            end)
+
+            it("should gracefully handle error transform failures", function()
+                local test_node_bad_transform, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            error_targets = {
+                                {
+                                    data_type = "error.output",
+                                    key = "bad_transform",
+                                    transform = "undefined_function(error.message)"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local error_details = { message = "original error" }
+                local result = test_node_bad_transform:fail(error_details, "Test error")
+
+                expect(result.success).to_be_false()
+                expect(result.message).to_equal("Test error")
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(1)
+                expect(data_commands[1].payload.content).to_equal(error_details)
+            end)
+
+            it("should skip error targets when condition fails", function()
+                local test_node_condition_fail, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            error_targets = {
+                                {
+                                    data_type = "error.high",
+                                    key = "high_priority",
+                                    condition = "error.severity == 'critical'"
+                                },
+                                {
+                                    data_type = "error.general",
+                                    key = "general_error"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local error_details = { severity = "medium", message = "moderate error" }
+                local result = test_node_condition_fail:fail(error_details)
+
+                expect(result.success).to_be_false()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(1)
+                expect(data_commands[1].payload.key).to_equal("general_error")
+            end)
+        end)
+
+        describe("Expr Error Handling in Output Routing", function()
+            it("should fail when data target transform has invalid expression", function()
+                local test_node_bad, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "bad.output",
+                                    key = "bad_transform",
+                                    transform = "invalid + syntax +"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local success, error_msg = pcall(function()
+                    test_node_bad:complete({ message = "test" })
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("Output transform failed")
+            end)
+
+            it("should fail when data target condition has invalid expression", function()
+                local test_node_bad_condition, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "bad.output",
+                                    key = "bad_condition",
+                                    condition = "undefined_var.property"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local success, error_msg = pcall(function()
+                    test_node_bad_condition:complete({ message = "test" })
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("Output condition evaluation failed")
+            end)
+
+            it("should gracefully skip error targets with bad conditions", function()
+                local test_node_bad_error_condition, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            error_targets = {
+                                {
+                                    data_type = "error.bad",
+                                    key = "bad_condition",
+                                    condition = "undefined_var.property"
+                                },
+                                {
+                                    data_type = "error.good",
+                                    key = "good_target"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_bad_error_condition:fail({ message = "test error" })
+
+                expect(result.success).to_be_false()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_commands = {}
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        table.insert(data_commands, cmd)
+                    end
+                end
+
+                expect(#data_commands).to_equal(1)
+                expect(data_commands[1].payload.key).to_equal("good_target")
+            end)
+
+            it("should validate transform expressions properly", function()
+                local test_node_validation, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "validation.output",
+                                    key = "validation_test",
+                                    transform = "output.score > 50 ? 'pass' : 'fail'"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_validation:complete({ score = 75 })
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_cmd = nil
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        data_cmd = cmd
+                        break
+                    end
+                end
+
+                expect(data_cmd).not_to_be_nil()
+                expect(data_cmd.payload.content).to_equal("pass")
+            end)
+
+            it("should handle type errors in expressions gracefully", function()
+                local test_node_type_error, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "type.error",
+                                    key = "type_error",
+                                    transform = "len(output.number)"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local success, error_msg = pcall(function()
+                    test_node_type_error:complete({ number = 42 })
+                end)
+
+                expect(success).to_be_false()
+                expect(error_msg).to_contain("Output transform failed")
+            end)
+
+            it("should handle nested object transforms", function()
+                local test_node_nested, _ = node.new({
+                    node_id = "test-node-123",
+                    dataflow_id = "test-dataflow-456",
+                    node = {
+                        config = {
+                            data_targets = {
+                                {
+                                    data_type = "nested.output",
+                                    key = "nested_result",
+                                    transform = "{ user: { name: output.user.name, age: output.user.age }, metadata: { processed: true, timestamp: now() } }"
+                                }
+                            }
+                        }
+                    }
+                }, mock_deps)
+
+                local result = test_node_nested:complete({ user = { name = "Alice", age = 25 } })
+                expect(result.success).to_be_true()
+
+                local submit_call = captured_calls.commit_submit[1]
+                local data_cmd = nil
+                for _, cmd in ipairs(submit_call.commands) do
+                    if cmd.type == consts.COMMAND_TYPES.CREATE_DATA then
+                        data_cmd = cmd
+                        break
+                    end
+                end
+
+                expect(data_cmd).not_to_be_nil()
+                expect(data_cmd.payload.content.user.name).to_equal("Alice")
+                expect(data_cmd.payload.content.user.age).to_equal(25)
+                expect(data_cmd.payload.content.metadata.processed).to_be_true()
+                expect(type(data_cmd.payload.content.metadata.timestamp)).to_equal("number")
+            end)
+        end)
+
     end)
 end
 
