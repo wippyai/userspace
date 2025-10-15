@@ -20,17 +20,43 @@ Flow Builder SDK provides a fluent interface for composing acyclic dataflows. It
 local flow = require("userspace.dataflow.flow")
 
 flow.create()
+    :with_title(title)
+    :with_metadata(metadata)
     :with_input(data)
     :[operation](config)
     :as(name)
     :to(target, input_key, transform)
     :error_to(target, input_key, transform)
     :when(condition)
-    :run()
+    :run()  -- or :start()
 
 flow.template()
     :[operations]...
 ```
+
+## Workflow Configuration
+
+### Title
+```lua
+flow.create()
+    :with_title("Data Processing Pipeline")
+```
+
+Sets workflow title (defaults to "Flow Builder Workflow").
+
+### Metadata
+```lua
+flow.create()
+    :with_metadata({ project = "analytics", version = "1.0" })
+```
+
+Sets custom workflow metadata.
+
+### Execution Modes
+
+**Synchronous (`:run()`)** - Blocks, returns `data, nil` or `nil, error`
+
+**Asynchronous (`:start()`)** - Returns `dataflow_id, nil` immediately, workflow runs in background
 
 ## Routing
 
@@ -44,11 +70,11 @@ Explicit workflow completion:
 :func("process")
     :to("@success")              -- Terminates workflow successfully
     :error_to("@fail")            -- Terminates workflow with error
-
-:func("validate")
-    :to("process"):when("output.valid")
-    :error_to("@fail"):when("!output.valid")
 ```
+
+**Aliases:** `@end` is context-sensitive (`@success` in `:to()`, `@fail` in `:error_to()`).
+
+**Required:** Workflows must have at least one success path. If a node has `:error_to()` but no `:to()`, you must add `:to("@success")` or let it auto-chain. Compiler validates this.
 
 In nested contexts (cycles, map-reduce templates), terminal routes create `NODE_OUTPUT` instead of `WORKFLOW_OUTPUT`, properly returning to parent.
 
@@ -57,9 +83,6 @@ In nested contexts (cycles, map-reduce templates), terminal routes create `NODE_
 :func("router")
     :to("nodeA", "primary")
     :to("nodeB", "fallback")
-
-:func("source1"):to("processor", "data_a")
-:func("source2"):to("processor", "data_b")
 ```
 
 ### Conditional
@@ -77,7 +100,6 @@ Apply transforms when routing:
 ```lua
 :func("source")
     :to("target"):transform("output.data.field")
-    :to("other"):transform('{"extracted": output.value}')
     :error_to("@fail"):transform("error.message")
 ```
 
@@ -395,20 +417,6 @@ flow.create()
         :to("@success")
         :error_to("@fail")
     :run()
-
--- namespace:validate can return custom error:
-function validate(input)
-    if not input.email then
-        return node:fail({
-            code = "VALIDATION_ERROR",
-            field = "email",
-            message = "Email is required"
-        })
-    end
-end
-
--- Client receives on workflow failure:
--- {success = false, error = '{"code":"VALIDATION_ERROR",...}'}
 ```
 
 ### Transform on Routes
@@ -426,21 +434,6 @@ flow.create()
         :to("@success")
     
     :func("namespace:logger"):as("logger")
-    :run()
-```
-
-### Conditional Routing with Transforms
-```lua
-flow.create()
-    :with_input(data)
-    :func("namespace:classify")
-        :to("@success"):when("output.type == 'simple'"):transform("output.data")
-        :to("complex"):when("output.type == 'complex'"):transform("output")
-        :error_to("@fail"):transform('{"code": "CLASSIFICATION_FAILED", "details": error}')
-    
-    :func("namespace:complex"):as("complex")
-        :to("@success")
-        :error_to("@fail")
     :run()
 ```
 
@@ -492,101 +485,26 @@ flow.create()
     :run()
 ```
 
-### Cycle with Terminal Routing in Template
+### Async Execution
 ```lua
-flow.create()
-    :with_input({task = "Complex task"})
-    :cycle({
-        func_id = "namespace:qa_cycle",
-        max_iterations = 4,
-        initial_state = {feedback_history = {}}
-    })
+local dataflow_id, err = flow.create()
+    :with_title("Long Running Task")
+    :with_input(large_dataset)
+    :func("namespace:process")
     :to("@success")
-    :error_to("@fail")
-    :run()
+    :start()
 
-function qa_cycle(cycle_context)
-    if cycle_context.last_result and cycle_context.last_result.approved then
-        return {
-            state = cycle_context.state,
-            result = cycle_context.last_result,
-            continue = false
-        }
-    end
-    
-    return flow.create()
-        :with_input({
-            task = cycle_context.state.task or cycle_context.input.task,
-            feedback = cycle_context.state.feedback_history
-        })
-        :to("worker", "work_input")
-        :to("qa", "context")
-        
-        :agent("namespace:worker", {
-            inputs = {required = {"work_input"}},
-            arena = {prompt = "Do work", exit_schema = {...}}
-        })
-        :as("worker")
-        :to("qa", "work")
-        :error_to("@fail")
-        
-        :agent("namespace:qa", {
-            inputs = {required = {"work", "context"}},
-            arena = {prompt = "Review work", exit_schema = {...}}
-        })
-        :as("qa")
-        :to("collector")
-        :error_to("@fail")
-        
-        :func("namespace:collector", {
-            inputs = {required = ["work", "assessment", "context"]}
-        })
-        :as("collector")
-        :run()
-end
-
-function collector(inputs)
-    local feedback_history = inputs.context.feedback or {}
-    if not inputs.assessment.approved then
-        table.insert(feedback_history, inputs.assessment.feedback)
-    end
-    
-    return {
-        state = {
-            task = inputs.context.task,
-            feedback_history = feedback_history
-        },
-        result = {
-            work = inputs.work.work,
-            approved = inputs.assessment.approved
-        },
-        continue = not inputs.assessment.approved
-    }
-end
-```
-
-### Map-Reduce with Terminal Routing
-```lua
-flow.create()
-    :with_input({items = [...]})
-    :map_reduce({
-        source_array_key = "items",
-        batch_size = 4,
-        template = flow.template()
-            :func("namespace:process")
-            :to("@success")
-            :error_to("@fail"),
-        reduction_extract = "successes"
-    })
-    :to("@success")
-    :error_to("@fail"):transform("error.message")
-    :run()
+-- Poll status
+local client = require("client")
+local c = client.new()
+local status = c:get_status(dataflow_id)
+local outputs = c:output(dataflow_id)
 ```
 
 ## Validation Rules
 
 - `:as(name)` names must be unique
-- All `:to()` and `:error_to()` targets must exist (except `@success`, `@fail`)
+- All `:to()` and `:error_to()` targets must exist (except `@success`, `@fail`, `@end`)
 - Graph must be acyclic
 - `:cycle()` needs `func_id` OR `template` (not both)
 - `:map_reduce()` requires `source_array_key`
@@ -594,3 +512,28 @@ flow.create()
 - Map-reduce pipelines: validate data type compatibility
 - Always return `flow()...:run()` from functions
 - Terminal routes (`@success`, `@fail`) automatically adapt to context (top-level vs nested)
+- **Workflows must have at least one success termination path** - compiler validates this at build time
+- `:start()` cannot be used in nested contexts (cycles, map-reduce)
+- `:with_title()` requires non-empty string
+- `:with_metadata()` requires table
+
+## Error Handling
+
+Both `:run()` and `:start()` follow standard Lua error conventions:
+
+**Success:**
+- `:run()` → `data, nil`
+- `:start()` → `dataflow_id, nil`
+
+**Failure:**
+- `:run()` → `nil, error_message`
+- `:start()` → `nil, error_message`
+
+**Error types:**
+- Compilation errors: "Compilation failed: ..."
+- Validation errors: "Workflow has no success termination path..."
+- Client errors: "Failed to create dataflow client: ..."
+- Workflow creation errors: "Failed to create workflow: ..."
+- Execution errors (run): "Failed to execute workflow: ..."
+- Startup errors (start): "Failed to start workflow: ..."
+- Workflow failures (run): Returns workflow error message directly
