@@ -324,6 +324,42 @@ When using `template`, the template's **leaf node** must return the cycle struct
 - `iteration_input_key`: "default"
 - `failure_strategy`: "fail_fast"
 
+### Join
+```lua
+:join({
+    inputs = {required = ["source1", "source2"]},
+    input_transform = {data = "inputs.source1", ctx = "inputs.source2"},
+    metadata = {title = "Merge Data"}
+})
+```
+
+Join collects and merges multiple inputs into a single output. The output structure depends on the inputs received:
+
+**Single input or single default key:**
+```lua
+:func("source"):to("merger", "default")
+:join():as("merger")
+-- Output: <content from source>
+```
+
+**Multiple named inputs:**
+```lua
+:func("source1"):to("merger", "data")
+:func("source2"):to("merger", "config")
+:join():as("merger")
+-- Output: {data = <from source1>, config = <from source2>}
+```
+
+**Mixed default and named inputs:**
+```lua
+:func("source1"):to("merger", "default")
+:func("source2"):to("merger", "config")
+:join():as("merger")
+-- Output: {default = <from source1>, config = <from source2>}
+```
+
+Join waits for all required inputs before proceeding. Use `input_transform` to reshape the merged data.
+
 ### Template Usage
 ```lua
 local preprocessor = flow.template()
@@ -427,6 +463,31 @@ flow.create()
         }
     })
     :as("processor")
+    :to("@success")
+    :run()
+```
+
+### Join Pattern for Parallel Processing
+```lua
+flow.create()
+    :with_input({document = "..."})
+    :to("analyze", "doc")
+    :to("extract", "doc")
+    
+    :func("namespace:analyze"):as("analyze")
+        :to("merger", "analysis")
+    
+    :func("namespace:extract"):as("extract")
+        :to("merger", "entities")
+    
+    :join({
+        inputs = {required = ["analysis", "entities"]},
+        input_transform = {
+            summary = "inputs.analysis.summary",
+            entities = "inputs.entities.list"
+        }
+    })
+    :as("merger")
     :to("@success")
     :run()
 ```
