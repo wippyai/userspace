@@ -35,6 +35,20 @@ local function run(args)
         end
     end
 
+    if collected.default then
+        local has_other_keys = false
+        for key in pairs(collected) do
+            if key ~= "default" then
+                has_other_keys = true
+                break
+            end
+        end
+
+        if not has_other_keys then
+            return n:complete(collected.default, "State collection completed")
+        end
+    end
+
     return n:complete(collected, "State collection completed")
 end
 

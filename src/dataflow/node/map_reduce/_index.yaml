@@ -113,3 +113,4 @@ entries:
       map_reduce: userspace.dataflow.node.map_reduce:map_reduce
       test: wippy.test:test
     method: run_tests
+    

@@ -204,6 +204,25 @@ function FlowBuilder:map_reduce(config)
     return self:_add_operation(compiler.OP_TYPES.MAP_REDUCE, mr_config)
 end
 
+function FlowBuilder:join(config)
+    config = config or {}
+
+    local join_config = {
+        inputs = config.inputs,
+        metadata = config.metadata,
+        input_transform = config.input_transform
+    }
+
+    if not (join_config.metadata and join_config.metadata.title) then
+        if not join_config.metadata then
+            join_config.metadata = {}
+        end
+        join_config.metadata.title = "Join"
+    end
+
+    return self:_add_operation(compiler.OP_TYPES.STATE, join_config)
+end
+
 function FlowBuilder:use(template)
     if not template then
         error("Template is required for use operation")
