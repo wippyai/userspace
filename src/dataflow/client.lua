@@ -130,8 +130,8 @@ function methods:execute(dataflow_id, options)
 
     -- Handle workflow failure
     if not orch_result.success then
-        result.error = orch_result.error or "Workflow failed"
-        return result, nil
+        local error_msg = orch_result.error or "Workflow failed"
+        return nil, error_msg
     end
 
     -- Handle successful workflow - fetch outputs if requested

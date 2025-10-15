@@ -36,7 +36,9 @@ local flow_builder_mt = { __index = FlowBuilder }
 function FlowBuilder.new()
     return setmetatable({
         operations = {},
-        is_template = false
+        is_template = false,
+        title = nil,
+        metadata = nil
     }, flow_builder_mt)
 end
 
@@ -50,6 +52,22 @@ function FlowBuilder:_add_operation(op_type, config)
         type = op_type,
         config = config or {}
     })
+    return self
+end
+
+function FlowBuilder:with_title(title)
+    if not title or title == "" then
+        error("Workflow title cannot be empty")
+    end
+    self.title = title
+    return self
+end
+
+function FlowBuilder:with_metadata(metadata)
+    if type(metadata) ~= "table" then
+        error("Metadata must be a table")
+    end
+    self.metadata = metadata
     return self
 end
 
@@ -300,18 +318,19 @@ function FlowBuilder:run()
             return nil, "Failed to create dataflow client: " .. client_err
         end
 
+        local workflow_metadata = self.metadata or {}
+        workflow_metadata.title = self.title or "Flow Builder Workflow"
+        workflow_metadata.created_by = "flow_builder"
+
         local dataflow_id, create_err = c:create_workflow(commands, {
-            metadata = {
-                title = "Flow Builder Workflow",
-                created_by = "flow_builder"
-            }
+            metadata = workflow_metadata
         })
 
         if create_err then
             return nil, "Failed to create workflow: " .. create_err
         end
 
-        local result, exec_err = c:execute(dataflow_id, {
+        local outputs, exec_err = c:execute(dataflow_id, {
             init_func_id = "userspace.dataflow.session:artifact"
         })
 
@@ -319,8 +338,57 @@ function FlowBuilder:run()
             return nil, "Failed to execute workflow: " .. exec_err
         end
 
-        return result.data, nil
+        return outputs, nil
     end
+end
+
+function FlowBuilder:start()
+    if #self.operations == 0 then
+        return nil, "No operations to execute"
+    end
+
+    local session_context, ctx_err = ctx.all()
+    if ctx_err then
+        session_context = {}
+    end
+
+    if session_context.dataflow_id then
+        return nil, "Cannot start async workflow from nested context"
+    end
+
+    local compilation_result, compile_err = compiler.compile(self.operations, session_context)
+    if compile_err then
+        return nil, "Compilation failed: " .. compile_err
+    end
+
+    local commands = compilation_result.commands
+
+    local c, client_err = client.new()
+    if client_err then
+        return nil, "Failed to create dataflow client: " .. client_err
+    end
+
+    local workflow_metadata = self.metadata or {}
+    workflow_metadata.title = self.title or "Flow Builder Workflow"
+    workflow_metadata.created_by = "flow_builder"
+
+    local dataflow_id, create_err = c:create_workflow(commands, {
+        metadata = workflow_metadata
+    })
+
+    if create_err then
+        return nil, "Failed to create workflow: " .. create_err
+    end
+
+    local start_result, start_err = c:start(dataflow_id, {
+        init_func_id = "userspace.dataflow.session:artifact"
+    })
+
+    if start_err then
+        return nil, "Failed to start workflow: " .. start_err
+    end
+
+    return dataflow_id, nil
 end
 
 function flow.create()

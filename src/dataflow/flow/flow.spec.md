@@ -20,16 +20,108 @@ Flow Builder SDK provides a fluent interface for composing acyclic dataflows. It
 local flow = require("userspace.dataflow.flow")
 
 flow.create()
+    :with_title(title)
+    :with_metadata(metadata)
     :with_input(data)
     :[operation](config)
     :as(name)
     :to(target, input_key, transform)
     :error_to(target, input_key, transform)
     :when(condition)
-    :run()
+    :run()  -- or :start()
 
 flow.template()
     :[operations]...
+```
+
+## Workflow Configuration
+
+### Title
+```lua
+flow.create()
+    :with_title("Data Processing Pipeline")
+    :with_input(data)
+    :func("process")
+    :run()
+```
+
+Sets the workflow title. If not provided, defaults to "Flow Builder Workflow".
+
+### Metadata
+```lua
+flow.create()
+    :with_title("Analytics Job")
+    :with_metadata({
+        project = "analytics",
+        version = "1.0",
+        owner = "data-team",
+        priority = "high"
+    })
+    :with_input(data)
+    :func("process")
+    :run()
+```
+
+Sets custom workflow metadata. Metadata is merged with default fields (`title`, `created_by`).
+
+## Execution Modes
+
+### Synchronous Execution (`:run()`)
+```lua
+local result, err = flow.create()
+    :with_title("Sync Job")
+    :with_input(data)
+    :func("process")
+    :run()
+
+if err then
+    print("Error:", err)
+    return
+end
+
+print("Result:", result)
+```
+
+**Behavior:**
+- Blocks until workflow completes
+- Returns workflow output data on success: `data, nil`
+- Returns error on failure: `nil, error_message`
+- Cannot be used in nested contexts (inside cycles/map-reduce)
+
+### Asynchronous Execution (`:start()`)
+```lua
+local dataflow_id, err = flow.create()
+    :with_title("Background Job")
+    :with_input(data)
+    :func("process")
+    :start()
+
+if err then
+    print("Failed to start:", err)
+    return
+end
+
+print("Started workflow:", dataflow_id)
+-- Workflow runs in background
+```
+
+**Behavior:**
+- Returns immediately with workflow ID
+- Workflow runs in background
+- Returns dataflow_id on success: `dataflow_id, nil`
+- Returns error if startup fails: `nil, error_message`
+- Cannot be used in nested contexts
+
+**Checking status and getting results:**
+```lua
+local client = require("client")
+local c = client.new()
+
+-- Check status
+local status, err = c:get_status(dataflow_id)
+
+-- Get outputs when complete
+local outputs, err = c:output(dataflow_id)
 ```
 
 ## Routing
@@ -374,19 +466,62 @@ flow.create()
 
 ## Complete Examples
 
-### Sequential Pipeline
+### Sequential Pipeline with Title
 ```lua
-flow.create()
+local result, err = flow.create()
+    :with_title("Document Processing")
     :with_input(doc)
     :func("namespace:clean")
     :func("namespace:analyze")
     :func("namespace:summarize")
     :run()
+
+if err then
+    print("Pipeline failed:", err)
+else
+    print("Summary:", result)
+end
+```
+
+### Async Execution with Status Polling
+```lua
+local client = require("client")
+
+-- Start workflow
+local dataflow_id, err = flow.create()
+    :with_title("Background Analytics")
+    :with_metadata({
+        project = "analytics",
+        priority = "low"
+    })
+    :with_input(large_dataset)
+    :func("namespace:process")
+    :start()
+
+if err then
+    return nil, err
+end
+
+print("Started:", dataflow_id)
+
+-- Poll for completion
+local c = client.new()
+while true do
+    local status = c:get_status(dataflow_id)
+    if status == "completed" or status == "failed" then
+        break
+    end
+    time.sleep(2000)
+end
+
+-- Get results
+local outputs, err = c:output(dataflow_id)
 ```
 
 ### Terminal Routing with Error Details
 ```lua
-flow.create()
+local result, err = flow.create()
+    :with_title("Validation Pipeline")
     :with_input(data)
     :func("namespace:validate")
         :to("process"):when("output.valid")
@@ -396,24 +531,15 @@ flow.create()
         :error_to("@fail")
     :run()
 
--- namespace:validate can return custom error:
-function validate(input)
-    if not input.email then
-        return node:fail({
-            code = "VALIDATION_ERROR",
-            field = "email",
-            message = "Email is required"
-        })
-    end
+if err then
+    print("Validation failed:", err)
 end
-
--- Client receives on workflow failure:
--- {success = false, error = '{"code":"VALIDATION_ERROR",...}'}
 ```
 
 ### Transform on Routes
 ```lua
 flow.create()
+    :with_title("Multi-Path Processing")
     :with_input({prompt = "task", context = {...}})
     :to("agent"):transform("input.prompt")
     :to("logger"):transform("input.context")
@@ -432,6 +558,7 @@ flow.create()
 ### Conditional Routing with Transforms
 ```lua
 flow.create()
+    :with_title("Conditional Router")
     :with_input(data)
     :func("namespace:classify")
         :to("@success"):when("output.type == 'simple'"):transform("output.data")
@@ -447,6 +574,7 @@ flow.create()
 ### Input Transform in Node Config
 ```lua
 flow.create()
+    :with_title("Transform Pipeline")
     :with_input({prompt = "x", data = "y", context = "z"})
     :to("fetch", "ctx")
     :to("processor", "original")
@@ -470,6 +598,7 @@ flow.create()
 ### Join Pattern for Parallel Processing
 ```lua
 flow.create()
+    :with_title("Parallel Analysis")
     :with_input({document = "..."})
     :to("analyze", "doc")
     :to("extract", "doc")
@@ -495,6 +624,7 @@ flow.create()
 ### Cycle with Terminal Routing in Template
 ```lua
 flow.create()
+    :with_title("QA Cycle")
     :with_input({task = "Complex task"})
     :cycle({
         func_id = "namespace:qa_cycle",
@@ -568,6 +698,7 @@ end
 ### Map-Reduce with Terminal Routing
 ```lua
 flow.create()
+    :with_title("Batch Processing")
     :with_input({items = [...]})
     :map_reduce({
         source_array_key = "items",
@@ -583,6 +714,31 @@ flow.create()
     :run()
 ```
 
+### Async with Metadata Tracking
+```lua
+local dataflow_id, err = flow.create()
+    :with_title("Long Running Import")
+    :with_metadata({
+        import_source = "s3://bucket/data",
+        started_by = "admin",
+        batch_id = "2024Q1",
+        priority = "high"
+    })
+    :with_input({source = "s3://bucket/data"})
+    :func("namespace:import")
+    :func("namespace:validate")
+    :func("namespace:load")
+    :start()
+
+if err then
+    print("Failed to start import:", err)
+    return
+end
+
+print("Import job started:", dataflow_id)
+-- Job runs in background
+```
+
 ## Validation Rules
 
 - `:as(name)` names must be unique
@@ -594,3 +750,26 @@ flow.create()
 - Map-reduce pipelines: validate data type compatibility
 - Always return `flow()...:run()` from functions
 - Terminal routes (`@success`, `@fail`) automatically adapt to context (top-level vs nested)
+- `:start()` cannot be used in nested contexts (cycles, map-reduce)
+- `:with_title()` requires non-empty string
+- `:with_metadata()` requires table
+
+## Error Handling
+
+Both `:run()` and `:start()` follow standard Lua error conventions:
+
+**Success:**
+- `:run()` → `data, nil`
+- `:start()` → `dataflow_id, nil`
+
+**Failure:**
+- `:run()` → `nil, error_message`
+- `:start()` → `nil, error_message`
+
+**Error types:**
+- Compilation errors: "Compilation failed: ..."
+- Client errors: "Failed to create dataflow client: ..."
+- Workflow creation errors: "Failed to create workflow: ..."
+- Execution errors (run): "Failed to execute workflow: ..."
+- Startup errors (start): "Failed to start workflow: ..."
+- Workflow failures (run): Returns workflow error message directly
