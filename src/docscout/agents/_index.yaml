@@ -58,7 +58,7 @@ entries:
     imports:
       governance_client: keeper.gov:client
     method: handler
-    
+
   # userspace.docscout.agents:agent
   - name: agent
     kind: registry.entry
@@ -102,7 +102,7 @@ entries:
       - Each document chunk contains metadata including page numbers and chunk position information.
       - Search results include similarity scores (0-1) indicating relevance to the query.
       - Salesforce schema reflection allows for exploring object schemas and properties.
-    
+
   # userspace.docscout.agents:create_extraction_group
   - name: create_extraction_group
     kind: function.lua
@@ -144,8 +144,8 @@ entries:
               "description": "Optional tags for categorization."
             },
             "fields": {
-              "type": ["object","array"],
-              "description": "Required. Field definitions. Can be:\n  – object keyed by field_name\n  – array of {field_name, type, description, …} entries",
+              "type": "array",
+              "description": "Required. Field definitions. Array of {field_name, type, description, …} entries",
               "items": {
                 "type": "object",
                 "properties": {
@@ -232,7 +232,7 @@ entries:
     method: handler
     llm_alias: create_extraction_group
     llm_description: "Adds a new DocScout extraction group to the registry.  \nValidates inputs, normalizes field definitions, applies defaults, and returns the created entry.\n"
-    
+
   # userspace.docscout.agents:extract_document
   - name: extract_document
     kind: function.lua
@@ -259,7 +259,7 @@ entries:
     imports:
       extractor: userspace.docscout:extractor
     method: handler
-    
+
   # userspace.docscout.agents:list_extraction_groups
   - name: list_extraction_groups
     kind: function.lua
@@ -295,7 +295,7 @@ entries:
       - registry
       - yaml
     method: handler
-    
+
   # userspace.docscout.agents:list_files
   - name: list_files
     kind: function.lua
@@ -340,7 +340,7 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
     method: execute
-    
+
   # userspace.docscout.agents:list_models
   - name: list_models
     kind: function.lua
@@ -382,7 +382,7 @@ entries:
     imports:
       models: wippy.llm.discovery:models
     method: handler
-    
+
   # userspace.docscout.agents:read_extraction_groups
   - name: read_extraction_groups
     kind: function.lua
@@ -415,7 +415,7 @@ entries:
       - registry
       - yaml
     method: handler
-    
+
   # userspace.docscout.agents:remove_extraction_field
   - name: remove_extraction_field
     kind: function.lua
@@ -458,7 +458,7 @@ entries:
     imports:
       governance_client: keeper.gov:client
     method: handler
-    
+
   # userspace.docscout.agents:scout_document
   - name: scout_document
     kind: function.lua
@@ -510,7 +510,7 @@ entries:
       embeddings: wippy.embeddings:embeddings
       upload_repo: userspace.uploads:upload_repo
     method: execute
-    
+
   # userspace.docscout.agents:update_extracting_config
   - name: update_extracting_config
     kind: function.lua
@@ -558,7 +558,7 @@ entries:
     imports:
       governance_client: keeper.gov:client
     method: handler
-    
+
   # userspace.docscout.agents:update_extraction_fields
   - name: update_extraction_fields
     kind: function.lua
@@ -644,7 +644,7 @@ entries:
     imports:
       governance_client: keeper.gov:client
     method: handler
-    
+
   # userspace.docscout.agents:update_extraction_group_meta
   - name: update_extraction_group_meta
     kind: function.lua
@@ -694,7 +694,7 @@ entries:
     imports:
       governance_client: keeper.gov:client
     method: handler
-    
+
   # userspace.docscout.agents:update_scouting_config
   - name: update_scouting_config
     kind: function.lua
@@ -745,4 +745,3 @@ entries:
     imports:
       governance_client: keeper.gov:client
     method: handler
-    
