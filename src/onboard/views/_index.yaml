@@ -2,6 +2,18 @@ version: "1.0"
 namespace: userspace.onboard.views
 
 entries:
+  # userspace.onboard.views:env_mapping
+  - name: env_mapping
+    kind: registry.entry
+    meta:
+      type: view.env_mapping
+      description: Default environment variable mappings
+      category: keeper
+      priority: 20
+      template_set: userspace.onboard.views:templates
+    mappings:
+      web_host_origin: userspace.onboard.env:web_host_origin
+
   # userspace.onboard.views:alpine.js
   - name: alpine.js
     kind: registry.entry
@@ -13,7 +25,7 @@ entries:
       resource_type: script
       template_set: userspace.onboard.views:templates
       url: https://unpkg.com/alpinejs@3.13.0/dist/cdn.min.js
-    
+
   # userspace.onboard.views:iconify
   - name: iconify
     kind: registry.entry
@@ -24,7 +36,7 @@ entries:
       resource_type: script
       template_set: userspace.onboard.views:templates
       url: https://code.iconify.design/iconify-icon/2.3.0/iconify-icon.min.js
-    
+
   # userspace.onboard.views:layout
   - name: layout
     kind: template.jet
@@ -39,7 +51,7 @@ entries:
       - userspace.onboard.views:alpine.js
       - userspace.onboard.views:wippy-api
       - userspace.onboard.views:iconify
-    
+
   # userspace.onboard.views:onboard
   - name: onboard
     kind: template.jet
@@ -55,7 +67,7 @@ entries:
       secure: true
     source: file://onboard.jet
     set: userspace.onboard.views:templates
-    
+
   # userspace.onboard.views:step
   - name: step
     kind: template.jet
@@ -64,7 +76,7 @@ entries:
       description: Step layout for individual onboarding steps
     source: file://step.jet
     set: userspace.onboard.views:templates
-    
+
   # userspace.onboard.views:tailwindcss
   - name: tailwindcss
     kind: registry.entry
@@ -75,7 +87,7 @@ entries:
       resource_type: script
       template_set: userspace.onboard.views:templates
       url: https://cdn.tailwindcss.com
-    
+
   # userspace.onboard.views:templates
   - name: templates
     kind: template.set
@@ -83,15 +95,3 @@ entries:
       description: Onboarding template set with unified design system
     engine:
       development_mode: true
-    
-  # userspace.onboard.views:wippy-api
-  - name: wippy-api
-    kind: registry.entry
-    meta:
-      name: WippyAPI
-      type: view.resource
-      order: 10
-      resource_type: script
-      template_set: userspace.onboard.views:templates
-      url: https://front.wippy.ai/proxy.js
-    
