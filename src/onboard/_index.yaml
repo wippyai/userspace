@@ -11,4 +11,13 @@ entries:
     modules:
       - registry
       - security
-    
+
+  # Requirements
+  - name: web_host_origin_env
+    kind: ns.requirement
+    meta:
+    description: "Environment variable that defines the public web host origin URL"
+    default: "userspace.onboard.env:web_host_origin"
+    targets:
+      - entry: userspace.onboard.views:env_mapping
+        path: ".mappings.web_host_origin"
