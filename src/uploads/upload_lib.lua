@@ -91,6 +91,9 @@ local MIME_TYPES = {
     ["woff"] = "font/woff",
     ["woff2"] = "font/woff2",
 
+    -- Email formats
+    ["eml"] = "message/rfc822",
+
     -- Other formats
     ["exe"] = "application/octet-stream",
     ["bin"] = "application/octet-stream",
