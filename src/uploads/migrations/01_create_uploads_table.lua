@@ -16,7 +16,7 @@ return require("migration").define(function()
                         updated_at timestamp NOT NULL DEFAULT now(),
                         error_details TEXT,
                         metadata TEXT,
-                        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL (user_id)
+                        FOREIGN KEY (user_id) REFERENCES app_users(user_id) ON DELETE SET NULL (user_id)
                     );
                 ]])
 
@@ -82,7 +82,7 @@ return require("migration").define(function()
                         updated_at INTEGER NOT NULL, -- Unix timestamp (seconds since 1970-01-01)
                         error_details TEXT,
                         metadata TEXT,
-                        FOREIGN KEY (user_id) REFERENCES users(user_id)
+                        FOREIGN KEY (user_id) REFERENCES app_users(user_id)
                     )
                 ]])
 
