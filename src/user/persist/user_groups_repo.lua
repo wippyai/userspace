@@ -72,7 +72,7 @@ function user_groups_repo.assign_user_to_group(user_id, group_id)
         :set_map({
             user_id = user_id,
             group_id = group_id,
-            created_at = time.now():unix()
+            created_at = db:type() == sql.type.SQLITE and time.now():unix() or time.now():format(time.RFC3339)
         })
 
     local insert_executor = insert_query:run_with(db)
@@ -306,7 +306,6 @@ function user_groups_repo.set_user_groups(user_id, group_ids)
     end
 
     local groups_added = 0
-    local now = time.now():unix()
 
     for _, group_id in ipairs(group_ids) do
         if group_id and group_id ~= "" then
@@ -314,7 +313,7 @@ function user_groups_repo.set_user_groups(user_id, group_ids)
                 :set_map({
                     user_id = user_id,
                     group_id = group_id,
-                    created_at = now
+                    created_at = db:type() == sql.type.SQLITE and time.now():unix() or time.now():format(time.RFC3339)
                 })
 
             local insert_executor = insert_query:run_with(tx)

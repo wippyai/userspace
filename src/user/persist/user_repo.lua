@@ -81,7 +81,7 @@ function user_repo.create(user_data)
         return nil, consts.ERROR.USER_ALREADY_EXISTS
     end
 
-    local now = time.now():unix()
+    local now = time.now()
 
     local insert_query = sql.builder.insert("app_users")
         :set_map({
@@ -90,8 +90,8 @@ function user_repo.create(user_data)
             full_name = user_data.full_name or nil,
             password_hash = password_hash,
             status = user_data.status or consts.DEFAULTS.USER_STATUS,
-            created_at = now,
-            updated_at = now
+            created_at = db:type() == sql.type.SQLITE and now:unix() or now:format(time.RFC3339),
+            updated_at = db:type() == sql.type.SQLITE and now:unix() or now:format(time.RFC3339)
         })
 
     local insert_executor = insert_query:run_with(db)
@@ -248,7 +248,10 @@ function user_repo.update(user_id, update_data)
         query = query:set("status", update_data.status)
     end
 
-    query = query:set("updated_at", time.now():unix())
+    query = query:set(
+        "updated_at",
+        db:type() == sql.type.SQLITE and time.now():unix() or time.now():format(time.RFC3339)
+    )
 
     local executor = query:run_with(db)
     local result, err = executor:exec()
