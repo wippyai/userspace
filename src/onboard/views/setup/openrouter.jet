@@ -31,7 +31,7 @@
                 type="password"
                 x-model="apiKey"
                 placeholder="sk-or-v1-..."
-                class="p-inputtext  mb-8 w-full rounded-xl px-6 py-5 text-lg
+                class="p-inputtext mb-8 w-full rounded-xl px-6 py-5 text-lg
                        transition-colors"
                 required>
 

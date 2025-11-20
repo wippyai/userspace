@@ -29,7 +29,7 @@
                             type="text"
                             x-model="searchTerm"
                             @input="filterSources()"
-                            class="p-inputtext  w-64 pl-10 pr-3"
+                            class="p-inputtext w-64 pl-10 pr-3"
                             placeholder="Search knowledge sources...">
                 </div>
 

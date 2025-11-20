@@ -55,7 +55,7 @@
         <div class="flex gap-3">
             <input type="text" x-model="componentIdInput"
                    placeholder="Enter OAuth connection component ID..."
-                   class="p-inputtext  flex-1">
+                   class="p-inputtext flex-1">
             <button @click="setComponentId"
                     :disabled="!componentIdInput.trim()"
                     class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -237,7 +237,7 @@
                                         x-model="settingsForm.title"
                                         required
                                         placeholder="Enter connection name..."
-                                        class="p-inputtext  w-full">
+                                        class="p-inputtext w-full">
                             </div>
 
                             <!-- Description Field -->
@@ -248,7 +248,7 @@
                                         x-model="settingsForm.description"
                                         rows="4"
                                         placeholder="Describe this connection and its purpose..."
-                                        class="p-textarea  w-full"></textarea>
+                                        class="p-textarea w-full"></textarea>
                             </div>
 
                             <!-- Actions -->

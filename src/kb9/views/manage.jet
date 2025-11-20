@@ -68,7 +68,7 @@
         <div class="flex gap-3">
             <input type="text" x-model="componentIdInput"
                    placeholder="Enter KB9 component ID..."
-                   class="p-inputtext  flex-1">
+                   class="p-inputtext flex-1">
             <button @click="setComponentId"
                     :disabled="!componentIdInput.trim()"
                     class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -302,7 +302,7 @@
                                         x-model="settingsForm.name"
                                         required
                                         placeholder="Enter knowledge base name..."
-                                        class="p-inputtext  w-full">
+                                        class="p-inputtext w-full">
                             </div>
 
                             <div>
@@ -312,7 +312,7 @@
                                         x-model="settingsForm.description"
                                         rows="4"
                                         placeholder="Describe what this knowledge base contains and its purpose..."
-                                        class="p-textarea  w-full"></textarea>
+                                        class="p-textarea w-full"></textarea>
                             </div>
 
                             <div class="flex space-x-3 pt-4">
@@ -383,7 +383,7 @@
                                                             x-model="settingsForm.embed.options[option.key]"
                                                             x-effect="syncSelectValue($el, settingsForm.embed.options[option.key], availableModels[option.modelCategory] || [])"
                                                             :required="option.required"
-                                                            class="p-inputtext  w-full pr-10 text-sm cursor-pointer">
+                                                            class="p-inputtext w-full pr-10 text-sm cursor-pointer">
                                                         <option value="">Select model...</option>
                                                         <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
                                                             <option :value="model.name" x-text="model.title"></option>
@@ -417,7 +417,7 @@
                                                         :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                                         :placeholder="option.default"
                                                         x-model.number="settingsForm.embed.options[option.key]"
-                                                        class="p-inputtext  w-full text-sm">
+                                                        class="p-inputtext w-full text-sm">
                                             </template>
 
                                             <!-- Text input (default) -->
@@ -427,7 +427,7 @@
                                                         type="text"
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.embed.options[option.key]"
-                                                        class="p-inputtext  w-full text-sm">
+                                                        class="p-inputtext w-full text-sm">
                                             </template>
 
                                             <!-- Textarea input -->
@@ -437,7 +437,7 @@
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.embed.options[option.key]"
                                                         rows="3"
-                                                        class="p-textarea  w-full text-sm
+                                                        class="p-textarea w-full text-sm
                                                                resize-vertical"></textarea>
                                             </template>
 
@@ -507,7 +507,7 @@
                                                             x-model="settingsForm.query.options[option.key]"
                                                             x-effect="syncSelectValue($el, settingsForm.query.options[option.key], availableModels[option.modelCategory] || [])"
                                                             :required="option.required"
-                                                            class="p-inputtext  w-full pr-10 text-sm cursor-pointer">
+                                                            class="p-inputtext w-full pr-10 text-sm cursor-pointer">
                                                         <option value="">Select model...</option>
                                                         <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
                                                             <option :value="model.name" x-text="model.title"></option>
@@ -541,7 +541,7 @@
                                                         :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                                         :placeholder="option.default"
                                                         x-model.number="settingsForm.query.options[option.key]"
-                                                        class="p-inputtext  w-full text-sm">
+                                                        class="p-inputtext w-full text-sm">
                                             </template>
 
                                             <!-- Text input (default) -->
@@ -551,7 +551,7 @@
                                                         type="text"
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.query.options[option.key]"
-                                                        class="p-inputtext  w-full text-sm">
+                                                        class="p-inputtext w-full text-sm">
                                             </template>
 
                                             <!-- Textarea input -->
@@ -561,7 +561,7 @@
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.query.options[option.key]"
                                                         rows="3"
-                                                        class="p-textarea  w-full text-sm
+                                                        class="p-textarea w-full text-sm
                                                                resize-vertical"></textarea>
                                             </template>
 
@@ -771,14 +771,14 @@
                                 <label for="textContent" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Content</label>
                                 <textarea id="textContent" x-model="textContent.content" rows="6"
                                           placeholder="Enter the text content you want to add to the knowledge base..."
-                                          class="p-textarea  w-full"></textarea>
+                                          class="p-textarea w-full"></textarea>
                             </div>
 
                             <div>
                                 <label for="textMetadata" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Metadata (Optional JSON)</label>
                                 <textarea id="textMetadata" x-model="textContent.metadata" rows="2"
                                           placeholder='{"source": "manual", "category": "example"}'
-                                          class="p-textarea  w-full font-mono text-sm
+                                          class="p-textarea w-full font-mono text-sm
                                                  dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100"></textarea>
                             </div>
 
@@ -816,13 +816,13 @@
                                     <label for="searchQuery" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Search Query</label>
                                     <input type="text" id="searchQuery" x-model="searchQuery" @keydown.enter="performSearch"
                                            placeholder="Enter your search query..."
-                                           class="p-inputtext  w-full h-11">
+                                           class="p-inputtext w-full h-11">
                                 </div>
                                 <div class="w-24">
                                     <label for="searchLimit" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Results</label>
                                     <div class="relative">
                                         <select id="searchLimit" x-model.number="searchLimit"
-                                                class="p-inputtext  w-full h-11 pr-10 cursor-pointer">
+                                                class="p-inputtext w-full h-11 pr-10 cursor-pointer">
                                             <option value="5">5</option>
                                             <option value="10">10</option>
                                             <option value="20">20</option>
