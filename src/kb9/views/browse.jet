@@ -105,7 +105,7 @@
                        x-model="searchQuery"
                        @input.debounce.500ms="performSearch"
                        placeholder="Simple keyword search over content"
-                       class="p-inputtext p-component w-full
+                       class="p-inputtext  w-full
                               transition-colors">
             </div>
 
@@ -140,7 +140,7 @@
                     <div class="relative">
                         <select x-model="orderBy"
                                 @change="refreshTree"
-                                class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                class="p-inputtext  w-full pr-10 text-sm cursor-pointer">
                             <option value="path">Path</option>
                             <option value="created_at">Created Date</option>
                             <option value="updated_at">Updated Date</option>
@@ -158,7 +158,7 @@
                     <div class="relative">
                         <select x-model="pagination.limit"
                                 @change="refreshTree"
-                                class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                class="p-inputtext  w-full pr-10 text-sm cursor-pointer">
                             <option value="10">10</option>
                             <option value="20">20</option>
                             <option value="50">50</option>

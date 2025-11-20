@@ -28,7 +28,7 @@
                     <input
                             type="text"
                             x-model="searchTerm"
-                            class="p-inputtext p-component w-64 pl-10 pr-3"
+                            class="p-inputtext  w-64 pl-10 pr-3"
                             placeholder="Search projects...">
                 </div>
 
@@ -253,7 +253,7 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Template</label>
                             <div class="relative">
-                                <select x-model="createForm.template_id" required class="p-inputtext p-component w-full pr-10 cursor-pointer">
+                                <select x-model="createForm.template_id" required class="p-inputtext  w-full pr-10 cursor-pointer">
                                     <option value="">Select a template...</option>
                                     <template x-for="template in templates" :key="template.id">
                                         <option :value="template.id" x-text="template.name"></option>
@@ -269,7 +269,7 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
                             <input x-model="createForm.title" type="text" required
-                                   class="p-inputtext p-component w-full"
+                                   class="p-inputtext  w-full"
                                    placeholder="Enter project title...">
                         </div>
 
@@ -277,7 +277,7 @@
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description (Optional)</label>
                             <textarea x-model="createForm.description" rows="3"
-                                      class="p-textarea p-component w-full"
+                                      class="p-textarea  w-full"
                                       placeholder="Enter project description..."></textarea>
                         </div>
 
@@ -316,7 +316,7 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
                             <input x-model="editForm.title" type="text" required
-                                   class="p-inputtext p-component w-full"
+                                   class="p-inputtext  w-full"
                                    placeholder="Enter project title...">
                         </div>
 
@@ -324,7 +324,7 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description</label>
                             <textarea x-model="editForm.description" rows="3"
-                                      class="p-textarea p-component w-full"
+                                      class="p-textarea  w-full"
                                       placeholder="Enter project description..."></textarea>
                         </div>
 
@@ -332,7 +332,7 @@
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
                             <div class="relative">
-                                <select x-model="editForm.status" class="p-inputtext p-component w-full pr-10 cursor-pointer">
+                                <select x-model="editForm.status" class="p-inputtext  w-full pr-10 cursor-pointer">
                                     <option value="draft">Draft</option>
                                     <option value="active">Active</option>
                                     <option value="published">Published</option>

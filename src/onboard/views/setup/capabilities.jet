@@ -51,7 +51,7 @@
                                     type="password"
                                     x-model="capabilities.search.apiKey"
                                     placeholder="AIza..."
-                                    class="p-inputtext p-component w-full text-sm
+                                    class="p-inputtext  w-full text-sm
                                            transition-colors">
                         </div>
                         <div>
@@ -62,7 +62,7 @@
                                     type="text"
                                     x-model="capabilities.search.engineId"
                                     placeholder="abc123def456..."
-                                    class="p-inputtext p-component w-full text-sm"
+                                    class="p-inputtext  w-full text-sm"
                         </div>
                     </div>
 
@@ -108,7 +108,7 @@
                                     type="text"
                                     x-model="capabilities.google.clientId"
                                     placeholder="123456-abcdef.apps.googleusercontent.com"
-                                    class="p-inputtext p-component w-full text-sm
+                                    class="p-inputtext  w-full text-sm
                                            transition-colors"
                         </div>
                         <div>
@@ -119,7 +119,7 @@
                                     type="password"
                                     x-model="capabilities.google.clientSecret"
                                     placeholder="GOCSPX-..."
-                                    class="p-inputtext p-component w-full text-sm
+                                    class="p-inputtext  w-full text-sm
                                            transition-colors">
                         </div>
                     </div>
@@ -166,7 +166,7 @@
                                     type="text"
                                     x-model="capabilities.github.clientId"
                                     placeholder="Ov23li..."
-                                    class="p-inputtext p-component w-full text-sm
+                                    class="p-inputtext  w-full text-sm
                                            transition-colors"
                         </div>
                         <div>
@@ -177,7 +177,7 @@
                                     type="password"
                                     x-model="capabilities.github.clientSecret"
                                     placeholder="828652da..."
-                                    class="p-inputtext p-component w-full text-sm
+                                    class="p-inputtext  w-full text-sm
                                            transition-colors">
                         </div>
                     </div>

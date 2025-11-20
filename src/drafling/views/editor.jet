@@ -475,10 +475,10 @@
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div class="sm:col-span-2">
                                         <input x-model="editingEntryData.title" type="text" placeholder="Entry title (optional)"
-                                               class="p-inputtext p-component w-full text-sm">
+                                               class="p-inputtext  w-full text-sm">
                                     </div>
                                     <div class="relative">
-                                        <select x-model="editingEntryData.status" class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                        <select x-model="editingEntryData.status" class="p-inputtext  w-full pr-10 text-sm cursor-pointer">
                                             <template x-for="status in getAvailableStatusesForEntry(editingEntryType)" :key="status.value">
                                                 <option :value="status.value" x-text="status.display_name"></option>
                                             </template>
@@ -489,7 +489,7 @@
                                     </div>
                                 </div>
                                 <textarea x-model="editingEntryData.content" rows="8" placeholder="Write your content..."
-                                          class="markdown-editor p-textarea p-component w-full resize-vertical text-sm"></textarea>
+                                          class="markdown-editor p-textarea  w-full resize-vertical text-sm"></textarea>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
                                         <span x-show="isSaving" class="text-xs text-surface-500 dark:text-surface-400 flex items-center">
@@ -612,13 +612,13 @@
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Title (Optional)</label>
                             <input x-model="createForm.title" type="text" placeholder="Enter a title for this entry..."
-                                   class="p-inputtext p-component w-full text-sm">
+                                   class="p-inputtext  w-full text-sm">
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
                             <div class="relative">
-                                <select x-model="createForm.status" class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                <select x-model="createForm.status" class="p-inputtext  w-full pr-10 text-sm cursor-pointer">
                                     <template x-for="status in getAvailableStatusesForEntry(createForm.type)" :key="status.value">
                                         <option :value="status.value" x-text="status.display_name"></option>
                                     </template>
@@ -632,7 +632,7 @@
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Content</label>
                             <textarea x-model="createForm.content" rows="8" placeholder="Write your content here..."
-                                      class="markdown-editor p-textarea p-component w-full text-sm
+                                      class="markdown-editor p-textarea  w-full text-sm
                                              resize-vertical"></textarea>
                         </div>
                     </div>
@@ -671,19 +671,19 @@
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
                         <input x-model="editForm.title" type="text" required
-                               class="p-inputtext p-component w-full">
+                               class="p-inputtext  w-full">
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description</label>
                         <textarea x-model="editForm.description" rows="3"
-                                  class="p-textarea p-component w-full"></textarea>
+                                  class="p-textarea  w-full"></textarea>
                     </div>
 
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
                         <div class="relative">
-                            <select x-model="editForm.status" class="p-inputtext p-component w-full pr-10 cursor-pointer">
+                            <select x-model="editForm.status" class="p-inputtext  w-full pr-10 cursor-pointer">
                                 <option value="draft">Draft</option>
                                 <option value="active">Active</option>
                                 <option value="published">Published</option>

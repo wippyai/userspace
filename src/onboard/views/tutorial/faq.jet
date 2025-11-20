@@ -23,7 +23,7 @@
                     type="text"
                     x-model="searchQuery"
                     placeholder="Search FAQ..."
-                    class="p-inputtext p-component w-full rounded-xl pl-10 pr-4">
+                    class="p-inputtext  w-full rounded-xl pl-10 pr-4">
         </div>
     </div>
 
