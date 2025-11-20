@@ -68,7 +68,7 @@
         <div class="flex gap-3">
             <input type="text" x-model="componentIdInput"
                    placeholder="Enter KB9 component ID..."
-                   class="flex-1 px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                   class="p-inputtext p-component flex-1">
             <button @click="setComponentId"
                     :disabled="!componentIdInput.trim()"
                     class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -302,7 +302,7 @@
                                         x-model="settingsForm.name"
                                         required
                                         placeholder="Enter knowledge base name..."
-                                        class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                        class="p-inputtext p-component w-full">
                             </div>
 
                             <div>
@@ -312,7 +312,7 @@
                                         x-model="settingsForm.description"
                                         rows="4"
                                         placeholder="Describe what this knowledge base contains and its purpose..."
-                                        class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                                        class="p-textarea p-component w-full"></textarea>
                             </div>
 
                             <div class="flex space-x-3 pt-4">
@@ -377,17 +377,22 @@
 
                                             <!-- Model selector -->
                                             <template x-if="option.widget === 'model_select'">
-                                                <select
-                                                        :id="'embed-' + option.key"
-                                                        x-model="settingsForm.embed.options[option.key]"
-                                                        x-effect="syncSelectValue($el, settingsForm.embed.options[option.key], availableModels[option.modelCategory] || [])"
-                                                        :required="option.required"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer">
-                                                    <option value="">Select model...</option>
-                                                    <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
-                                                        <option :value="model.name" x-text="model.title"></option>
-                                                    </template>
-                                                </select>
+                                                <div class="relative">
+                                                    <select
+                                                            :id="'embed-' + option.key"
+                                                            x-model="settingsForm.embed.options[option.key]"
+                                                            x-effect="syncSelectValue($el, settingsForm.embed.options[option.key], availableModels[option.modelCategory] || [])"
+                                                            :required="option.required"
+                                                            class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                                        <option value="">Select model...</option>
+                                                        <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                                            <option :value="model.name" x-text="model.title"></option>
+                                                        </template>
+                                                    </select>
+                                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                        <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                                    </div>
+                                                </div>
                                             </template>
 
                                             <!-- Boolean checkbox -->
@@ -412,7 +417,7 @@
                                                         :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                                         :placeholder="option.default"
                                                         x-model.number="settingsForm.embed.options[option.key]"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                                        class="p-inputtext p-component w-full text-sm">
                                             </template>
 
                                             <!-- Text input (default) -->
@@ -422,7 +427,7 @@
                                                         type="text"
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.embed.options[option.key]"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                                        class="p-inputtext p-component w-full text-sm">
                                             </template>
 
                                             <!-- Textarea input -->
@@ -432,7 +437,8 @@
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.embed.options[option.key]"
                                                         rows="3"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-vertical"></textarea>
+                                                        class="p-textarea p-component w-full text-sm
+                                                               resize-vertical"></textarea>
                                             </template>
 
                                             <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
@@ -495,17 +501,22 @@
 
                                             <!-- Model selector -->
                                             <template x-if="option.widget === 'model_select'">
-                                                <select
-                                                        :id="'query-' + option.key"
-                                                        x-model="settingsForm.query.options[option.key]"
-                                                        x-effect="syncSelectValue($el, settingsForm.query.options[option.key], availableModels[option.modelCategory] || [])"
-                                                        :required="option.required"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer">
-                                                    <option value="">Select model...</option>
-                                                    <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
-                                                        <option :value="model.name" x-text="model.title"></option>
-                                                    </template>
-                                                </select>
+                                                <div class="relative">
+                                                    <select
+                                                            :id="'query-' + option.key"
+                                                            x-model="settingsForm.query.options[option.key]"
+                                                            x-effect="syncSelectValue($el, settingsForm.query.options[option.key], availableModels[option.modelCategory] || [])"
+                                                            :required="option.required"
+                                                            class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                                        <option value="">Select model...</option>
+                                                        <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                                            <option :value="model.name" x-text="model.title"></option>
+                                                        </template>
+                                                    </select>
+                                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                        <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                                    </div>
+                                                </div>
                                             </template>
 
                                             <!-- Boolean checkbox -->
@@ -530,7 +541,7 @@
                                                         :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                                         :placeholder="option.default"
                                                         x-model.number="settingsForm.query.options[option.key]"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                                        class="p-inputtext p-component w-full text-sm">
                                             </template>
 
                                             <!-- Text input (default) -->
@@ -540,7 +551,7 @@
                                                         type="text"
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.query.options[option.key]"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                                        class="p-inputtext p-component w-full text-sm">
                                             </template>
 
                                             <!-- Textarea input -->
@@ -550,7 +561,8 @@
                                                         :placeholder="option.default"
                                                         x-model="settingsForm.query.options[option.key]"
                                                         rows="3"
-                                                        class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical"></textarea>
+                                                        class="p-textarea p-component w-full text-sm
+                                                               resize-vertical"></textarea>
                                             </template>
 
                                             <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
@@ -759,14 +771,15 @@
                                 <label for="textContent" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Content</label>
                                 <textarea id="textContent" x-model="textContent.content" rows="6"
                                           placeholder="Enter the text content you want to add to the knowledge base..."
-                                          class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                                          class="p-textarea p-component w-full"></textarea>
                             </div>
 
                             <div>
                                 <label for="textMetadata" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Metadata (Optional JSON)</label>
                                 <textarea id="textMetadata" x-model="textContent.metadata" rows="2"
                                           placeholder='{"source": "manual", "category": "example"}'
-                                          class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"></textarea>
+                                          class="p-textarea p-component w-full font-mono text-sm
+                                                 dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100"></textarea>
                             </div>
 
                             <div class="flex space-x-3">
@@ -803,17 +816,22 @@
                                     <label for="searchQuery" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Search Query</label>
                                     <input type="text" id="searchQuery" x-model="searchQuery" @keydown.enter="performSearch"
                                            placeholder="Enter your search query..."
-                                           class="block w-full h-11 px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                           class="p-inputtext p-component w-full h-11">
                                 </div>
                                 <div class="w-24">
                                     <label for="searchLimit" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Results</label>
-                                    <select id="searchLimit" x-model.number="searchLimit"
-                                            class="block w-full h-11 px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
-                                        <option value="5">5</option>
-                                        <option value="10">10</option>
-                                        <option value="20">20</option>
-                                        <option value="50">50</option>
-                                    </select>
+                                    <div class="relative">
+                                        <select id="searchLimit" x-model.number="searchLimit"
+                                                class="p-inputtext p-component w-full h-11 pr-10 cursor-pointer">
+                                            <option value="5">5</option>
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                            <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="shrink-0">
                                     <button @click="performSearch" :disabled="!searchQuery.trim() || isSearching"

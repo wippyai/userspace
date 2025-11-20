@@ -29,10 +29,7 @@
                             type="text"
                             x-model="searchTerm"
                             @input="filterSources()"
-                            class="block w-64 rounded-lg border border-surface-200 bg-white py-2.5 pl-10 pr-3
-                                   text-surface-900 placeholder-surface-500
-                                   focus:outline-none focus:ring-2 focus:ring-primary-500
-                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400"
+                            class="p-inputtext p-component w-64 pl-10 pr-3"
                             placeholder="Search connections...">
                 </div>
 

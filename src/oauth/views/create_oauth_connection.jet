@@ -47,10 +47,7 @@
         <div class="flex gap-3">
             <input type="text" x-model="providerIdInput"
                    placeholder="Enter OAuth provider ID (e.g., google)..."
-                   class="flex-1 rounded-lg border border-surface-300 bg-white px-3 py-2
-                          text-surface-900 placeholder-surface-500
-                          focus:outline-none focus:ring-2 focus:ring-primary-500
-                          dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400">
+                   class="p-inputtext p-component flex-1">
             <button @click="setProviderId"
                     :disabled="!providerIdInput.trim()"
                     class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -186,10 +183,7 @@
                             x-model="connectionForm.name"
                             required
                             :placeholder="'My ' + providerInfo.name + ' Connection'"
-                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2
-                                   text-surface-900 placeholder-surface-500
-                                   focus:outline-none focus:ring-2 focus:ring-primary-500
-                                   dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 dark:placeholder-surface-400">
+                            class="p-inputtext p-component w-full">
                 </div>
 
                 <!-- Description -->
@@ -202,10 +196,7 @@
                             x-model="connectionForm.description"
                             rows="2"
                             placeholder="Describe what this connection will be used for..."
-                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2
-                                   text-surface-900 placeholder-surface-500
-                                   focus:outline-none focus:ring-2 focus:ring-primary-500
-                                   dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 dark:placeholder-surface-400"></textarea>
+                            class="p-textarea p-component w-full"></textarea>
                 </div>
 
                 <!-- Selected Scopes Summary -->

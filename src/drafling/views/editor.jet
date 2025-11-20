@@ -475,23 +475,21 @@
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div class="sm:col-span-2">
                                         <input x-model="editingEntryData.title" type="text" placeholder="Entry title (optional)"
-                                               class="block w-full rounded-lg border border-surface-300 bg-white px-4 py-3 text-sm
-                                                      text-surface-900 placeholder-surface-500
-                                                      focus:outline-none focus:ring-2 focus:ring-primary-500
-                                                      dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400">
+                                               class="p-inputtext p-component w-full text-sm">
                                     </div>
-                                    <div>
-                                        <select x-model="editingEntryData.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
+                                    <div class="relative">
+                                        <select x-model="editingEntryData.status" class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
                                             <template x-for="status in getAvailableStatusesForEntry(editingEntryType)" :key="status.value">
                                                 <option :value="status.value" x-text="status.display_name"></option>
                                             </template>
                                         </select>
+                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                            <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                        </div>
                                     </div>
                                 </div>
                                 <textarea x-model="editingEntryData.content" rows="8" placeholder="Write your content..."
-                                          class="markdown-editor block w-full resize-vertical rounded-lg border border-surface-300 bg-white px-4 py-3 text-sm
-                                                 text-surface-900 placeholder-surface-500
-                                                 dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400"></textarea>
+                                          class="markdown-editor p-textarea p-component w-full resize-vertical text-sm"></textarea>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
                                         <span x-show="isSaving" class="text-xs text-surface-500 dark:text-surface-400 flex items-center">
@@ -613,21 +611,29 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Title (Optional)</label>
-                            <input x-model="createForm.title" type="text" placeholder="Enter a title for this entry..." class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            <input x-model="createForm.title" type="text" placeholder="Enter a title for this entry..."
+                                   class="p-inputtext p-component w-full text-sm">
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
-                            <select x-model="createForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
-                                <template x-for="status in getAvailableStatusesForEntry(createForm.type)" :key="status.value">
-                                    <option :value="status.value" x-text="status.display_name"></option>
-                                </template>
-                            </select>
+                            <div class="relative">
+                                <select x-model="createForm.status" class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                    <template x-for="status in getAvailableStatusesForEntry(createForm.type)" :key="status.value">
+                                        <option :value="status.value" x-text="status.display_name"></option>
+                                    </template>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Content</label>
-                            <textarea x-model="createForm.content" rows="8" placeholder="Write your content here..." class="markdown-editor block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 resize-vertical"></textarea>
+                            <textarea x-model="createForm.content" rows="8" placeholder="Write your content here..."
+                                      class="markdown-editor p-textarea p-component w-full text-sm
+                                             resize-vertical"></textarea>
                         </div>
                     </div>
 
@@ -664,22 +670,29 @@
                 <form @submit.prevent="updateProject()">
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
-                        <input x-model="editForm.title" type="text" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100">
+                        <input x-model="editForm.title" type="text" required
+                               class="p-inputtext p-component w-full">
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description</label>
-                        <textarea x-model="editForm.description" rows="3" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100"></textarea>
+                        <textarea x-model="editForm.description" rows="3"
+                                  class="p-textarea p-component w-full"></textarea>
                     </div>
 
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
-                        <select x-model="editForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 cursor-pointer">
-                            <option value="draft">Draft</option>
-                            <option value="active">Active</option>
-                            <option value="published">Published</option>
-                            <option value="archived">Archived</option>
-                        </select>
+                        <div class="relative">
+                            <select x-model="editForm.status" class="p-inputtext p-component w-full pr-10 cursor-pointer">
+                                <option value="draft">Draft</option>
+                                <option value="active">Active</option>
+                                <option value="published">Published</option>
+                                <option value="archived">Archived</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-end space-x-3">

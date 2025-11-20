@@ -31,11 +31,8 @@
                 type="password"
                 x-model="apiKey"
                 placeholder="sk-or-v1-..."
-                class="mb-8 w-full rounded-xl border border-surface-300 bg-white px-6 py-5 text-lg
-                       text-surface-900
-                       transition-colors
-                       focus:outline-none focus:ring-2 focus:ring-green-500
-                       dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                class="p-inputtext p-component mb-8 w-full rounded-xl px-6 py-5 text-lg
+                       transition-colors"
                 required>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

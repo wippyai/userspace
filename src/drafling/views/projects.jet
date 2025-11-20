@@ -28,10 +28,7 @@
                     <input
                             type="text"
                             x-model="searchTerm"
-                            class="block w-64 rounded-lg border border-surface-200 bg-white py-2.5 pl-10 pr-3
-                                   text-surface-900 placeholder-surface-500
-                                   focus:outline-none focus:ring-2 focus:ring-primary-500
-                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400"
+                            class="p-inputtext p-component w-64 pl-10 pr-3"
                             placeholder="Search projects...">
                 </div>
 
@@ -255,24 +252,33 @@
                         <!-- Template Selection -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Template</label>
-                            <select x-model="createForm.template_id" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 cursor-pointer">
-                                <option value="">Select a template...</option>
-                                <template x-for="template in templates" :key="template.id">
-                                    <option :value="template.id" x-text="template.name"></option>
-                                </template>
-                            </select>
+                            <div class="relative">
+                                <select x-model="createForm.template_id" required class="p-inputtext p-component w-full pr-10 cursor-pointer">
+                                    <option value="">Select a template...</option>
+                                    <template x-for="template in templates" :key="template.id">
+                                        <option :value="template.id" x-text="template.name"></option>
+                                    </template>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Project Title -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
-                            <input x-model="createForm.title" type="text" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project title...">
+                            <input x-model="createForm.title" type="text" required
+                                   class="p-inputtext p-component w-full"
+                                   placeholder="Enter project title...">
                         </div>
 
                         <!-- Description -->
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description (Optional)</label>
-                            <textarea x-model="createForm.description" rows="3" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project description..."></textarea>
+                            <textarea x-model="createForm.description" rows="3"
+                                      class="p-textarea p-component w-full"
+                                      placeholder="Enter project description..."></textarea>
                         </div>
 
                         <!-- Actions -->
@@ -309,24 +315,33 @@
                         <!-- Project Title -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Project Title</label>
-                            <input x-model="editForm.title" type="text" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project title...">
+                            <input x-model="editForm.title" type="text" required
+                                   class="p-inputtext p-component w-full"
+                                   placeholder="Enter project title...">
                         </div>
 
                         <!-- Description -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Description</label>
-                            <textarea x-model="editForm.description" rows="3" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100" placeholder="Enter project description..."></textarea>
+                            <textarea x-model="editForm.description" rows="3"
+                                      class="p-textarea p-component w-full"
+                                      placeholder="Enter project description..."></textarea>
                         </div>
 
                         <!-- Status -->
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
-                            <select x-model="editForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 cursor-pointer">
-                                <option value="draft">Draft</option>
-                                <option value="active">Active</option>
-                                <option value="published">Published</option>
-                                <option value="archived">Archived</option>
-                            </select>
+                            <div class="relative">
+                                <select x-model="editForm.status" class="p-inputtext p-component w-full pr-10 cursor-pointer">
+                                    <option value="draft">Draft</option>
+                                    <option value="active">Active</option>
+                                    <option value="published">Published</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Actions -->

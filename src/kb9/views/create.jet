@@ -39,10 +39,7 @@
                             x-model="formData.name"
                             required
                             placeholder="My Knowledge Base"
-                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2
-                                   text-surface-900
-                                   focus:outline-none focus:ring-2 focus:ring-blue-500
-                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
+                            class="p-inputtext p-component w-full">
                 </div>
                 <div>
                     <label for="description" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Description</label>
@@ -51,10 +48,7 @@
                             x-model="formData.description"
                             rows="2"
                             placeholder="What will this knowledge base contain?"
-                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2
-                                   text-surface-900
-                                   focus:outline-none focus:ring-2 focus:ring-blue-500
-                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100"></textarea>
+                            class="p-textarea p-component w-full"></textarea>
                 </div>
             </div>
         </div>
@@ -70,19 +64,21 @@
             <div class="space-y-4">
                 <div>
                     <label for="embedding_model" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Select Model</label>
-                    <select
-                            id="embedding_model"
-                            x-model="formData.embeddingModel"
-                            required
-                            class="block w-full cursor-pointer rounded-lg border border-surface-300 bg-white px-3 py-2
-                                   text-surface-900
-                                   focus:outline-none focus:ring-2 focus:ring-blue-500
-                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
-                        <option value="">Select embedding model...</option>
-                        <template x-for="model in availableModels.embedding" :key="model.name">
-                            <option :value="model.name" x-text="model.title"></option>
-                        </template>
-                    </select>
+                    <div class="relative">
+                        <select
+                                id="embedding_model"
+                                x-model="formData.embeddingModel"
+                                required
+                                class="p-inputtext p-component w-full pr-10 cursor-pointer">
+                            <option value="">Select embedding model...</option>
+                            <template x-for="model in availableModels.embedding" :key="model.name">
+                                <option :value="model.name" x-text="model.title"></option>
+                            </template>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                        </div>
+                    </div>
                     <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">This model will generate vector embeddings for all content in your knowledge base</p>
                 </div>
 
@@ -151,19 +147,21 @@
 
                                 <!-- Model selector -->
                                 <template x-if="option.widget === 'model_select'">
-                                    <select
-                                            :id="'embed-' + option.key"
-                                            x-model="formData.embed.options[option.key]"
-                                            :required="option.required"
-                                            class="block w-full cursor-pointer rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                                   text-surface-900
-                                                   focus:outline-none focus:ring-2 focus:ring-purple-500
-                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
-                                        <option value="">Select model...</option>
-                                        <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
-                                            <option :value="model.name" x-text="model.title"></option>
-                                        </template>
-                                    </select>
+                                    <div class="relative">
+                                        <select
+                                                :id="'embed-' + option.key"
+                                                x-model="formData.embed.options[option.key]"
+                                                :required="option.required"
+                                                class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                            <option value="">Select model...</option>
+                                            <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                                <option :value="model.name" x-text="model.title"></option>
+                                            </template>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                            <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                        </div>
+                                    </div>
                                 </template>
 
                                 <!-- Boolean checkbox -->
@@ -188,10 +186,7 @@
                                             :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                             :placeholder="option.default"
                                             x-model.number="formData.embed.options[option.key]"
-                                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                                   text-surface-900
-                                                   focus:outline-none focus:ring-2 focus:ring-purple-500
-                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
+                                            class="p-inputtext p-component w-full text-sm">
                                 </template>
 
                                 <!-- Textarea input -->
@@ -201,7 +196,7 @@
                                             :placeholder="option.default"
                                             x-model="formData.embed.options[option.key]"
                                             rows="3"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-vertical"></textarea>
+                                            class="p-textarea p-component w-full text-sm resize-vertical"></textarea>
                                 </template>
 
                                 <!-- Text input (default) -->
@@ -211,10 +206,7 @@
                                             type="text"
                                             :placeholder="option.default"
                                             x-model="formData.embed.options[option.key]"
-                                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                                   text-surface-900
-                                                   focus:outline-none focus:ring-2 focus:ring-purple-500
-                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
+                                            class="p-inputtext p-component w-full text-sm">
                                 </template>
 
                                 <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
@@ -273,16 +265,21 @@
 
                                 <!-- Model selector -->
                                 <template x-if="option.widget === 'model_select'">
-                                    <select
-                                            :id="'query-' + option.key"
-                                            x-model="formData.query.options[option.key]"
-                                            :required="option.required"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer">
-                                        <option value="">Select model...</option>
-                                        <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
-                                            <option :value="model.name" x-text="model.title"></option>
-                                        </template>
-                                    </select>
+                                    <div class="relative">
+                                        <select
+                                                :id="'query-' + option.key"
+                                                x-model="formData.query.options[option.key]"
+                                                :required="option.required"
+                                                class="p-inputtext p-component w-full pr-10 text-sm cursor-pointer">
+                                            <option value="">Select model...</option>
+                                            <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
+                                                <option :value="model.name" x-text="model.title"></option>
+                                            </template>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                            <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                        </div>
+                                    </div>
                                 </template>
 
                                 <!-- Boolean checkbox -->
@@ -307,7 +304,7 @@
                                             :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                             :placeholder="option.default"
                                             x-model.number="formData.query.options[option.key]"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                            class="p-inputtext p-component w-full text-sm">
                                 </template>
 
                                 <!-- Textarea input -->
@@ -317,7 +314,7 @@
                                             :placeholder="option.default"
                                             x-model="formData.query.options[option.key]"
                                             rows="3"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical"></textarea>
+                                            class="p-textarea p-component w-full text-sm resize-vertical"></textarea>
                                 </template>
 
                                 <!-- Text input (default) -->
@@ -327,7 +324,7 @@
                                             type="text"
                                             :placeholder="option.default"
                                             x-model="formData.query.options[option.key]"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                            class="p-inputtext p-component w-full text-sm">
                                 </template>
 
                                 <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>

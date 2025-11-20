@@ -31,11 +31,8 @@
                 type="password"
                 x-model="apiKey"
                 placeholder="sk-..."
-                class="mb-8 w-full rounded-xl border border-surface-300 bg-white px-6 py-5 text-lg
-                       text-surface-900
-                       transition-colors
-                       focus:outline-none focus:ring-2 focus:ring-blue-500
-                       dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
+                class="p-inputtext p-component mb-8 w-full rounded-xl px-6 py-5 text-lg
+                       transition-colors">
 
         <a href="https://platform.openai.com/api-keys" target="_blank" class="inline-flex items-center gap-3 text-blue-600 dark:text-blue-400 hover:underline font-medium text-lg">
             <span>Get your OpenAI API key</span>

@@ -165,12 +165,9 @@
                             <template x-if="namespacesLoaded && !isFetchingNamespaces">
                                 <div class="relative">
                                     <select id="namespaceSelect" x-model="selectedNamespace" @change="handleNamespaceChange"
-                                            class="block w-full cursor-pointer appearance-none rounded-md border border-surface-300 bg-surface-50 py-2 pl-3 pr-10
-                                                   text-surface-900 shadow-sm
-                                                   focus:border-amber-400 focus:outline-none focus:ring-amber-400
+                                            class="p-inputtext p-component w-full appearance-none pr-10 bg-surface-50
                                                    disabled:cursor-not-allowed disabled:opacity-70
-                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100
-                                                   sm:text-sm"
+                                                   sm:text-sm cursor-pointer"
                                             :disabled="isFetchingNamespaces">
                                         <option value="" disabled>Select namespace...</option>
                                         <template x-for="ns in filteredNamespaces" :key="ns.name">
@@ -178,8 +175,8 @@
                                         </template>
                                         <option value="custom">-- Custom --</option>
                                     </select>
-                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-surface-500 dark:text-surface-400">
-                                        <iconify-icon icon="tabler:chevron-down" class="h-4 w-4"></iconify-icon>
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
                                     </div>
                                 </div>
                             </template>
@@ -187,7 +184,10 @@
                                 Loading namespaces...
                             </div>
                             <div class="mt-2" x-show="selectedNamespace === 'custom'">
-                                <input type="text" id="customNamespace" x-model="customNamespace" @input="validateAndUpdateId()" @blur="validateAndUpdateId()" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-amber-400 focus:border-amber-400 sm:text-sm" placeholder="Enter custom namespace (e.g., my.org)">
+                                <input type="text" id="customNamespace" x-model="customNamespace" @input="validateAndUpdateId()" @blur="validateAndUpdateId()"
+                                       class="p-inputtext p-component w-full bg-surface-50
+                                              sm:text-sm"
+                                       placeholder="Enter custom namespace (e.g., my.org)">
                                 <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">Lowercase letters, numbers, dots.</p>
                             </div>
                         </div>
@@ -195,7 +195,10 @@
                     <!-- Name field -->
                     <div>
                         <label for="name" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">Name (snake_case)</label>
-                        <input type="text" id="name" x-model="entryName" @input="validateAndUpdateId()" @blur="validateAndUpdateId()" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-amber-400 focus:border-amber-400 sm:text-sm disabled:opacity-70 disabled:cursor-not-allowed" placeholder="extraction_group_name" :disabled="!$store.docscout.isNew">
+                        <input type="text" id="name" x-model="entryName" @input="validateAndUpdateId()" @blur="validateAndUpdateId()"
+                               class="p-inputtext p-component w-full bg-surface-50
+                                      sm:text-sm"
+                               placeholder="extraction_group_name" :disabled="!$store.docscout.isNew">
                         <p class="mt-1 text-xs text-surface-500 dark:text-surface-400" x-show="$store.docscout.isNew">Lowercase letters, numbers, underscores.</p>
                         <p class="mt-1 text-xs text-surface-500 dark:text-surface-400" x-show="!$store.docscout.isNew">Cannot be changed.</p>
                     </div>
@@ -214,17 +217,26 @@
                 <!-- Title -->
                 <div class="mb-4">
                     <label for="title" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">Title <span class="text-red-500 ml-0.5">*</span></label>
-                    <input type="text" id="title" x-model="$store.docscout.entryData.meta.title" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-amber-400 focus:border-amber-400 sm:text-sm" placeholder="Descriptive title (e.g., Invoice Data Extraction)">
+                    <input type="text" id="title" x-model="$store.docscout.entryData.meta.title"
+                           class="p-inputtext p-component w-full bg-surface-50
+                                  sm:text-sm"
+                           placeholder="Descriptive title (e.g., Invoice Data Extraction)">
                 </div>
                 <!-- Description -->
                 <div class="mb-4">
                     <label for="comment" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">Description</label>
-                    <textarea id="comment" rows="2" x-model="$store.docscout.entryData.meta.comment" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-amber-400 focus:border-amber-400 sm:text-sm" placeholder="Describe what this group extracts and its purpose"></textarea>
+                    <textarea id="comment" rows="2" x-model="$store.docscout.entryData.meta.comment"
+                              class="p-textarea p-component w-full bg-surface-50
+                                     sm:text-sm"
+                              placeholder="Describe what this group extracts and its purpose"></textarea>
                 </div>
                 <!-- Tags field -->
                 <div>
                     <label for="tags" class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">Tags</label>
-                    <textarea id="tags" rows="1" x-model="tagsString" @change="updateTagsInStore()" @blur="updateTagsInStore()" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-amber-400 focus:border-amber-400 sm:text-sm" placeholder="tag1, tag2, another_tag"></textarea>
+                    <textarea id="tags" rows="1" x-model="tagsString" @change="updateTagsInStore()" @blur="updateTagsInStore()"
+                              class="p-textarea p-component w-full bg-surface-50
+                                     sm:text-sm"
+                              placeholder="tag1, tag2, another_tag"></textarea>
                     <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">Comma-separated list.</p>
                 </div>
             </div>
@@ -267,7 +279,10 @@
                 <div class="col-span-12 md:col-span-4 bg-surface-100 dark:bg-surface-800 rounded-md border border-surface-200 dark:border-surface-700 flex flex-col" style="min-height: 400px;">
                     <div class="p-3 border-b border-surface-200 dark:border-surface-700">
                         <div class="relative">
-                            <input type="text" id="querySearch" x-model="searchQuery" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-teal-400 focus:border-teal-400 sm:text-sm" placeholder="Search queries..." tabindex="1"/>
+                            <input type="text" id="querySearch" x-model="searchQuery"
+                                   class="p-inputtext p-component w-full bg-surface-50 pl-3 pr-10
+                                          sm:text-sm"
+                                   placeholder="Search queries..." tabindex="1"/>
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><iconify-icon icon="tabler:search" class="h-4 w-4 text-surface-400 dark:text-surface-500"></iconify-icon></div>
                         </div>
                     </div>
@@ -324,7 +339,10 @@
                                     </div>
                                     <div>
                                         <label :for="'query-desc-' + activeQueryIndex" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Semantic Search Query <span class="text-red-500 ml-0.5">*</span></label>
-                                        <textarea :id="'query-desc-' + activeQueryIndex" x-model="activeQuery.description" @input="generateQueryNameIfEmpty(activeQueryIndex)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-teal-400 focus:border-teal-400 sm:text-sm" rows="4" placeholder="Describe the information needed..." tabindex="30" required></textarea>
+                                        <textarea :id="'query-desc-' + activeQueryIndex" x-model="activeQuery.description" @input="generateQueryNameIfEmpty(activeQueryIndex)"
+                                                  class="p-textarea p-component w-full
+                                                         sm:text-sm"
+                                                  rows="4" placeholder="Describe the information needed..." tabindex="30" required></textarea>
                                         <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">This text is used to find relevant segments.</p>
                                     </div>
                                 </div>
@@ -358,7 +376,10 @@
                 <div class="col-span-12 md:col-span-4 bg-surface-100 dark:bg-surface-800 rounded-md border border-surface-200 dark:border-surface-700 flex flex-col" style="min-height: 400px;">
                     <div class="p-3 border-b border-surface-200 dark:border-surface-700">
                         <div class="relative">
-                            <input type="text" id="fieldSearch" x-model="searchQuery" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm" placeholder="Search fields..." tabindex="1"/>
+                            <input type="text" id="fieldSearch" x-model="searchQuery"
+                                   class="p-inputtext p-component w-full bg-surface-50 pl-3 pr-10
+                                          sm:text-sm"
+                                   placeholder="Search fields..." tabindex="1"/>
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                 <iconify-icon icon="tabler:search" class="h-4 w-4 text-surface-400 dark:text-surface-500"></iconify-icon>
                             </div>
@@ -461,10 +482,15 @@
                                         <!-- Extraction Strategy Selector -->
                                         <div class="sm:col-span-6">
                                             <label for="fieldStrategy" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Extraction Strategy: <span class="text-xs font-normal text-surface-500 dark:text-surface-400">(optional)</span></label>
-                                            <select id="fieldStrategy" x-model="activeFieldData.strategy" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm cursor-pointer" tabindex="35">
-                                                <option value="">Default</option>
-                                                <option value="direct_analysis">Direct Analysis</option>
-                                            </select>
+                                            <div class="relative">
+                                                <select id="fieldStrategy" x-model="activeFieldData.strategy" class="p-inputtext p-component w-full pr-10 sm:text-sm cursor-pointer" tabindex="35">
+                                                    <option value="">Default</option>
+                                                    <option value="direct_analysis">Direct Analysis</option>
+                                                </select>
+                                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                    <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                                </div>
+                                            </div>
                                             <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">Choose a specific extraction method. 'Direct Analysis' can be more accurate for complex fields but may use more resources.</p>
                                         </div>
 
@@ -486,7 +512,10 @@
                                                     </template>
                                                 </div>
                                                 <div class="flex items-center">
-                                                    <input type="text" id="newEnumValue" x-model="newEnumValue" @keydown.enter.prevent="addEnumValue(activeFieldName)" @keydown.,.prevent="addEnumValue(activeFieldName)" class="block w-64 border border-surface-300 dark:border-surface-600 rounded-l-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm" :placeholder="activeFieldData.type === 'enum' ? 'Add new enum value' : 'Add allowed value'" tabindex="40"/>
+                                                    <input type="text" id="newEnumValue" x-model="newEnumValue" @keydown.enter.prevent="addEnumValue(activeFieldName)" @keydown.,.prevent="addEnumValue(activeFieldName)"
+                                                           class="p-inputtext p-component w-64 rounded-l-md
+                                                                  sm:text-sm"
+                                                           :placeholder="activeFieldData.type === 'enum' ? 'Add new enum value' : 'Add allowed value'" tabindex="40"/>
                                                     <button id="addEnumValueBtn" type="button" @click="addEnumValue(activeFieldName)" class="inline-flex items-center px-3 h-[38px] border border-l-0 border-surface-300 dark:border-surface-600 rounded-r-md text-sm font-medium text-surface-700 dark:text-surface-300 bg-surface-100 dark:bg-surface-700 hover:bg-surface-200 dark:hover:bg-surface-600" tabindex="41">Add</button>
                                                 </div>
                                             </div>
@@ -494,19 +523,31 @@
 
                                         <div class="sm:col-span-6">
                                             <label :for="activeFieldName + '-desc'" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Description: <span class="text-xs font-normal text-surface-500 dark:text-surface-400">(helps AI) <span class="text-red-500 ml-0.5">*</span></span></label>
-                                            <textarea :id="activeFieldName + '-desc'" x-model="activeFieldData.description" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm" rows="2" placeholder="Describe field's purpose/content" tabindex="50" required></textarea>
+                                            <textarea :id="activeFieldName + '-desc'" x-model="activeFieldData.description"
+                                                      class="p-textarea p-component w-full
+                                                             sm:text-sm"
+                                                      rows="2" placeholder="Describe field's purpose/content" tabindex="50" required></textarea>
                                         </div>
                                         <div class="sm:col-span-6">
                                             <label :for="activeFieldName + '-search'" class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Semantic Search Query: <span class="text-xs font-normal text-surface-500 dark:text-surface-400">(optional)</span></label>
-                                            <textarea :id="activeFieldName + '-search'" x-model="activeFieldData.search_query" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm" rows="2" placeholder="Example content or pattern to search for" tabindex="60"></textarea>
+                                            <textarea :id="activeFieldName + '-search'" x-model="activeFieldData.search_query"
+                                                      class="p-textarea p-component w-full
+                                                             sm:text-sm"
+                                                      rows="2" placeholder="Example content or pattern to search for" tabindex="60"></textarea>
                                         </div>
                                         <div class="sm:col-span-6">
                                             <label :for="activeFieldName + '-hints'" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Extraction Hints: <span class="text-xs font-normal text-surface-500 dark:text-surface-400">(optional)</span></label>
-                                            <textarea :id="activeFieldName + '-hints'" x-model="activeFieldData.validation_hints" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm" rows="2" placeholder="Additional guidance for validation" tabindex="70"></textarea>
+                                            <textarea :id="activeFieldName + '-hints'" x-model="activeFieldData.validation_hints"
+                                                      class="p-textarea p-component w-full
+                                                             sm:text-sm"
+                                                      rows="2" placeholder="Additional guidance for validation" tabindex="70"></textarea>
                                         </div>
                                         <div class="sm:col-span-6">
                                             <label :for="activeFieldName + '-output'" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Expected Output Format: <span class="text-xs font-normal text-surface-500 dark:text-surface-400">(optional)</span></label>
-                                            <input type="text" :id="activeFieldName + '-output'" x-model="activeFieldData.expected_output" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm" placeholder="Example: MM/DD/YYYY" tabindex="80"/>
+                                            <input type="text" :id="activeFieldName + '-output'" x-model="activeFieldData.expected_output"
+                                                   class="p-inputtext p-component w-full
+                                                          sm:text-sm"
+                                                   placeholder="Example: MM/DD/YYYY" tabindex="80"/>
                                         </div>
                                     </div>
                                 </div>
@@ -541,14 +582,16 @@
                 <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
                     <div class="flex items-start mb-3"><iconify-icon icon="tabler:brain" class="mt-1 mr-3 text-blue-600 dark:text-blue-500 flex-shrink-0" width="20" height="20"></iconify-icon><div><h4 class="text-base font-semibold text-surface-900 dark:text-white">Intelligence Model</h4><p class="mt-1 text-xs text-surface-600 dark:text-surface-400">AI model for document analysis.</p></div></div>
                     <div class="mt-2 relative">
-                        <select id="scoutModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer">
+                        <select id="scoutModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="p-inputtext p-component w-full pr-10 sm:text-sm appearance-none cursor-pointer">
                             <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                             <template x-if="modelsLoaded && availableModels.length === 0"><option value="">No suitable models</option></template>
                             <template x-if="modelsLoaded && availableModels.length > 0">
                                 <template x-for="model in availableModels" :key="model.id"><option :value="model.id" x-text="model.title"></option></template>
                             </template>
                         </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-surface-500 dark:text-surface-400"><iconify-icon icon="tabler:chevron-down" class="h-4 w-4"></iconify-icon></div>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                        </div>
                     </div>
                 </div>
                 <!-- Confidence Threshold -->
@@ -615,7 +658,10 @@
             <!-- Custom Instructions -->
             <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
                 <div class="flex items-start mb-3"><iconify-icon icon="tabler:bulb" class="mt-1 mr-3 text-blue-600 dark:text-blue-500 flex-shrink-0" width="20" height="20"></iconify-icon><div><h4 class="text-base font-semibold text-surface-900 dark:text-white">Custom Scout Instructions</h4><p class="mt-1 text-xs text-surface-600 dark:text-surface-400">Guide document analysis (optional).</p></div></div>
-                <textarea id="scoutPrompt" rows="3" x-model="$store.docscout.entryData.data.scouting.prompt" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Example: 'Focus on identifying sections related to financial obligations...'"></textarea>
+                <textarea id="scoutPrompt" rows="3" x-model="$store.docscout.entryData.data.scouting.prompt"
+                          class="p-textarea p-component w-full
+                                 sm:text-sm"
+                          placeholder="Example: 'Focus on identifying sections related to financial obligations...'"></textarea>
             </div>
         </div>
     </template>
@@ -633,14 +679,16 @@
                 <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
                     <div class="flex items-start mb-3"><iconify-icon icon="tabler:brain" class="mt-1 mr-3 text-emerald-600 dark:text-emerald-500 flex-shrink-0" width="20" height="20"></iconify-icon><div><h4 class="text-base font-semibold text-surface-900 dark:text-white">Extraction Intelligence</h4><p class="mt-1 text-xs text-surface-600 dark:text-surface-400">AI model to extract information.</p></div></div>
                     <div class="mt-2 relative">
-                        <select id="extractModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm appearance-none cursor-pointer">
+                        <select id="extractModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="p-inputtext p-component w-full pr-10 sm:text-sm appearance-none cursor-pointer">
                             <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                             <template x-if="modelsLoaded && availableModels.length === 0"><option value="">No suitable models</option></template>
                             <template x-if="modelsLoaded && availableModels.length > 0">
                                 <template x-for="model in availableModels" :key="model.id"><option :value="model.id" x-text="model.title"></option></template>
                             </template>
                         </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-surface-500 dark:text-surface-400"><iconify-icon icon="tabler:chevron-down" class="h-4 w-4"></iconify-icon></div>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                        </div>
                     </div>
                 </div>
                 <!-- Output Format -->
@@ -682,7 +730,10 @@
             <!-- Custom Instructions -->
             <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
                 <div class="flex items-start mb-3"><iconify-icon icon="tabler:bulb" class="mt-1 mr-3 text-emerald-600 dark:text-emerald-500 flex-shrink-0" width="20" height="20"></iconify-icon><div><h4 class="text-base font-semibold text-surface-900 dark:text-white">Custom Extraction Instructions</h4><p class="mt-1 text-xs text-surface-600 dark:text-surface-400">Guide information extraction (optional).</p></div></div>
-                <textarea id="extractPrompt" rows="3" x-model="$store.docscout.entryData.data.extracting.prompt" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="Example: 'When extracting dates, prefer MM/DD/YYYY format...'"></textarea>
+                <textarea id="extractPrompt" rows="3" x-model="$store.docscout.entryData.data.extracting.prompt"
+                          class="p-textarea p-component w-full
+                                 sm:text-sm"
+                          placeholder="Example: 'When extracting dates, prefer MM/DD/YYYY format...'"></textarea>
             </div>
         </div>
     </template>
@@ -792,7 +843,7 @@
                                             <label for="overrideScoutModel" class="ml-2 text-xs text-surface-700 dark:text-surface-300">Override Scout Model</label>
                                         </div>
                                         <div x-show="overrideScoutModel" class="mt-2 relative" x-transition>
-                                            <select x-model="scoutModelOverride" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-1 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-xs appearance-none cursor-pointer">
+                                            <select x-model="scoutModelOverride" class="p-inputtext p-component w-full pr-10 text-xs appearance-none cursor-pointer">
                                                 <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                                                 <template x-if="modelsLoaded">
                                                     <template x-for="model in availableModels" :key="model.id">
@@ -800,6 +851,9 @@
                                                     </template>
                                                 </template>
                                             </select>
+                                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                            </div>
                                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-surface-500 dark:text-surface-400">
                                                 <iconify-icon icon="tabler:chevron-down" class="h-4 w-4"></iconify-icon>
                                             </div>
@@ -811,7 +865,7 @@
                                             <label for="overrideExtractModel" class="ml-2 text-xs text-surface-700 dark:text-surface-300">Override Extract Model</label>
                                         </div>
                                         <div x-show="overrideExtractModel" class="mt-2 relative" x-transition>
-                                            <select x-model="extractModelOverride" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-1 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-xs appearance-none cursor-pointer">
+                                            <select x-model="extractModelOverride" class="p-inputtext p-component w-full pr-10 text-xs appearance-none cursor-pointer">
                                                 <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                                                 <template x-if="modelsLoaded">
                                                     <template x-for="model in availableModels" :key="model.id">
@@ -819,6 +873,9 @@
                                                     </template>
                                                 </template>
                                             </select>
+                                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <iconify-icon icon="tabler:chevron-down" class="h-4 w-4 text-surface-400"></iconify-icon>
+                                            </div>
                                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-surface-500 dark:text-surface-400">
                                                 <iconify-icon icon="tabler:chevron-down" class="h-4 w-4"></iconify-icon>
                                             </div>

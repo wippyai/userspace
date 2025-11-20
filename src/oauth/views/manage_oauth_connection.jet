@@ -55,10 +55,7 @@
         <div class="flex gap-3">
             <input type="text" x-model="componentIdInput"
                    placeholder="Enter OAuth connection component ID..."
-                   class="flex-1 rounded-lg border border-surface-300 bg-white px-3 py-2
-                          text-surface-900 placeholder-surface-500
-                          focus:outline-none focus:ring-2 focus:ring-primary-500
-                          dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400">
+                   class="p-inputtext p-component flex-1">
             <button @click="setComponentId"
                     :disabled="!componentIdInput.trim()"
                     class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -240,7 +237,7 @@
                                         x-model="settingsForm.title"
                                         required
                                         placeholder="Enter connection name..."
-                                        class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                        class="p-inputtext p-component w-full">
                             </div>
 
                             <!-- Description Field -->
@@ -251,7 +248,7 @@
                                         x-model="settingsForm.description"
                                         rows="4"
                                         placeholder="Describe this connection and its purpose..."
-                                        class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                                        class="p-textarea p-component w-full"></textarea>
                             </div>
 
                             <!-- Actions -->

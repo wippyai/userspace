@@ -51,11 +51,8 @@
                                     type="password"
                                     x-model="capabilities.search.apiKey"
                                     placeholder="AIza..."
-                                    class="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                           text-surface-900
-                                           transition-colors
-                                           focus:outline-none focus:ring-2 focus:ring-blue-500
-                                           dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
+                                    class="p-inputtext p-component w-full text-sm
+                                           transition-colors">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
@@ -65,11 +62,7 @@
                                     type="text"
                                     x-model="capabilities.search.engineId"
                                     placeholder="abc123def456..."
-                                    class="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                           text-surface-900
-                                           transition-colors
-                                           focus:outline-none focus:ring-2 focus:ring-blue-500
-                                           dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
+                                    class="p-inputtext p-component w-full text-sm"
                         </div>
                     </div>
 
@@ -115,11 +108,8 @@
                                     type="text"
                                     x-model="capabilities.google.clientId"
                                     placeholder="123456-abcdef.apps.googleusercontent.com"
-                                    class="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                           text-surface-900
-                                           transition-colors
-                                           focus:outline-none focus:ring-2 focus:ring-red-500
-                                           dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
+                                    class="p-inputtext p-component w-full text-sm
+                                           transition-colors"
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
@@ -129,11 +119,8 @@
                                     type="password"
                                     x-model="capabilities.google.clientSecret"
                                     placeholder="GOCSPX-..."
-                                    class="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                           text-surface-900
-                                           transition-colors
-                                           focus:outline-none focus:ring-2 focus:ring-red-500
-                                           dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
+                                    class="p-inputtext p-component w-full text-sm
+                                           transition-colors">
                         </div>
                     </div>
 
@@ -179,11 +166,8 @@
                                     type="text"
                                     x-model="capabilities.github.clientId"
                                     placeholder="Ov23li..."
-                                    class="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                           text-surface-900
-                                           transition-colors
-                                           focus:outline-none focus:ring-2 focus:ring-gray-500
-                                           dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
+                                    class="p-inputtext p-component w-full text-sm
+                                           transition-colors"
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
@@ -193,11 +177,8 @@
                                     type="password"
                                     x-model="capabilities.github.clientSecret"
                                     placeholder="828652da..."
-                                    class="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
-                                           text-surface-900
-                                           transition-colors
-                                           focus:outline-none focus:ring-2 focus:ring-gray-500
-                                           dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
+                                    class="p-inputtext p-component w-full text-sm
+                                           transition-colors">
                         </div>
                     </div>
 
