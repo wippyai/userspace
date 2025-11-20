@@ -34,7 +34,10 @@
     <input id="searchInput" type="text"
            x-model="searchTerm"
            @input="applyFilter()"
-           class="block w-full pl-10 pr-10 py-2 border border-surface-300 dark:border-surface-600 rounded-md shadow-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-primary-400 focus:border-primary-400 sm:text-sm"
+           class="block w-full rounded-md border border-surface-300 bg-white py-2 pl-10 pr-10 text-surface-900 shadow-sm
+                  focus:border-primary-400 focus:outline-none focus:ring-primary-400
+                  dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100
+                  sm:text-sm"
            placeholder="Search by title, ID, tag, etc.">
     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         <iconify-icon icon="tabler:search"
@@ -51,16 +54,25 @@
 {{ block actionButtons() }}
 <div class="flex space-x-2">
     <button id="startChatButton" @click="startDocScoutChat"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-1.5 text-sm font-medium
+                   text-white shadow-sm
+                   hover:bg-indigo-700
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <iconify-icon icon="tabler:robot" width="16" height="16"></iconify-icon>
     </button>
     <button id="createGroupButton" @click="createGroup"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+            class="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-3 py-1.5 text-sm font-medium
+                   text-white shadow-sm
+                   hover:bg-primary-700
+                   focus:outline-none focus:ring-2 focus:ring-primary-500">
         <iconify-icon icon="tabler:plus" class="mr-1.5" width="16" height="16"></iconify-icon>
         Create Group
     </button>
     <button id="refreshButton" @click="loadGroups" :disabled="isLoading"
-            class="inline-flex items-center px-3 py-1.5 border border-surface-300 dark:border-surface-600 rounded-md text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700 disabled:opacity-50">
+            class="inline-flex items-center rounded-md border border-surface-300 bg-white px-3 py-1.5 text-surface-700
+                   hover:bg-surface-100
+                   disabled:opacity-50
+                   dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700">
         <template x-if="isLoading">
             <iconify-icon icon="tabler:loader" class="mr-1.5 animate-spin" width="16" height="16"></iconify-icon>
         </template>
@@ -225,12 +237,12 @@
 {{ block actionsCell() }}
 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
     <button @click="editGroup(group.id)"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <iconify-icon icon="tabler:pencil" width="16" height="16"></iconify-icon>
     </button>
     <!-- Ensure disabled check explicitly checks for truthiness -->
     <button @click="confirmDelete(group.id)" :disabled="!!isDeleting[group.id]"
-            class="delete-group-btn inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50"
+            class="delete-group-btn inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white focus:outline-none focus:ring-2 disabled:opacity-50"
             :class="{
                     'bg-red-600 hover:bg-red-700 focus:ring-red-500': !deleteConfirm[group.id],
                     'bg-yellow-500 hover:bg-yellow-600 focus:ring-yellow-400': deleteConfirm[group.id] && !isDeleting[group.id],
@@ -280,7 +292,7 @@
        x-text="searchTerm ? 'Try adjusting your search terms.' : 'Get started by creating a new extraction group.'"></p>
     <div class="mt-6" x-show="!searchTerm">
         <button id="emptyStateCreateBtn" @click="createGroup"
-                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
             <iconify-icon icon="tabler:plus" class="-ml-1 mr-2 h-5 w-5" width="20" height="20"></iconify-icon>
             Create Group
         </button>
@@ -309,11 +321,11 @@
          }">
         <iconify-icon :icon="$store.docScoutGroupsStatus.icon" class="h-5 w-5 mr-3"></iconify-icon>
         <p class="text-sm font-medium" x-text="$store.docScoutGroupsStatus.message"></p>
-        <button @click="$store.docScoutGroupsStatus.hide()" class="ml-auto -mx-1.5 -my-1.5 p-1.5 inline-flex h-8 w-8 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+        <button @click="$store.docScoutGroupsStatus.hide()" class="ml-auto -mx-1.5 -my-1.5 p-1.5 inline-flex h-8 w-8 rounded-md focus:outline-none focus:ring-2"
                 :class="{
-                     'text-green-500 hover:bg-green-200 dark:hover:bg-green-800 focus:ring-green-600 dark:focus:ring-offset-green-900': $store.docScoutGroupsStatus.type === 'success',
-                     'text-red-500 hover:bg-red-200 dark:hover:bg-red-800 focus:ring-red-600 dark:focus:ring-offset-red-900': $store.docScoutGroupsStatus.type === 'error',
-                     'text-blue-500 hover:bg-blue-200 dark:hover:bg-blue-800 focus:ring-blue-600 dark:focus:ring-offset-blue-900': $store.docScoutGroupsStatus.type === 'info'
+                     'text-green-500 hover:bg-green-200 dark:hover:bg-green-800 focus:ring-green-600 dark:focus:ring-green-900': $store.docScoutGroupsStatus.type === 'success',
+                     'text-red-500 hover:bg-red-200 dark:hover:bg-red-800 focus:ring-red-600 dark:focus:ring-red-900': $store.docScoutGroupsStatus.type === 'error',
+                     'text-blue-500 hover:bg-blue-200 dark:hover:bg-blue-800 focus:ring-blue-600 dark:focus:ring-blue-900': $store.docScoutGroupsStatus.type === 'info'
                  }">
             <span class="sr-only">Dismiss</span>
             <iconify-icon icon="tabler:x" class="h-5 w-5"></iconify-icon>

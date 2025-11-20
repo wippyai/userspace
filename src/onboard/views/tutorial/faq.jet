@@ -23,7 +23,10 @@
                     type="text"
                     x-model="searchQuery"
                     placeholder="Search FAQ..."
-                    class="w-full pl-10 pr-4 py-3 border border-surface-200 dark:border-surface-700 rounded-xl bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    class="w-full rounded-xl border border-surface-200 bg-white py-3 pl-10 pr-4
+                           text-surface-900
+                           focus:outline-none focus:ring-2 focus:ring-blue-500
+                           dark:border-surface-700 dark:bg-surface-800 dark:text-surface-100">
         </div>
     </div>
 
@@ -41,7 +44,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('basics', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"
@@ -79,7 +84,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('getting_started', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"
@@ -117,7 +124,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('agents', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"
@@ -155,7 +164,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('files', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"
@@ -193,7 +204,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('development', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"
@@ -231,7 +244,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('integration', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"
@@ -269,7 +284,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('platform', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"
@@ -307,7 +324,9 @@
                 <div class="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                     <button
                             @click="toggleFaq('enterprise', index)"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                            class="flex w-full items-center justify-between px-6 py-4 text-left
+                                   transition-colors
+                                   hover:bg-surface-50 dark:hover:bg-surface-700/50">
                         <span class="font-semibold text-surface-900 dark:text-surface-100" x-text="faq.question"></span>
                         <iconify-icon
                                 icon="tabler:chevron-down"

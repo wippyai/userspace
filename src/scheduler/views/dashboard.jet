@@ -28,7 +28,10 @@
                                 type="text"
                                 x-model="searchTerm"
                                 @input.debounce.300ms="applyFilter()"
-                                class="block w-full pl-10 pr-3 py-2 border border-surface-300 dark:border-surface-600 rounded-md shadow-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-primary-400 focus:border-primary-400 sm:text-sm"
+                                class="block w-full rounded-md border border-surface-300 bg-white py-2 pl-10 pr-3 text-surface-900 shadow-sm
+                                       focus:border-primary-400 focus:outline-none focus:ring-primary-400
+                                       dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100
+                                       sm:text-sm"
                                 placeholder="Search by description...">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <iconify-icon icon="tabler:search" class="h-5 w-5 text-surface-400 dark:text-surface-500"></iconify-icon>
@@ -36,7 +39,8 @@
                         <button
                                 @click="clearSearch()"
                                 x-show="searchTerm.length > 0"
-                                class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-surface-400 hover:text-surface-600 dark:hover:text-surface-300">
+                                class="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-surface-400
+                                       hover:text-surface-600 dark:hover:text-surface-300">
                             <iconify-icon icon="tabler:x" class="h-4 w-4"></iconify-icon>
                         </button>
                     </div>
@@ -44,10 +48,14 @@
                     <div class="flex items-center space-x-2">
                         <span class="text-sm font-medium text-surface-600 dark:text-surface-400" :class="{ 'text-primary-600 dark:text-primary-400': !showOnlyUser }">All</span>
                         <button type="button" @click="showOnlyUser = !showOnlyUser; fetchSchedules()"
-                                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-surface-700"
+                                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent
+                                       transition-colors duration-200 ease-in-out
+                                       focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 :class="showOnlyUser ? 'bg-primary-600' : 'bg-surface-200 dark:bg-surface-600'">
                             <span class="sr-only">Toggle user schedules</span>
-                            <span aria-hidden="true" :class="showOnlyUser ? 'translate-x-5' : 'translate-x-0'" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                            <span aria-hidden="true" :class="showOnlyUser ? 'translate-x-5' : 'translate-x-0'"
+                                  class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0
+                                         transition duration-200 ease-in-out"></span>
                         </button>
                         <span class="text-sm font-medium text-surface-600 dark:text-surface-400" :class="{ 'text-primary-600 dark:text-primary-400': showOnlyUser }">My</span>
                     </div>
@@ -55,7 +63,11 @@
                     <button
                             @click="fetchSchedules"
                             :disabled="isLoading"
-                            class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 shadow-sm text-sm font-medium rounded-md text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            class="inline-flex items-center rounded-md border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                                   text-surface-700 shadow-sm
+                                   hover:bg-surface-50
+                                   focus:outline-none focus:ring-2 focus:ring-primary-500
+                                   dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700"
                             :class="{'opacity-50 cursor-not-allowed': isLoading}">
                         <iconify-icon :icon="isLoading ? 'tabler:loader-2' : 'tabler:refresh'" :class="{'animate-spin': isLoading}" class="mr-2" width="20" height="20"></iconify-icon>
                         Refresh
@@ -147,7 +159,11 @@
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button @click="deleteSchedule(schedule.task_id, schedule.description || schedule.task_id)"
                                 x-show="schedule.class === 'user'"
-                                class="inline-flex items-center p-1.5 border border-transparent rounded-full shadow-sm text-red-600 hover:text-white dark:text-red-400 dark:hover:text-white hover:bg-red-600 dark:hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                                class="inline-flex items-center rounded-full border border-transparent p-1.5 text-red-600 shadow-sm
+                                       transition-colors duration-200
+                                       hover:bg-red-600 hover:text-white
+                                       focus:outline-none focus:ring-2 focus:ring-red-500
+                                       dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"
                                 title="Delete Schedule">
                             <iconify-icon icon="tabler:trash" width="18" height="18"></iconify-icon>
                         </button>

@@ -31,7 +31,11 @@
                 type="password"
                 x-model="apiKey"
                 placeholder="sk-..."
-                class="w-full px-6 py-5 border border-surface-300 dark:border-surface-600 rounded-xl bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors mb-8 text-lg">
+                class="mb-8 w-full rounded-xl border border-surface-300 bg-white px-6 py-5 text-lg
+                       text-surface-900
+                       transition-colors
+                       focus:outline-none focus:ring-2 focus:ring-blue-500
+                       dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100">
 
         <a href="https://platform.openai.com/api-keys" target="_blank" class="inline-flex items-center gap-3 text-blue-600 dark:text-blue-400 hover:underline font-medium text-lg">
             <span>Get your OpenAI API key</span>
@@ -42,7 +46,11 @@
     <!-- Setup Button -->
     <div x-show="canSetup()" x-transition class="text-center mb-6">
         <button @click="setupEmbeddings()" :disabled="isSettingUp"
-                class="px-10 py-5 bg-primary-600 hover:bg-primary-700 disabled:bg-surface-300 disabled:dark:bg-surface-700 text-white font-semibold rounded-xl transition-colors disabled:cursor-not-allowed flex items-center gap-3 mx-auto text-lg">
+                class="mx-auto flex items-center gap-3 rounded-xl bg-primary-600 px-10 py-5 text-lg font-semibold
+                       text-white
+                       transition-colors
+                       hover:bg-primary-700
+                       disabled:cursor-not-allowed disabled:bg-surface-300 disabled:dark:bg-surface-700">
             <iconify-icon :icon="isSettingUp ? 'tabler:loader-2' : 'tabler:brain'" :class="{'animate-spin': isSettingUp}" width="24" height="24"></iconify-icon>
             <span x-text="isSettingUp ? 'Connecting...' : 'Connect OpenAI'"></span>
         </button>

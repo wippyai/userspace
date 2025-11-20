@@ -39,7 +39,10 @@
                             x-model="formData.name"
                             required
                             placeholder="My Knowledge Base"
-                            class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2
+                                   text-surface-900
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500
+                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
                 </div>
                 <div>
                     <label for="description" class="block text-sm font-medium text-surface-900 dark:text-surface-100 mb-2">Description</label>
@@ -48,7 +51,10 @@
                             x-model="formData.description"
                             rows="2"
                             placeholder="What will this knowledge base contain?"
-                            class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2
+                                   text-surface-900
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500
+                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100"></textarea>
                 </div>
             </div>
         </div>
@@ -68,7 +74,10 @@
                             id="embedding_model"
                             x-model="formData.embeddingModel"
                             required
-                            class="block w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            class="block w-full cursor-pointer rounded-lg border border-surface-300 bg-white px-3 py-2
+                                   text-surface-900
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500
+                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
                         <option value="">Select embedding model...</option>
                         <template x-for="model in availableModels.embedding" :key="model.name">
                             <option :value="model.name" x-text="model.title"></option>
@@ -146,7 +155,10 @@
                                             :id="'embed-' + option.key"
                                             x-model="formData.embed.options[option.key]"
                                             :required="option.required"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            class="block w-full cursor-pointer rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
+                                                   text-surface-900
+                                                   focus:outline-none focus:ring-2 focus:ring-purple-500
+                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
                                         <option value="">Select model...</option>
                                         <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
                                             <option :value="model.name" x-text="model.title"></option>
@@ -176,7 +188,10 @@
                                             :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                             :placeholder="option.default"
                                             x-model.number="formData.embed.options[option.key]"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
+                                                   text-surface-900
+                                                   focus:outline-none focus:ring-2 focus:ring-purple-500
+                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
                                 </template>
 
                                 <!-- Textarea input -->
@@ -186,7 +201,7 @@
                                             :placeholder="option.default"
                                             x-model="formData.embed.options[option.key]"
                                             rows="3"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-vertical"></textarea>
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-vertical"></textarea>
                                 </template>
 
                                 <!-- Text input (default) -->
@@ -196,7 +211,10 @@
                                             type="text"
                                             :placeholder="option.default"
                                             x-model="formData.embed.options[option.key]"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            class="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm
+                                                   text-surface-900
+                                                   focus:outline-none focus:ring-2 focus:ring-purple-500
+                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100">
                                 </template>
 
                                 <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>
@@ -259,7 +277,7 @@
                                             :id="'query-' + option.key"
                                             x-model="formData.query.options[option.key]"
                                             :required="option.required"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer">
                                         <option value="">Select model...</option>
                                         <template x-for="model in availableModels[option.modelCategory] || []" :key="model.name">
                                             <option :value="model.name" x-text="model.title"></option>
@@ -289,7 +307,7 @@
                                             :step="option.multipleOf || (option.type === 'integer' ? 1 : 0.01)"
                                             :placeholder="option.default"
                                             x-model.number="formData.query.options[option.key]"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500">
                                 </template>
 
                                 <!-- Textarea input -->
@@ -299,7 +317,7 @@
                                             :placeholder="option.default"
                                             x-model="formData.query.options[option.key]"
                                             rows="3"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"></textarea>
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical"></textarea>
                                 </template>
 
                                 <!-- Text input (default) -->
@@ -309,7 +327,7 @@
                                             type="text"
                                             :placeholder="option.default"
                                             x-model="formData.query.options[option.key]"
-                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                            class="block w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-green-500">
                                 </template>
 
                                 <p x-show="option.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1" x-text="option.description"></p>

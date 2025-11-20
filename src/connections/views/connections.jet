@@ -29,12 +29,19 @@
                             type="text"
                             x-model="searchTerm"
                             @input="filterSources()"
-                            class="block w-64 pl-10 pr-3 py-2.5 border border-surface-200 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            class="block w-64 rounded-lg border border-surface-200 bg-white py-2.5 pl-10 pr-3
+                                   text-surface-900 placeholder-surface-500
+                                   focus:outline-none focus:ring-2 focus:ring-primary-500
+                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400"
                             placeholder="Search connections...">
                 </div>
 
                 <!-- Connect New Button -->
-                <button @click="activeTab = 'available'" class="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                <button @click="activeTab = 'available'"
+                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-5 py-2.5
+                               text-sm font-medium text-white shadow-sm
+                               transition-all duration-200
+                               hover:from-primary-700 hover:to-primary-800">
                     <iconify-icon icon="tabler:plus" class="mr-2" width="18" height="18"></iconify-icon>
                     Connect New
                 </button>
@@ -89,7 +96,11 @@
                 </div>
                 <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load connections</h3>
                 <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="myConnectionsError"></p>
-                <button @click="loadMyConnections()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                <button @click="loadMyConnections()"
+                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-3
+                               text-base font-medium text-white shadow-sm
+                               transition-all duration-200
+                               hover:from-primary-700 hover:to-primary-800">
                     <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
                     Retry
                 </button>
@@ -102,7 +113,11 @@
                 </div>
                 <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No connections configured</h3>
                 <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">Connect your first external service to start integrating with APIs and external systems.</p>
-                <button @click="activeTab = 'available'" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                <button @click="activeTab = 'available'"
+                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-3
+                               text-base font-medium text-white shadow-sm
+                               transition-all duration-200
+                               hover:from-primary-700 hover:to-primary-800">
                     <iconify-icon icon="tabler:apps" class="mr-2" width="20" height="20"></iconify-icon>
                     Browse Available Connections
                 </button>
@@ -111,7 +126,10 @@
             <!-- My Connections Grid -->
             <div x-show="!isLoadingMyConnections && !myConnectionsError && myConnections.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <template x-for="connection in myConnections" :key="connection.component_id">
-                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full">
+                    <div class="flex h-full flex-col overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-sm
+                               transition-all duration-300
+                               hover:-translate-y-1 hover:shadow-lg
+                               dark:border-surface-700 dark:bg-surface-800">
                         <div class="p-6 flex flex-col flex-1">
                             <!-- Header with Icon -->
                             <div class="flex items-start mb-4">
@@ -203,7 +221,10 @@
             <!-- Available Connections Grid -->
             <div x-show="!isLoadingAvailable && !availableError && availableConnections.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <template x-for="connection in filteredConnections" :key="connection.id">
-                    <div class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full">
+                    <div class="flex h-full flex-col overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-sm
+                               transition-all duration-300
+                               hover:-translate-y-1 hover:shadow-lg
+                               dark:border-surface-700 dark:bg-surface-800">
                         <div class="p-6 flex flex-col flex-1">
                             <!-- Header with Icon -->
                             <div class="flex items-start mb-4">

@@ -380,13 +380,25 @@
         </div>
 
         <div class="flex items-center space-x-3 flex-shrink-0">
-            <button @click="editProject()" class="action-button inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600">
+            <button @click="editProject()"
+                    class="action-button inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                           text-surface-700
+                           hover:bg-surface-50
+                           dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
                 <iconify-icon icon="tabler:settings" width="16" height="16"></iconify-icon>
             </button>
-            <button @click="copyReference()" class="action-button inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600">
+            <button @click="copyReference()"
+                    class="action-button inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                           text-surface-700
+                           hover:bg-surface-50
+                           dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
                 <iconify-icon icon="tabler:copy" width="16" height="16"></iconify-icon>
             </button>
-            <button @click="showExportModal = true" class="action-button inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600">
+            <button @click="showExportModal = true"
+                    class="action-button inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                           text-surface-700
+                           hover:bg-surface-50
+                           dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
                 <iconify-icon icon="tabler:download" width="16" height="16"></iconify-icon>
             </button>
             <button @click="startAgentChat()" :disabled="isStartingChat" class="action-button inline-flex items-center px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 shadow-sm">
@@ -462,17 +474,24 @@
                             <div x-show="editingEntry === entry.entry_id" class="space-y-4">
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div class="sm:col-span-2">
-                                        <input x-model="editingEntryData.title" type="text" placeholder="Entry title (optional)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                        <input x-model="editingEntryData.title" type="text" placeholder="Entry title (optional)"
+                                               class="block w-full rounded-lg border border-surface-300 bg-white px-4 py-3 text-sm
+                                                      text-surface-900 placeholder-surface-500
+                                                      focus:outline-none focus:ring-2 focus:ring-primary-500
+                                                      dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400">
                                     </div>
                                     <div>
-                                        <select x-model="editingEntryData.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                        <select x-model="editingEntryData.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
                                             <template x-for="status in getAvailableStatusesForEntry(editingEntryType)" :key="status.value">
                                                 <option :value="status.value" x-text="status.display_name"></option>
                                             </template>
                                         </select>
                                     </div>
                                 </div>
-                                <textarea x-model="editingEntryData.content" rows="8" placeholder="Write your content..." class="markdown-editor block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 resize-vertical"></textarea>
+                                <textarea x-model="editingEntryData.content" rows="8" placeholder="Write your content..."
+                                          class="markdown-editor block w-full resize-vertical rounded-lg border border-surface-300 bg-white px-4 py-3 text-sm
+                                                 text-surface-900 placeholder-surface-500
+                                                 dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400"></textarea>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
                                         <span x-show="isSaving" class="text-xs text-surface-500 dark:text-surface-400 flex items-center">
@@ -594,12 +613,12 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Title (Optional)</label>
-                            <input x-model="createForm.title" type="text" placeholder="Enter a title for this entry..." class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <input x-model="createForm.title" type="text" placeholder="Enter a title for this entry..." class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500">
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
-                            <select x-model="createForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <select x-model="createForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-4 py-3 text-sm bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
                                 <template x-for="status in getAvailableStatusesForEntry(createForm.type)" :key="status.value">
                                     <option :value="status.value" x-text="status.display_name"></option>
                                 </template>
@@ -655,7 +674,7 @@
 
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
-                        <select x-model="editForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100">
+                        <select x-model="editForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 cursor-pointer">
                             <option value="draft">Draft</option>
                             <option value="active">Active</option>
                             <option value="published">Published</option>

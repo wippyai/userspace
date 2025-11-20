@@ -35,7 +35,11 @@
 
             <div class="flex items-center space-x-3">
                 <button @click="showFilters = !showFilters"
-                        class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                        class="inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                               text-surface-700
+                               transition-colors duration-200
+                               hover:bg-surface-50
+                               dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"/>
                     </svg>
@@ -45,7 +49,12 @@
 
                 <button @click="expandAll"
                         :disabled="isLoading"
-                        class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                        class="inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                               text-surface-700
+                               transition-colors duration-200
+                               hover:bg-surface-50
+                               disabled:opacity-50
+                               dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
@@ -54,7 +63,12 @@
 
                 <button @click="collapseAll"
                         :disabled="isLoading"
-                        class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                        class="inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                               text-surface-700
+                               transition-colors duration-200
+                               hover:bg-surface-50
+                               disabled:opacity-50
+                               dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
                     </svg>
@@ -62,7 +76,10 @@
                 </button>
 
                 <button @click="goBackToMain"
-                        class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-4 py-2.5
+                               text-sm font-medium text-white shadow-sm
+                               transition-all duration-200
+                               hover:from-primary-700 hover:to-primary-800">
                     <iconify-icon icon="tabler:arrow-left" class="mr-2" width="18" height="18"></iconify-icon>
                     Back to Manage
                 </button>
@@ -88,7 +105,11 @@
                        x-model="searchQuery"
                        @input.debounce.500ms="performSearch"
                        placeholder="Simple keyword search over content"
-                       class="w-full px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors">
+                       class="w-full rounded-lg border border-surface-300 bg-white px-4 py-2
+                              text-surface-900 placeholder-surface-500
+                              transition-colors
+                              focus:outline-none focus:ring-2 focus:ring-primary-500
+                              dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400">
             </div>
 
             <!-- Dynamic Node Types from Stats -->
@@ -121,7 +142,7 @@
                     <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Sort By</label>
                     <select x-model="orderBy"
                             @change="refreshTree"
-                            class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-primary-500">
+                            class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
                         <option value="path">Path</option>
                         <option value="created_at">Created Date</option>
                         <option value="updated_at">Updated Date</option>
@@ -134,7 +155,7 @@
                     <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Items Per Page</label>
                     <select x-model="pagination.limit"
                             @change="refreshTree"
-                            class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:ring-2 focus:ring-primary-500">
+                            class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
                         <option value="10">10</option>
                         <option value="20">20</option>
                         <option value="50">50</option>

@@ -31,7 +31,11 @@
         <button
                 id="saveButton"
                 type="button"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium
+                       text-white shadow-sm
+                       hover:bg-primary-700
+                       focus:outline-none focus:ring-2 focus:ring-primary-500
+                       disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="!$store.docscout.isDirty || isLoading || isSaving"
                 @click="saveEntry()">
             <template x-if="isSaving">
@@ -45,7 +49,10 @@
         <button
                 id="backButton"
                 type="button"
-                class="inline-flex items-center px-3 py-2 border border-surface-300 dark:border-surface-600 shadow-sm text-sm font-medium rounded-md text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700"
+                class="inline-flex items-center rounded-md border border-surface-300 bg-white px-3 py-2 text-sm font-medium
+                       text-surface-700 shadow-sm
+                       hover:bg-surface-50
+                       dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700"
                 @click="navigateBack()">
             <iconify-icon icon="tabler:arrow-left" class="mr-2" width="16" height="16"></iconify-icon>
             Back
@@ -62,7 +69,7 @@
             <button
                     :id="'tab-' + tab.id"
                     type="button"
-                    class="flex-1 text-center whitespace-nowrap py-3 px-3 border-b-2 font-medium text-sm flex items-center justify-center"
+                    class="flex flex-1 items-center justify-center whitespace-nowrap border-b-2 px-3 py-3 text-center text-sm font-medium"
                     :class="activeTab === tab.id ?
                     'border-' + tab.color + '-500 text-' + tab.color + '-600 dark:text-' + tab.color + '-400' :
                     'border-transparent text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:border-surface-300 dark:hover:border-surface-600'"
@@ -157,7 +164,14 @@
                         <div x-show="$store.docscout.isNew">
                             <template x-if="namespacesLoaded && !isFetchingNamespaces">
                                 <div class="relative">
-                                    <select id="namespaceSelect" x-model="selectedNamespace" @change="handleNamespaceChange" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-surface-50 dark:bg-surface-700 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-amber-400 focus:border-amber-400 sm:text-sm appearance-none disabled:opacity-70 disabled:cursor-not-allowed" :disabled="isFetchingNamespaces">
+                                    <select id="namespaceSelect" x-model="selectedNamespace" @change="handleNamespaceChange"
+                                            class="block w-full cursor-pointer appearance-none rounded-md border border-surface-300 bg-surface-50 py-2 pl-3 pr-10
+                                                   text-surface-900 shadow-sm
+                                                   focus:border-amber-400 focus:outline-none focus:ring-amber-400
+                                                   disabled:cursor-not-allowed disabled:opacity-70
+                                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100
+                                                   sm:text-sm"
+                                            :disabled="isFetchingNamespaces">
                                         <option value="" disabled>Select namespace...</option>
                                         <template x-for="ns in filteredNamespaces" :key="ns.name">
                                             <option :value="ns.name" x-text="ns.name + (ns.count > 0 ? ' (' + ns.count + ')' : '')"></option>
@@ -277,7 +291,7 @@
                         </template>
                     </div>
                     <div class="p-3 border-t border-surface-200 dark:border-surface-700 mt-auto">
-                        <button id="addQueryBtn" type="button" @click="addQuery()" class="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500" tabindex="2">
+                        <button id="addQueryBtn" type="button" @click="addQuery()" class="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500" tabindex="2">
                             <iconify-icon icon="tabler:plus" class="mr-1.5" width="16" height="16"></iconify-icon>Add Context Query
                         </button>
                     </div>
@@ -322,7 +336,7 @@
                         <iconify-icon icon="tabler:database-search" class="h-10 w-10 text-surface-400 dark:text-surface-600" width="40"></iconify-icon>
                         <h3 class="mt-4 text-sm font-medium text-surface-900 dark:text-surface-100" x-text="prefetchArray.length > 0 ? 'Select a Query' : 'No Context Queries Defined'"></h3>
                         <p class="mt-1 text-sm text-surface-500 dark:text-surface-400" x-text="prefetchArray.length > 0 ? 'Select a query from the list to view or edit its details.' : 'Add queries to retrieve initial context from documents.'"></p>
-                        <button id="emptyStateAddBtn" type="button" @click="addQuery()" x-show="prefetchArray.length === 0" class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500" tabindex="3">
+                        <button id="emptyStateAddBtn" type="button" @click="addQuery()" x-show="prefetchArray.length === 0" class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500" tabindex="3">
                             <iconify-icon icon="tabler:plus" class="-ml-1 mr-2 h-5 w-5" width="20" height="20"></iconify-icon>Add First Query
                         </button>
                     </div>
@@ -377,7 +391,7 @@
                         </template>
                     </div>
                     <div class="p-3 border-t border-surface-200 dark:border-surface-700 mt-auto">
-                        <button id="addFieldBtn" type="button" @click="addField()" class="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400" tabindex="2">
+                        <button id="addFieldBtn" type="button" @click="addField()" class="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400" tabindex="2">
                             <iconify-icon icon="tabler:plus" class="mr-1.5" width="16" height="16"></iconify-icon>Add Field
                         </button>
                     </div>
@@ -447,7 +461,7 @@
                                         <!-- Extraction Strategy Selector -->
                                         <div class="sm:col-span-6">
                                             <label for="fieldStrategy" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Extraction Strategy: <span class="text-xs font-normal text-surface-500 dark:text-surface-400">(optional)</span></label>
-                                            <select id="fieldStrategy" x-model="activeFieldData.strategy" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm" tabindex="35">
+                                            <select id="fieldStrategy" x-model="activeFieldData.strategy" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-red-400 focus:border-red-400 sm:text-sm cursor-pointer" tabindex="35">
                                                 <option value="">Default</option>
                                                 <option value="direct_analysis">Direct Analysis</option>
                                             </select>
@@ -505,7 +519,7 @@
                         <iconify-icon icon="tabler:forms" class="h-10 w-10 text-surface-400 dark:text-surface-600" width="40"></iconify-icon>
                         <h3 class="mt-4 text-sm font-medium text-surface-900 dark:text-surface-100" x-text="fieldCount > 0 ? 'Select a Field' : 'No Extraction Fields Defined'"></h3>
                         <p class="mt-1 text-sm text-surface-500 dark:text-surface-400" x-text="fieldCount > 0 ? 'Select a field from the list to view or edit its details.' : 'Add fields to specify what data to extract from documents.'"></p>
-                        <button id="emptyStateAddFieldBtn" type="button" @click="addField()" x-show="fieldCount === 0" class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400" tabindex="3">
+                        <button id="emptyStateAddFieldBtn" type="button" @click="addField()" x-show="fieldCount === 0" class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400" tabindex="3">
                             <iconify-icon icon="tabler:plus" class="-ml-1 mr-2 h-5 w-5" width="20" height="20"></iconify-icon>Add First Field
                         </button>
                     </div>
@@ -527,7 +541,7 @@
                 <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
                     <div class="flex items-start mb-3"><iconify-icon icon="tabler:brain" class="mt-1 mr-3 text-blue-600 dark:text-blue-500 flex-shrink-0" width="20" height="20"></iconify-icon><div><h4 class="text-base font-semibold text-surface-900 dark:text-white">Intelligence Model</h4><p class="mt-1 text-xs text-surface-600 dark:text-surface-400">AI model for document analysis.</p></div></div>
                     <div class="mt-2 relative">
-                        <select id="scoutModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none">
+                        <select id="scoutModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer">
                             <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                             <template x-if="modelsLoaded && availableModels.length === 0"><option value="">No suitable models</option></template>
                             <template x-if="modelsLoaded && availableModels.length > 0">
@@ -619,7 +633,7 @@
                 <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
                     <div class="flex items-start mb-3"><iconify-icon icon="tabler:brain" class="mt-1 mr-3 text-emerald-600 dark:text-emerald-500 flex-shrink-0" width="20" height="20"></iconify-icon><div><h4 class="text-base font-semibold text-surface-900 dark:text-white">Extraction Intelligence</h4><p class="mt-1 text-xs text-surface-600 dark:text-surface-400">AI model to extract information.</p></div></div>
                     <div class="mt-2 relative">
-                        <select id="extractModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm appearance-none">
+                        <select id="extractModel" x-model="selectedModelId" @change="updateModelName($event.target.value)" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-2 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm appearance-none cursor-pointer">
                             <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                             <template x-if="modelsLoaded && availableModels.length === 0"><option value="">No suitable models</option></template>
                             <template x-if="modelsLoaded && availableModels.length > 0">
@@ -778,7 +792,7 @@
                                             <label for="overrideScoutModel" class="ml-2 text-xs text-surface-700 dark:text-surface-300">Override Scout Model</label>
                                         </div>
                                         <div x-show="overrideScoutModel" class="mt-2 relative" x-transition>
-                                            <select x-model="scoutModelOverride" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-1 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-xs appearance-none">
+                                            <select x-model="scoutModelOverride" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-1 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-xs appearance-none cursor-pointer">
                                                 <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                                                 <template x-if="modelsLoaded">
                                                     <template x-for="model in availableModels" :key="model.id">
@@ -797,7 +811,7 @@
                                             <label for="overrideExtractModel" class="ml-2 text-xs text-surface-700 dark:text-surface-300">Override Extract Model</label>
                                         </div>
                                         <div x-show="overrideExtractModel" class="mt-2 relative" x-transition>
-                                            <select x-model="extractModelOverride" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-1 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-xs appearance-none">
+                                            <select x-model="extractModelOverride" class="block w-full border border-surface-300 dark:border-surface-600 rounded-md shadow-sm py-1 pl-3 pr-10 bg-white dark:bg-surface-700 text-surface-900 dark:text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-xs appearance-none cursor-pointer">
                                                 <template x-if="!modelsLoaded"><option value="">Loading models...</option></template>
                                                 <template x-if="modelsLoaded">
                                                     <template x-for="model in availableModels" :key="model.id">
@@ -821,7 +835,7 @@
                                 @click="runTest"
                                 :disabled="!canRunTest"
                                 :class="{'opacity-50 cursor-not-allowed': !canRunTest}"
-                                class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 flex justify-center items-center">
+                                class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 flex justify-center items-center">
                             <template x-if="isRunning">
                                 <iconify-icon icon="tabler:loader" class="animate-spin mr-2" width="16" height="16"></iconify-icon>
                             </template>
@@ -1104,11 +1118,11 @@
                 <button
                         type="button"
                         @click="notification.show = false"
-                        class="inline-flex rounded-md p-1 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                        class="inline-flex rounded-md p-1 focus:outline-none focus:ring-2"
                         :class="{
-                            'text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 focus:ring-green-600 dark:focus:ring-offset-green-900': notification.type === 'success',
-                            'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 focus:ring-red-600 dark:focus:ring-offset-red-900': notification.type === 'error',
-                            'text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 focus:ring-yellow-600 dark:focus:ring-offset-yellow-900': notification.type === 'warning'
+                            'text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 focus:ring-green-600 dark:focus:ring-green-900': notification.type === 'success',
+                            'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 focus:ring-red-600 dark:focus:ring-red-900': notification.type === 'error',
+                            'text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 focus:ring-yellow-600 dark:focus:ring-yellow-900': notification.type === 'warning'
                         }">
                     <span class="sr-only">Close</span>
                     <iconify-icon icon="tabler:x" width="16" height="16"></iconify-icon>

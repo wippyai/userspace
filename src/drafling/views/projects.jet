@@ -28,12 +28,21 @@
                     <input
                             type="text"
                             x-model="searchTerm"
-                            class="block w-64 pl-10 pr-3 py-2.5 border border-surface-200 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder-surface-500 dark:placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            class="block w-64 rounded-lg border border-surface-200 bg-white py-2.5 pl-10 pr-3
+                                   text-surface-900 placeholder-surface-500
+                                   focus:outline-none focus:ring-2 focus:ring-primary-500
+                                   dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 dark:placeholder-surface-400"
                             placeholder="Search projects...">
                 </div>
 
                 <!-- Create New Button -->
-                <button @click="showCreateModal = true" class="flex items-center justify-center h-11 w-11 border border-primary-200 dark:border-primary-600 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors duration-200" title="Create Project">
+                <button @click="showCreateModal = true"
+                        class="flex h-11 w-11 items-center justify-center rounded-lg border border-primary-200 bg-primary-50
+                               text-primary-600
+                               transition-colors duration-200
+                               hover:bg-primary-100
+                               dark:border-primary-600 dark:bg-primary-900/20 dark:text-primary-400 dark:hover:bg-primary-900/30"
+                        title="Create Project">
                     <iconify-icon icon="tabler:plus" width="20" height="20"></iconify-icon>
                 </button>
 
@@ -119,7 +128,11 @@
             <!-- Projects List -->
             <div x-show="!isLoadingProjects && !projectsError && filteredProjects.length > 0" class="space-y-3">
                 <template x-for="project in filteredProjects" :key="project.project_id">
-                    <div @click="openProject(project)" class="bg-white dark:bg-surface-800 rounded-2xl shadow-sm hover:shadow-lg border border-surface-200 dark:border-surface-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer">
+                    <div @click="openProject(project)"
+                         class="cursor-pointer overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-sm
+                                transition-all duration-300
+                                hover:-translate-y-1 hover:shadow-lg
+                                dark:border-surface-700 dark:bg-surface-800">
                         <div class="p-6">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center space-x-4 flex-1 min-w-0">
@@ -242,7 +255,7 @@
                         <!-- Template Selection -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Template</label>
-                            <select x-model="createForm.template_id" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100">
+                            <select x-model="createForm.template_id" required class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 cursor-pointer">
                                 <option value="">Select a template...</option>
                                 <template x-for="template in templates" :key="template.id">
                                     <option :value="template.id" x-text="template.name"></option>
@@ -308,7 +321,7 @@
                         <!-- Status -->
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Status</label>
-                            <select x-model="editForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100">
+                            <select x-model="editForm.status" class="block w-full border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-2 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 cursor-pointer">
                                 <option value="draft">Draft</option>
                                 <option value="active">Active</option>
                                 <option value="published">Published</option>
