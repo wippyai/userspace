@@ -353,7 +353,10 @@ function methods:_build_query(for_count)
         end
 
         if self._vector_embedding and db_type == sql.type.POSTGRES then
-            table.insert(select_fields, "e.embedding <=> ? as vector_distance")
+            table.insert(
+                select_fields,
+                "e.embedding <=> ('" .. vector_to_string(self._vector_embedding) .. "'::vector) as vector_distance"
+            )
         end
 
         query_builder = sql.builder.select(unpack(select_fields))
