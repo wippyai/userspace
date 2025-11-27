@@ -21,3 +21,4 @@ jobs:
           tag: ${{ github.ref_name }}
           username: ${{ secrets.WIPPY_USERNAME }}
           password: ${{ secrets.WIPPY_PASSWORD }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
