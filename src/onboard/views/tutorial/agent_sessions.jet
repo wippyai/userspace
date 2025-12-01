@@ -188,7 +188,7 @@
 
         <!-- Try It Now -->
         <button @click="startConversation()"
-                class="w-full px-8 py-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-xl rounded-xl transition-all hover:shadow-lg hover:scale-105 transform flex items-center justify-center gap-3">
+                class="inline-flex items-center justify-center w-full px-8 py-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-xl rounded-xl transition-all hover:shadow-lg hover:scale-105 transform gap-3">
             <iconify-icon icon="tabler:message-circle-2" width="24" height="24"></iconify-icon>
             <span>Start a conversation with Wippy</span>
         </button>

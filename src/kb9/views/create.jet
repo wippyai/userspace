@@ -359,7 +359,7 @@
                     type="button"
                     @click="handleCancel"
                     :disabled="isSubmitting"
-                    class="px-4 py-3 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                    class="p-button p-button-secondary px-4 py-3 text-sm font-medium rounded-lg">
                 Cancel
             </button>
         </div>

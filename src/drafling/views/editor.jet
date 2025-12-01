@@ -37,14 +37,6 @@
         box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
     }
 
-    .action-button {
-        transition: all 0.2s ease-in-out;
-    }
-
-    .action-button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
 
     .tabs-container {
         overflow-x: auto;
@@ -381,27 +373,18 @@
 
         <div class="flex items-center space-x-3 flex-shrink-0">
             <button @click="editProject()"
-                    class="action-button inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
-                           text-surface-700
-                           hover:bg-surface-50
-                           dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
+                    class="p-button p-button-secondary px-3 py-2 text-sm font-medium rounded-lg">
                 <iconify-icon icon="tabler:settings" width="16" height="16"></iconify-icon>
             </button>
             <button @click="copyReference()"
-                    class="action-button inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
-                           text-surface-700
-                           hover:bg-surface-50
-                           dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
+                    class="p-button p-button-secondary px-3 py-2 text-sm font-medium rounded-lg">
                 <iconify-icon icon="tabler:copy" width="16" height="16"></iconify-icon>
             </button>
             <button @click="showExportModal = true"
-                    class="action-button inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium
-                           text-surface-700
-                           hover:bg-surface-50
-                           dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
+                    class="p-button p-button-secondary px-3 py-2 text-sm font-medium rounded-lg">
                 <iconify-icon icon="tabler:download" width="16" height="16"></iconify-icon>
             </button>
-            <button @click="startAgentChat()" :disabled="isStartingChat" class="action-button inline-flex items-center px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 shadow-sm">
+            <button @click="startAgentChat()" :disabled="isStartingChat" class="inline-flex items-center px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg">
                 <iconify-icon x-show="!isStartingChat" icon="tabler:robot" width="16" height="16"></iconify-icon>
                 <iconify-icon x-show="isStartingChat" icon="tabler:loader-2" class="animate-spin" width="16" height="16"></iconify-icon>
             </button>
@@ -449,7 +432,7 @@
                     </div>
                     <div class="flex items-center space-x-2 flex-wrap gap-2">
                         <template x-for="action in getCategoryActions()" :key="action.entryType">
-                            <button @click="showCreateForm(action.entryType)" class="action-button inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm">
+                            <button @click="showCreateForm(action.entryType)" class="p-button p-button-primary px-4 py-2 text-sm font-medium">
                                 <iconify-icon :icon="action.icon" class="sm:mr-2" width="16" height="16"></iconify-icon>
                                 <span class="hidden sm:inline" x-text="action.label"></span>
                             </button>
@@ -498,10 +481,10 @@
                                         </span>
                                     </div>
                                     <div class="flex items-center space-x-3">
-                                        <button @click="cancelEditEntry()" class="px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors duration-200">
+                                        <button @click="cancelEditEntry()" class="p-button p-button-secondary px-4 py-2 text-sm font-medium rounded-lg">
                                             Cancel
                                         </button>
-                                        <button @click="saveEntry(entry.entry_id)" :disabled="isSaving" class="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50 transition-colors duration-200">
+                                        <button @click="saveEntry(entry.entry_id)" :disabled="isSaving" class="p-button p-button-primary px-4 py-2 text-sm font-medium rounded-lg">
                                             <iconify-icon x-show="isSaving" icon="tabler:loader-2" class="animate-spin mr-2" width="16" height="16"></iconify-icon>
                                             Save
                                         </button>
@@ -638,10 +621,10 @@
                     </div>
 
                     <div class="flex items-center justify-end space-x-3 mt-6">
-                        <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100">
+                        <button type="button" @click="showCreateModal = false" class="p-button p-button-secondary px-4 py-2 text-sm font-medium">
                             Cancel
                         </button>
-                        <button type="submit" :disabled="isCreating" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
+                        <button type="submit" :disabled="isCreating" class="p-button p-button-primary px-4 py-2 text-sm font-medium rounded-lg">
                             <iconify-icon x-show="isCreating" icon="tabler:loader-2" class="animate-spin mr-2" width="16" height="16"></iconify-icon>
                             <span x-text="isCreating ? 'Creating...' : 'Create Entry'"></span>
                         </button>
@@ -696,10 +679,10 @@
                     </div>
 
                     <div class="flex items-center justify-end space-x-3">
-                        <button type="button" @click="showEditModal = false" class="px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100">
+                        <button type="button" @click="showEditModal = false" class="p-button p-button-secondary px-4 py-2 text-sm font-medium">
                             Cancel
                         </button>
-                        <button type="submit" :disabled="isUpdating" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50">
+                        <button type="submit" :disabled="isUpdating" class="p-button p-button-primary px-4 py-2 text-sm font-medium rounded-lg">
                             <iconify-icon x-show="isUpdating" icon="tabler:loader-2" class="animate-spin mr-2" width="16" height="16"></iconify-icon>
                             <span x-text="isUpdating ? 'Updating...' : 'Update Project'"></span>
                         </button>
@@ -728,15 +711,15 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Export Format</label>
                     <div class="grid grid-cols-3 gap-3">
-                        <button @click="exportFormat = 'markdown'" :class="exportFormat === 'markdown' ? 'bg-primary-100 dark:bg-primary-900 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-700 dark:text-surface-300'" class="flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium">
+                        <button @click="exportFormat = 'markdown'" :class="exportFormat === 'markdown' ? 'bg-primary-100 dark:bg-primary-900 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-700 dark:text-surface-300'" class="p-button px-3 py-2 border rounded-lg text-sm font-medium">
                             <iconify-icon icon="tabler:markdown" class="mr-2" width="16" height="16"></iconify-icon>
                             Markdown
                         </button>
-                        <button @click="exportFormat = 'xml'" :class="exportFormat === 'xml' ? 'bg-primary-100 dark:bg-primary-900 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-700 dark:text-surface-300'" class="flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium">
+                        <button @click="exportFormat = 'xml'" :class="exportFormat === 'xml' ? 'bg-primary-100 dark:bg-primary-900 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-700 dark:text-surface-300'" class="p-button px-3 py-2 border rounded-lg text-sm font-medium">
                             <iconify-icon icon="tabler:code" class="mr-2" width="16" height="16"></iconify-icon>
                             XML
                         </button>
-                        <button @click="exportFormat = 'json'" :class="exportFormat === 'json' ? 'bg-primary-100 dark:bg-primary-900 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-700 dark:text-surface-300'" class="flex items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium">
+                        <button @click="exportFormat = 'json'" :class="exportFormat === 'json' ? 'bg-primary-100 dark:bg-primary-900 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-700 dark:text-surface-300'" class="p-button px-3 py-2 border rounded-lg text-sm font-medium">
                             <iconify-icon icon="tabler:braces" class="mr-2" width="16" height="16"></iconify-icon>
                             JSON
                         </button>
@@ -760,10 +743,10 @@
                 </div>
 
                 <div class="flex items-center justify-end space-x-3">
-                    <button @click="showExportModal = false" class="px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100">
+                    <button @click="showExportModal = false" class="p-button p-button-secondary px-4 py-2 text-sm font-medium">
                         Cancel
                     </button>
-                    <button @click="generateExport()" :disabled="exportSelection.length === 0" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
+                    <button @click="generateExport()" :disabled="exportSelection.length === 0" class="p-button p-button-primary px-4 py-2 text-sm font-medium rounded-lg">
                         <iconify-icon icon="tabler:download" class="mr-2" width="16" height="16"></iconify-icon>
                         Export Selected
                     </button>

@@ -31,7 +31,7 @@
             <div class="flex items-center justify-between">
                 <!-- Left: Back button -->
                 <div class="w-20">
-                    <button x-show="canGoBack" @click="goBack()" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 transition-colors">
+                    <button x-show="canGoBack" @click="goBack()" class="p-button p-button-secondary gap-2 px-3 py-2 text-sm font-medium">
                         <iconify-icon icon="tabler:arrow-left" width="16" height="16"></iconify-icon>
                         Back
                     </button>
@@ -53,17 +53,17 @@
                 <!-- Right: Continue/Skip buttons -->
                 <div class="flex items-center gap-3">
                     <!-- Skip Tutorial Section (only when in tutorial phase) -->
-                    <button x-show="!inSetupPhase && tutorialSteps.length > 0" @click="skipTutorials()" class="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-surface-500 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors">
+                    <button x-show="!inSetupPhase && tutorialSteps.length > 0" @click="skipTutorials()" class="p-button p-button-secondary gap-1 px-3 py-2 text-sm font-medium">
                         Skip Tutorials
                     </button>
 
                     <!-- Skip Current Step (only for optional setup steps) -->
-                    <button x-show="inSetupPhase && currentStepData && currentStepData.optional" @click="skipStep()" class="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-surface-500 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors">
+                    <button x-show="inSetupPhase && currentStepData && currentStepData.optional" @click="skipStep()" class="p-button p-button-secondary gap-1 px-3 py-2 text-sm font-medium">
                         Skip
                     </button>
 
                     <!-- Continue Button -->
-                    <button @click="goNext()" class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 rounded-lg transition-all animate-pulse hover:animate-none hover:shadow-lg hover:scale-105 transform">
+                    <button @click="goNext()" class="p-button p-button-primary gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg transition-all animate-pulse hover:animate-none hover:shadow-lg hover:scale-105 transform">
                         <span x-text="getButtonText()"></span>
                         <iconify-icon :icon="getButtonIcon()" width="16" height="16"></iconify-icon>
                     </button>

@@ -35,10 +35,7 @@
 
                 <!-- Connect New Button -->
                 <button @click="activeTab = 'available'"
-                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-5 py-2.5
-                               text-sm font-medium text-white shadow-sm
-                               transition-all duration-200
-                               hover:from-primary-700 hover:to-primary-800">
+                        class="p-button p-button-primary px-5 py-2.5 text-sm font-medium">
                     <iconify-icon icon="tabler:plus" class="mr-2" width="18" height="18"></iconify-icon>
                     Connect New
                 </button>
@@ -94,10 +91,7 @@
                 <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load connections</h3>
                 <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="myConnectionsError"></p>
                 <button @click="loadMyConnections()"
-                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-3
-                               text-base font-medium text-white shadow-sm
-                               transition-all duration-200
-                               hover:from-primary-700 hover:to-primary-800">
+                        class="p-button px-6 py-3 text-base font-medium">
                     <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
                     Retry
                 </button>
@@ -111,10 +105,7 @@
                 <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No connections configured</h3>
                 <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">Connect your first external service to start integrating with APIs and external systems.</p>
                 <button @click="activeTab = 'available'"
-                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-3
-                               text-base font-medium text-white shadow-sm
-                               transition-all duration-200
-                               hover:from-primary-700 hover:to-primary-800">
+                        class="p-button p-button-primary px-6 py-3 text-base font-medium">
                     <iconify-icon icon="tabler:apps" class="mr-2" width="20" height="20"></iconify-icon>
                     Browse Available Connections
                 </button>
@@ -165,11 +156,11 @@
 
                             <!-- Actions -->
                             <div class="flex space-x-3 mt-auto">
-                                <button @click="manageConnection(connection)" class="flex-1 inline-flex items-center justify-center px-4 py-2.5 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                                <button @click="manageConnection(connection)" class="p-button p-button-secondary flex-1 px-4 py-2.5 text-sm font-medium">
                                     <iconify-icon icon="tabler:settings" class="mr-2" width="16" height="16"></iconify-icon>
                                     Manage
                                 </button>
-                                <button @click="deleteConnection(connection)" class="px-4 py-2.5 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200">
+                                <button @click="deleteConnection(connection)" class="p-button p-button-danger px-4 py-2.5 text-sm font-medium rounded-lg">
                                     <iconify-icon icon="tabler:trash" width="16" height="16"></iconify-icon>
                                 </button>
                             </div>
@@ -196,7 +187,7 @@
                 </div>
                 <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">Failed to load available connections</h3>
                 <p class="text-surface-600 dark:text-surface-400 mb-8" x-text="availableError"></p>
-                <button @click="loadAvailableConnections()" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200">
+                <button @click="loadAvailableConnections()" class="p-button p-button-primary px-6 py-3 text-base font-medium">
                     <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
                     Retry
                 </button>
@@ -209,7 +200,7 @@
                 </div>
                 <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-3">No connections available</h3>
                 <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">There are currently no connection types available for installation.</p>
-                <button @click="loadAvailableConnections()" class="inline-flex items-center px-6 py-3 border border-surface-300 dark:border-surface-600 text-base font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200">
+                <button @click="loadAvailableConnections()" class="p-button p-button-secondary px-6 py-3 text-base font-medium">
                     <iconify-icon icon="tabler:refresh" class="mr-2" width="20" height="20"></iconify-icon>
                     Refresh
                 </button>
@@ -246,7 +237,7 @@
                             </div>
 
                             <!-- Connect Button -->
-                            <button @click="connectConnection(connection)" class="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 mt-auto">
+                            <button @click="connectConnection(connection)" class="p-button p-button-primary w-full px-4 py-3 text-sm font-semibold mt-auto">
                                 <iconify-icon icon="tabler:plug" class="mr-2" width="16" height="16"></iconify-icon>
                                 Connect
                             </button>

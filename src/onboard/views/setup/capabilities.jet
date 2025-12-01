@@ -195,11 +195,7 @@
     <!-- Setup Button -->
     <div x-show="hasAnyCapabilities()" x-transition class="text-center mb-8">
         <button @click="setupCapabilities()" :disabled="isSettingUp"
-                class="mx-auto flex items-center gap-3 rounded-xl bg-primary-600 px-8 py-4 font-semibold
-                       text-white
-                       transition-colors
-                       hover:bg-primary-700
-                       disabled:cursor-not-allowed disabled:bg-surface-300 disabled:dark:bg-surface-700">
+                class="p-button p-button-primary mx-auto gap-3 rounded-xl px-8 py-4 font-semibold">
             <iconify-icon :icon="isSettingUp ? 'tabler:loader-2' : 'tabler:settings'" :class="{'animate-spin': isSettingUp}" width="20" height="20"></iconify-icon>
             <span x-text="isSettingUp ? 'Setting Up...' : 'Setup Capabilities'"></span>
         </button>

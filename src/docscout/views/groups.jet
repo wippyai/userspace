@@ -59,18 +59,14 @@
         <iconify-icon icon="tabler:robot" width="16" height="16"></iconify-icon>
     </button>
     <button id="createGroupButton" @click="createGroup"
-            class="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-3 py-1.5 text-sm font-medium
-                   text-white shadow-sm
-                   hover:bg-primary-700
+            class="p-button p-button-primary rounded-md px-3 py-1.5 text-sm font-medium
+                   shadow-sm
                    focus:outline-none focus:ring-2 focus:ring-primary-500">
         <iconify-icon icon="tabler:plus" class="mr-1.5" width="16" height="16"></iconify-icon>
         Create Group
     </button>
     <button id="refreshButton" @click="loadGroups" :disabled="isLoading"
-            class="inline-flex items-center rounded-md border border-surface-300 bg-white px-3 py-1.5 text-surface-700
-                   hover:bg-surface-100
-                   disabled:opacity-50
-                   dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700">
+            class="p-button p-button-secondary rounded-md px-3 py-1.5">
         <template x-if="isLoading">
             <iconify-icon icon="tabler:loader" class="mr-1.5 animate-spin" width="16" height="16"></iconify-icon>
         </template>
@@ -235,12 +231,12 @@
 {{ block actionsCell() }}
 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
     <button @click="editGroup(group.id)"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <iconify-icon icon="tabler:pencil" width="16" height="16"></iconify-icon>
     </button>
     <!-- Ensure disabled check explicitly checks for truthiness -->
     <button @click="confirmDelete(group.id)" :disabled="!!isDeleting[group.id]"
-            class="delete-group-btn inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white focus:outline-none focus:ring-2 disabled:opacity-50"
+            class="delete-group-btn inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white focus:outline-none focus:ring-2 disabled:opacity-50"
             :class="{
                     'bg-red-600 hover:bg-red-700 focus:ring-red-500': !deleteConfirm[group.id],
                     'bg-yellow-500 hover:bg-yellow-600 focus:ring-yellow-400': deleteConfirm[group.id] && !isDeleting[group.id],
@@ -267,11 +263,11 @@
     </div>
     <div class="flex">
         <button id="prevPageBtn" @click="changePage(currentPage - 1)" :disabled="currentPage === 0"
-                class="relative inline-flex items-center px-4 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-md text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700 mr-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="p-button p-button-secondary relative px-4 py-2 text-sm font-medium rounded-md mr-3">
             Previous
         </button>
         <button id="nextPageBtn" @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages - 1"
-                class="relative inline-flex items-center px-4 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-md text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="p-button p-button-secondary relative px-4 py-2 text-sm font-medium rounded-md">
             Next
         </button>
     </div>
@@ -290,7 +286,7 @@
        x-text="searchTerm ? 'Try adjusting your search terms.' : 'Get started by creating a new extraction group.'"></p>
     <div class="mt-6" x-show="!searchTerm">
         <button id="emptyStateCreateBtn" @click="createGroup"
-                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                class="p-button p-button-primary px-4 py-2 border border-transparent text-sm font-medium rounded-md">
             <iconify-icon icon="tabler:plus" class="-ml-1 mr-2 h-5 w-5" width="20" height="20"></iconify-icon>
             Create Group
         </button>

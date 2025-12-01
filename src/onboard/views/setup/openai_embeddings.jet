@@ -43,11 +43,7 @@
     <!-- Setup Button -->
     <div x-show="canSetup()" x-transition class="text-center mb-6">
         <button @click="setupEmbeddings()" :disabled="isSettingUp"
-                class="mx-auto flex items-center gap-3 rounded-xl bg-primary-600 px-10 py-5 text-lg font-semibold
-                       text-white
-                       transition-colors
-                       hover:bg-primary-700
-                       disabled:cursor-not-allowed disabled:bg-surface-300 disabled:dark:bg-surface-700">
+                class="p-button p-button-primary mx-auto gap-3 rounded-xl px-10 py-5 text-lg font-semibold">
             <iconify-icon :icon="isSettingUp ? 'tabler:loader-2' : 'tabler:brain'" :class="{'animate-spin': isSettingUp}" width="24" height="24"></iconify-icon>
             <span x-text="isSettingUp ? 'Connecting...' : 'Connect OpenAI'"></span>
         </button>
@@ -55,7 +51,7 @@
 
     <!-- Skip Button -->
     <div x-show="!isSettingUp && !setupComplete" class="text-center mb-8">
-        <button @click="skipEmbeddings()" class="px-6 py-3 text-surface-500 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors text-sm">
+        <button @click="skipEmbeddings()" class="p-button p-button-secondary px-6 py-3 text-sm">
             Skip for now - I'll set this up later
         </button>
     </div>

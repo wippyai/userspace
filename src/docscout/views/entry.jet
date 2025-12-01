@@ -31,11 +31,7 @@
         <button
                 id="saveButton"
                 type="button"
-                class="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium
-                       text-white shadow-sm
-                       hover:bg-primary-700
-                       focus:outline-none focus:ring-2 focus:ring-primary-500
-                       disabled:cursor-not-allowed disabled:opacity-50"
+                class="p-button p-button-primary rounded-md px-4 py-2 text-sm font-medium"
                 :disabled="!$store.docscout.isDirty || isLoading || isSaving"
                 @click="saveEntry()">
             <template x-if="isSaving">
@@ -49,10 +45,7 @@
         <button
                 id="backButton"
                 type="button"
-                class="inline-flex items-center rounded-md border border-surface-300 bg-white px-3 py-2 text-sm font-medium
-                       text-surface-700 shadow-sm
-                       hover:bg-surface-50
-                       dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700"
+                class="p-button p-button-secondary rounded-md px-3 py-2 text-sm font-medium"
                 @click="navigateBack()">
             <iconify-icon icon="tabler:arrow-left" class="mr-2" width="16" height="16"></iconify-icon>
             Back
@@ -306,7 +299,7 @@
                         </template>
                     </div>
                     <div class="p-3 border-t border-surface-200 dark:border-surface-700 mt-auto">
-                        <button id="addQueryBtn" type="button" @click="addQuery()" class="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500" tabindex="2">
+                        <button id="addQueryBtn" type="button" @click="addQuery()" class="inline-flex items-center justify-center w-full px-3 py-2 text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500" tabindex="2">
                             <iconify-icon icon="tabler:plus" class="mr-1.5" width="16" height="16"></iconify-icon>Add Context Query
                         </button>
                     </div>
@@ -323,7 +316,7 @@
                                         <input type="text" :id="'query-name-' + activeQueryIndex" x-model="activeQuery.name" @input="validateQueryName(activeQueryIndex)" @blur="validateQueryName(activeQueryIndex)" class="w-full font-medium text-surface-900 dark:text-surface-100 text-lg bg-transparent border-b border-transparent hover:border-surface-300 dark:hover:border-surface-600 focus:border-teal-400 focus:outline-none px-1" placeholder="query_name (snake_case)" tabindex="10"/>
                                     </div>
                                     <div class="flex-shrink-0">
-                                        <button id="deleteQueryBtn" type="button" @click="deleteQuery(activeQueryIndex)" class="inline-flex items-center px-2.5 py-1.5 border border-red-300 dark:border-red-700 rounded-md text-sm font-medium text-red-700 dark:text-red-300 bg-white dark:bg-surface-800 hover:bg-red-50 dark:hover:bg-red-900" tabindex="12">
+                                        <button id="deleteQueryBtn" type="button" @click="deleteQuery(activeQueryIndex)" class="p-button p-button-danger px-2.5 py-1.5 rounded-md text-sm font-medium" tabindex="12">
                                             <iconify-icon icon="tabler:trash" class="mr-1.5" width="14" height="14"></iconify-icon>Delete
                                         </button>
                                     </div>
@@ -354,7 +347,7 @@
                         <iconify-icon icon="tabler:database-search" class="h-10 w-10 text-surface-400 dark:text-surface-600" width="40"></iconify-icon>
                         <h3 class="mt-4 text-sm font-medium text-surface-900 dark:text-surface-100" x-text="prefetchArray.length > 0 ? 'Select a Query' : 'No Context Queries Defined'"></h3>
                         <p class="mt-1 text-sm text-surface-500 dark:text-surface-400" x-text="prefetchArray.length > 0 ? 'Select a query from the list to view or edit its details.' : 'Add queries to retrieve initial context from documents.'"></p>
-                        <button id="emptyStateAddBtn" type="button" @click="addQuery()" x-show="prefetchArray.length === 0" class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500" tabindex="3">
+                        <button id="emptyStateAddBtn" type="button" @click="addQuery()" x-show="prefetchArray.length === 0" class="inline-flex items-center mt-6 px-4 py-2 text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500" tabindex="3">
                             <iconify-icon icon="tabler:plus" class="-ml-1 mr-2 h-5 w-5" width="20" height="20"></iconify-icon>Add First Query
                         </button>
                     </div>
@@ -412,7 +405,7 @@
                         </template>
                     </div>
                     <div class="p-3 border-t border-surface-200 dark:border-surface-700 mt-auto">
-                        <button id="addFieldBtn" type="button" @click="addField()" class="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400" tabindex="2">
+                        <button id="addFieldBtn" type="button" @click="addField()" class="p-button p-button-danger w-full px-3 py-2 text-sm font-medium rounded-md" tabindex="2">
                             <iconify-icon icon="tabler:plus" class="mr-1.5" width="16" height="16"></iconify-icon>Add Field
                         </button>
                     </div>
@@ -429,10 +422,10 @@
                                         <input type="text" id="fieldDetailName" :value="activeFieldName" @change="renameField(activeFieldName, $event.target.value)" @blur="renameField(activeFieldName, $event.target.value)" @keydown.enter="$event.target.blur()" class="w-full font-medium text-surface-900 dark:text-surface-100 text-lg bg-transparent border-b border-transparent hover:border-surface-300 dark:hover:border-surface-600 focus:border-red-400 focus:outline-none px-1" placeholder="field_name" tabindex="10"/>
                                     </div>
                                     <div class="flex space-x-2 flex-shrink-0">
-                                        <button id="duplicateFieldBtn" type="button" @click="duplicateField(activeFieldName)" class="inline-flex items-center px-2.5 py-1.5 border border-surface-300 dark:border-surface-600 rounded-md text-sm font-medium text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700" tabindex="11">
+                                        <button id="duplicateFieldBtn" type="button" @click="duplicateField(activeFieldName)" class="p-button p-button-secondary px-2.5 py-1.5 rounded-md text-sm font-medium" tabindex="11">
                                             <iconify-icon icon="tabler:copy" class="mr-1.5" width="14" height="14"></iconify-icon>Duplicate
                                         </button>
-                                        <button id="deleteFieldBtn" type="button" @click="deleteField(activeFieldName)" class="inline-flex items-center px-2.5 py-1.5 border border-red-300 dark:border-red-700 rounded-md text-sm font-medium text-red-700 dark:text-red-300 bg-white dark:bg-surface-800 hover:bg-red-50 dark:hover:bg-red-900" tabindex="12">
+                                        <button id="deleteFieldBtn" type="button" @click="deleteField(activeFieldName)" class="p-button p-button-danger px-2.5 py-1.5 rounded-md text-sm font-medium" tabindex="12">
                                             <iconify-icon icon="tabler:trash" class="mr-1.5" width="14" height="14"></iconify-icon>Delete
                                         </button>
                                     </div>
@@ -516,7 +509,7 @@
                                                            class="p-inputtext w-64 rounded-l-md
                                                                   sm:text-sm"
                                                            :placeholder="activeFieldData.type === 'enum' ? 'Add new enum value' : 'Add allowed value'" tabindex="40"/>
-                                                    <button id="addEnumValueBtn" type="button" @click="addEnumValue(activeFieldName)" class="inline-flex items-center px-3 h-[38px] border border-l-0 border-surface-300 dark:border-surface-600 rounded-r-md text-sm font-medium text-surface-700 dark:text-surface-300 bg-surface-100 dark:bg-surface-700 hover:bg-surface-200 dark:hover:bg-surface-600" tabindex="41">Add</button>
+                                                    <button id="addEnumValueBtn" type="button" @click="addEnumValue(activeFieldName)" class="p-button p-button-secondary px-3 h-[38px] rounded-r-md text-sm font-medium" tabindex="41">Add</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -560,7 +553,7 @@
                         <iconify-icon icon="tabler:forms" class="h-10 w-10 text-surface-400 dark:text-surface-600" width="40"></iconify-icon>
                         <h3 class="mt-4 text-sm font-medium text-surface-900 dark:text-surface-100" x-text="fieldCount > 0 ? 'Select a Field' : 'No Extraction Fields Defined'"></h3>
                         <p class="mt-1 text-sm text-surface-500 dark:text-surface-400" x-text="fieldCount > 0 ? 'Select a field from the list to view or edit its details.' : 'Add fields to specify what data to extract from documents.'"></p>
-                        <button id="emptyStateAddFieldBtn" type="button" @click="addField()" x-show="fieldCount === 0" class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400" tabindex="3">
+                        <button id="emptyStateAddFieldBtn" type="button" @click="addField()" x-show="fieldCount === 0" class="p-button p-button-danger mt-6 px-4 py-2 text-sm font-medium rounded-md" tabindex="3">
                             <iconify-icon icon="tabler:plus" class="-ml-1 mr-2 h-5 w-5" width="20" height="20"></iconify-icon>Add First Field
                         </button>
                     </div>
@@ -892,7 +885,7 @@
                                 @click="runTest"
                                 :disabled="!canRunTest"
                                 :class="{'opacity-50 cursor-not-allowed': !canRunTest}"
-                                class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 flex justify-center items-center">
+                                class="w-full py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 flex justify-center items-center">
                             <template x-if="isRunning">
                                 <iconify-icon icon="tabler:loader" class="animate-spin mr-2" width="16" height="16"></iconify-icon>
                             </template>

@@ -30,31 +30,18 @@
             <div class="flex items-center space-x-4">
                 <button @click="openBrowseView"
                         :disabled="!componentId"
-                        class="inline-flex items-center rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm font-medium
-                               text-surface-700
-                               transition-colors duration-200
-                               hover:bg-surface-50
-                               disabled:opacity-50
-                               dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
+                        class="p-button p-button-secondary rounded-lg px-4 py-2.5 text-sm font-medium">
                     <iconify-icon icon="tabler:hierarchy-2" class="mr-2" width="18" height="18"></iconify-icon>
                     Browse Content
                 </button>
                 <button @click="refreshData"
                         :disabled="isLoading"
-                        class="inline-flex items-center rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm font-medium
-                               text-surface-700
-                               transition-colors duration-200
-                               hover:bg-surface-50
-                               disabled:opacity-50
-                               dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600">
+                        class="p-button p-button-secondary rounded-lg px-4 py-2.5 text-sm font-medium">
                     <iconify-icon :icon="isLoading ? 'tabler:loader-2' : 'tabler:refresh'" :class="{'animate-spin': isLoading}" class="mr-2" width="18" height="18"></iconify-icon>
                     Refresh
                 </button>
                 <button @click="goBackToList"
-                        class="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-primary-600 to-primary-700 px-5 py-2.5
-                               text-sm font-medium text-white shadow-sm
-                               transition-all duration-200
-                               hover:from-primary-700 hover:to-primary-800">
+                        class="p-button p-button-primary px-5 py-2.5 text-sm font-medium">
                     <iconify-icon icon="tabler:arrow-left" class="mr-2" width="18" height="18"></iconify-icon>
                     Back to Sources
                 </button>
@@ -71,7 +58,7 @@
                    class="p-inputtext flex-1">
             <button @click="setComponentId"
                     :disabled="!componentIdInput.trim()"
-                    class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="p-button p-button-primary px-4 py-2 rounded-lg">
                 Load KB
             </button>
         </div>
@@ -319,7 +306,7 @@
                                 <button
                                         type="submit"
                                         :disabled="isUpdatingSettings || !settingsForm.name.trim()"
-                                        class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        class="p-button p-button-primary px-6 py-3 text-sm font-medium rounded-lg">
                                     <iconify-icon :icon="isUpdatingSettings ? 'tabler:loader-2' : 'tabler:device-floppy'" :class="{'animate-spin': isUpdatingSettings}" class="mr-2" width="18" height="18"></iconify-icon>
                                     <span x-text="isUpdatingSettings ? 'Updating...' : 'Update Settings'"></span>
                                 </button>
@@ -327,7 +314,7 @@
                                         type="button"
                                         @click="resetSettingsForm"
                                         :disabled="isUpdatingSettings"
-                                        class="inline-flex items-center px-4 py-3 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 transition-colors duration-200 disabled:opacity-50">
+                                        class="p-button p-button-secondary px-4 py-3 text-sm font-medium rounded-lg">
                                     <iconify-icon icon="tabler:refresh" class="mr-2" width="18" height="18"></iconify-icon>
                                     Reset
                                 </button>
@@ -663,14 +650,14 @@
                             <button
                                     @click="uploadFiles"
                                     :disabled="isUploading || uploadQueue.length === 0 || processingUploads.length > 0"
-                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    class="p-button p-button-primary px-4 py-2 text-sm font-medium rounded-lg">
                                 <iconify-icon :icon="isUploading ? 'tabler:loader-2' : 'tabler:upload'" :class="{'animate-spin': isUploading}" class="mr-2" width="16" height="16"></iconify-icon>
                                 <span x-text="isUploading ? 'Uploading...' : (processingUploads.length > 0 ? 'Processing...' : 'Upload to KB')"></span>
                             </button>
                             <button
                                     @click="clearUploadQueue"
                                     :disabled="isUploading || processingUploads.length > 0"
-                                    class="inline-flex items-center px-4 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600 disabled:opacity-50">
+                                    class="p-button p-button-secondary px-4 py-2 text-sm font-medium rounded-lg">
                                 <iconify-icon icon="tabler:x" class="mr-2" width="16" height="16"></iconify-icon>
                                 Clear
                             </button>
@@ -751,7 +738,7 @@
                                         <iconify-icon :icon="isAddingSelectedUploads ? 'tabler:loader-2' : 'tabler:plus'" :class="{'animate-spin': isAddingSelectedUploads}" class="mr-2" width="16" height="16"></iconify-icon>
                                         <span x-text="isAddingSelectedUploads ? 'Adding...' : 'Add to KB'"></span>
                                     </button>
-                                    <button @click="selectedUploads = []" class="px-3 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600">
+                                    <button @click="selectedUploads = []" class="p-button p-button-secondary px-3 py-2 text-sm font-medium rounded-lg">
                                         Clear
                                     </button>
                                 </div>
@@ -789,7 +776,7 @@
                                     <span x-text="isAddingText ? 'Adding...' : 'Add to KB'"></span>
                                 </button>
                                 <button type="button" @click="clearTextContent"
-                                        class="inline-flex items-center px-4 py-2 border border-surface-300 dark:border-surface-600 text-sm font-medium rounded-lg text-surface-700 dark:text-surface-300 bg-white dark:bg-surface-700 hover:bg-surface-50 dark:hover:bg-surface-600">
+                                        class="p-button p-button-secondary px-4 py-2 text-sm font-medium rounded-lg">
                                     <iconify-icon icon="tabler:x" class="mr-2" width="16" height="16"></iconify-icon>
                                     Clear
                                 </button>
@@ -835,7 +822,7 @@
                                 </div>
                                 <div class="shrink-0">
                                     <button @click="performSearch" :disabled="!searchQuery.trim() || isSearching"
-                                            class="inline-flex items-center h-11 px-6 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            class="p-button p-button-primary h-11 px-6 py-2 text-sm font-medium rounded-lg">
                                         <iconify-icon :icon="isSearching ? 'tabler:loader-2' : 'tabler:search'" :class="{'animate-spin': isSearching}" class="mr-2" width="18" height="18"></iconify-icon>
                                         <span x-text="isSearching ? 'Searching...' : 'Search'"></span>
                                     </button>
