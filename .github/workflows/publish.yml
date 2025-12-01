@@ -15,9 +15,10 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Release module
-        uses: wippyai/action-module-release@main
+        uses: wippyai/action-module-release@feature/EE2-1990
         with:
           directory: .
           tag: ${{ github.ref_name }}
           username: ${{ secrets.WIPPY_USERNAME }}
           password: ${{ secrets.WIPPY_PASSWORD }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}

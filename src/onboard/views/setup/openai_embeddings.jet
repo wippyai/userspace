@@ -30,6 +30,7 @@
         <input
                 type="password"
                 x-model="apiKey"
+                @keyup.enter="if(canSetup() && !isSettingUp && !setupComplete) setupEmbeddings()"
                 placeholder="sk-..."
                 class="p-inputtext mb-8 w-full rounded-xl px-6 py-5 text-lg
                        transition-colors">
@@ -41,12 +42,23 @@
     </div>
 
     <!-- Setup Button -->
-    <div x-show="canSetup()" x-transition class="text-center mb-6">
-        <button @click="setupEmbeddings()" :disabled="isSettingUp"
+    <div class="text-center mb-6 min-h-[100px] py-5 px-5 bg-blue-50 dark:bg-blue-950/20 rounded-xl border-2 border-dashed border-blue-300 dark:border-blue-700">
+        <div x-show="setupComplete" class="text-green-600 dark:text-green-400 font-semibold mb-2">
+            ✓ Setup Complete
+        </div>
+        <button x-show="!setupComplete"
+                @click="setupEmbeddings()"
+                :disabled="isSettingUp || !canSetup()"
                 class="p-button p-button-primary mx-auto gap-3 rounded-xl px-10 py-5 text-lg font-semibold">
             <iconify-icon :icon="isSettingUp ? 'tabler:loader-2' : 'tabler:brain'" :class="{'animate-spin': isSettingUp}" width="24" height="24"></iconify-icon>
-            <span x-text="isSettingUp ? 'Connecting...' : 'Connect OpenAI'"></span>
+            <span x-text="isSettingUp ? 'Connecting...' : (canSetup() ? 'Connect OpenAI' : 'Enter API key above to continue')"></span>
         </button>
+        <p class="text-xs text-surface-500 dark:text-surface-400 mt-2" x-show="canSetup() && !setupComplete">
+            Press Enter in the field above to submit
+        </p>
+        <p class="text-xs text-surface-500 dark:text-surface-400 mt-2" x-show="!canSetup() && !setupComplete">
+            Enter your OpenAI API key in the field above to enable this feature
+        </p>
     </div>
 
     <!-- Skip Button -->
@@ -149,11 +161,40 @@
             api: null,
 
             async init() {
-                this.api = await $W.api();
+                this.resetState();
+                await this.initializeApiClient();
+            },
+
+            resetState() {
+                this.setupComplete = false;
+                this.setupSuccess = false;
+                this.skipped = false;
+                this.setupError = null;
+                this.isSettingUp = false;
+                this.apiKey = '';
+            },
+
+            async initializeApiClient() {
+                try {
+                    let parentWindow = null;
+                    try {
+                        parentWindow = window.parent;
+                    } catch (e) {
+                        // Cross-origin restriction
+                    }
+
+                    if (parentWindow && parentWindow !== window && parentWindow.$W?.api) {
+                        this.api = await parentWindow.$W.api();
+                    } else if (window.$W?.api) {
+                        this.api = await window.$W.api();
+                    }
+                } catch (error) {
+                    console.error('[OpenAI Embeddings] Error initializing API client:', error);
+                }
             },
 
             canSetup() {
-                return this.apiKey && this.apiKey.length > 0;
+                return !!this.apiKey && this.apiKey.length > 0;
             },
 
             async setupEmbeddings() {
@@ -163,28 +204,88 @@
                 this.setupSuccess = false;
                 this.skipped = false;
 
+                const apiUrl = '/api/v1/onboard/setup/embeddings';
+                const requestPayload = { openai_key: this.apiKey };
+
                 try {
-                    const response = await this.api.post('/api/v1/onboard/setup/embeddings', {
-                        openai_key: this.apiKey
-                    });
-                    const data = response.data;
+                    const data = await this.makeApiRequest(apiUrl, requestPayload);
 
                     this.setupComplete = true;
                     this.setupSuccess = data.success;
                     this.setupSummary = data.summary || [];
 
+                    if (!data.success) {
+                        this.setupError = data.message || data.error || 'Setup failed. Please check your API key and try again.';
+                    }
                 } catch (error) {
-                    this.setupComplete = true;
-                    this.setupSuccess = false;
+                    console.error('[OpenAI Embeddings] Setup error:', error);
+                    this.handleSetupError(error);
+                } finally {
+                    this.isSettingUp = false;
+                }
+            },
 
-                    if (error.response?.data?.summary) {
-                        this.setupSummary = error.response.data.summary;
-                    } else {
-                        this.setupError = error.response?.data?.error || error.message || 'Setup failed';
+            async makeApiRequest(url, payload) {
+                if (this.api?.post) {
+                    const response = await this.api.post(url, payload);
+                    return response.data || response;
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload),
+                    credentials: 'include',
+                    mode: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(errorText);
+                    } catch (e) {
+                        errorData = { error: errorText };
+                    }
+                    throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
+                }
+
+                return await response.json();
+            },
+
+            handleSetupError(error) {
+                this.setupComplete = true;
+                this.setupSuccess = false;
+
+                let errorMessage = 'Setup failed. Please check your API key and try again.';
+                let errorDetails = null;
+
+                if (error.response?.data) {
+                    const data = error.response.data;
+                    errorMessage = data.error || data.message || errorMessage;
+                    errorDetails = data.details || null;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                    const jsonMatch = error.message.match(/\{.*\}/);
+                    if (jsonMatch) {
+                        try {
+                            const parsed = JSON.parse(jsonMatch[0]);
+                            errorMessage = parsed.error || parsed.message || errorMessage;
+                            errorDetails = parsed.details || null;
+                        } catch (e) {
+                            // Keep original message
+                        }
                     }
                 }
 
-                this.isSettingUp = false;
+                if (errorDetails) {
+                    errorMessage += ' Details: ' + errorDetails;
+                }
+
+                this.setupError = errorMessage;
             },
 
             skipEmbeddings() {
