@@ -93,6 +93,7 @@ local MIME_TYPES = {
 
     -- Email formats
     ["eml"] = "message/rfc822",
+    ["msg"] = "application/vnd.ms-outlook",
 
     -- Other formats
     ["exe"] = "application/octet-stream",
