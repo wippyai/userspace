@@ -18,7 +18,7 @@ entries:
     imports:
       onboard_registry: userspace.onboard:registry
     method: handler
-    
+
   # userspace.onboard.api:list_steps.endpoint
   - name: list_steps.endpoint
     kind: http.endpoint
@@ -30,7 +30,7 @@ entries:
     method: GET
     func: list_steps
     path: /onboard/steps
-    
+
   # userspace.onboard.api:render_step
   - name: render_step
     kind: function.lua
@@ -49,7 +49,7 @@ entries:
     imports:
       onboard_registry: userspace.onboard:registry
     method: handler
-    
+
   # userspace.onboard.api:render_step.endpoint
   - name: render_step.endpoint
     kind: http.endpoint
@@ -61,4 +61,87 @@ entries:
     method: GET
     func: render_step
     path: /onboard/step/{step_name}
-    
+
+  # userspace.onboard.api:banner
+  - name: banner
+    kind: function.lua
+    meta:
+      comment: Onboarding Banner
+      depends_on:
+        - ns:app
+      router: app:api
+    source: file://banner.lua
+    modules:
+      - http
+      - security
+    imports:
+      onboard_db: userspace.onboard.persist:onboard_db
+    method: handler
+
+  # userspace.onboard.api:banner.endpoint
+  - name: banner.endpoint
+    kind: http.endpoint
+    meta:
+      comment: An endpoint for saving the onboarding status
+      depends_on:
+        - ns:app
+      router: app:api
+    method: GET
+    func: banner
+    path: /onboard/banner/flag/{flag}
+
+  # userspace.onboard.api:banner.flags
+  - name: banner.flags
+    kind: function.lua
+    meta:
+      comment: Get onboarding completion flag
+      depends_on:
+        - ns:app
+      router: app:api
+    source: file://banner.lua
+    modules:
+      - http
+      - security
+    imports:
+      onboard_db: userspace.onboard.persist:onboard_db
+    method: get_multi_handler
+
+  # userspace.onboard.api:banner.flags.endpoint
+  - name: banner.flags.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint for getting onboarding banner flags
+      depends_on:
+        - ns:app
+      router: app:api
+    method: GET
+    func: banner.flags
+    path: /onboard/banner/flags
+
+  # userspace.onboard.api:banner.delete
+  - name: banner.delete
+    kind: function.lua
+    meta:
+      comment: Delete onboarding completion flag
+      depends_on:
+        - ns:app
+      router: app:api
+    source: file://banner.lua
+    modules:
+      - http
+      - security
+    imports:
+      onboard_db: userspace.onboard.persist:onboard_db
+    method: delete_handler
+
+  # userspace.onboard.api:banner.delete.endpoint
+  - name: banner.delete.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Endpoint for deleting onboarding completion flag
+      depends_on:
+        - ns:app
+      router: app:api
+    method: DELETE
+    func: banner.delete
+    path: /onboard/banner/flag/{flag}

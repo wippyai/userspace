@@ -21,3 +21,16 @@ entries:
     targets:
       - entry: userspace.onboard.views:env_mapping
         path: ".mappings.web_host_origin"
+
+  # userspace.onboard:consts
+  - name: consts
+    kind: library.lua
+    meta:
+      name: Onboard Constants
+      comment: Central repository of constants for the onboard system
+      tags:
+        - onboarding
+        - constants_onboard
+        - configuration_onboard
+      description: "Defines constants for onboarding operations"
+    source: file://consts.lua

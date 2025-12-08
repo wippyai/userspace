@@ -1,0 +1,23 @@
+version: "1.0"
+namespace: userspace.onboard.persist
+
+entries:
+  # userspace.onboard.persist:onboard_db
+  - name: onboard_db
+    kind: library.lua
+    meta:
+      name: Onboarding DB
+      comment: Methods for working with the user onboarding completion flag
+      tags:
+        - complete
+        - onboarding
+        - db
+        - onboard_db
+        - users
+      description: Provides functionality for storing and checking the user's onboarding progress.
+    source: file://onboard_db.lua
+    modules:
+      - sql
+      - time
+    imports:
+      onboard_consts: userspace.onboard:consts

@@ -1,0 +1,20 @@
+version: "1.0"
+namespace: userspace.onboard.migrations
+
+entries:
+  # userspace.onboard.migrations:01_create_onboarding_table
+  - name: 01_create_onboarding_table
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - onboarding
+      description: Create onboarding complete table
+      depends_on:
+        - ns:wippy.migration
+      target_db: app:db
+      timestamp: "2025-12-04T08:00:00Z"
+    source: file://01_create_onboarding_table.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
