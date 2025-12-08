@@ -237,6 +237,12 @@
             },
 
             async complete() {
+                try {
+                    await this.api.api.get(`/api/v1/onboard/banner/flag/wippy_onboarding_banner_dismissed`);
+                } catch (error) {
+                    console.error("Failed to dismiss onboarding banner:", error);
+                }
+
                 if (this.api?.iframe?.navigate) {
                     this.api.iframe.navigate(this.config.completeRedirect);
                 } else {
