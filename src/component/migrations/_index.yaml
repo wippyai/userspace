@@ -11,15 +11,13 @@ entries:
         - components
         - userspace
       description: Create components table for user component registry
-      depends_on:
-        - ns:wippy.migration
       target_db: app:db
       timestamp: "2025-06-14T10:00:00Z"
     source: file://01_create_components_table.lua
     imports:
       migration: wippy.migration:migration
     method: migrate
-    
+
   # userspace.component.migrations:02_create_component_meta_table
   - name: 02_create_component_meta_table
     kind: function.lua
@@ -30,15 +28,13 @@ entries:
         - userspace
         - metadata
       description: Create component_meta table for flexible key-value metadata storage
-      depends_on:
-        - ns:wippy.migration
       target_db: app:db
       timestamp: "2025-06-14T10:05:00Z"
     source: file://02_create_component_meta_table.lua
     imports:
       migration: wippy.migration:migration
     method: migrate
-    
+
   # userspace.component.migrations:03_create_component_access_table
   - name: 03_create_component_access_table
     kind: function.lua
@@ -50,12 +46,9 @@ entries:
         - access
         - permissions
       description: Create component_access table for bitmask-based permission control
-      depends_on:
-        - ns:wippy.migration
       target_db: app:db
       timestamp: "2025-06-14T10:10:00Z"
     source: file://03_create_component_access_table.lua
     imports:
       migration: wippy.migration:migration
     method: migrate
-    

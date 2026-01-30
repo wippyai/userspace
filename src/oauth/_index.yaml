@@ -12,15 +12,13 @@ entries:
         - provider
         - implementation
         - generic
-      depends_on:
-        - ns:userspace.oauth:connector
     contracts:
       - contract: userspace.oauth:connector
         methods:
           handle_callback: userspace.oauth:handle_callback_func
           init_oauth: userspace.oauth:init_oauth_func
           refresh_token: userspace.oauth:refresh_token_func
-    
+
   # userspace.oauth:connector
   - name: connector
     kind: contract.definition
@@ -35,7 +33,7 @@ entries:
       - name: init_oauth
         description: |
           Initialize OAuth flow by generating authorization URL and state.
-    
+
           Example:
           - { "redirect_uri": "https://app.com/oauth/callback", "scopes": ["email", "profile"] }
         input_schemas:
@@ -62,7 +60,7 @@ entries:
       - name: handle_callback
         description: |
           Handle OAuth callback and complete authorization flow.
-    
+
           Example:
           - { "code": "auth_code", "state": "abc123", "stored_data": {"code_verifier": "xyz", "redirect_uri": "..."} }
         input_schemas:
@@ -223,7 +221,7 @@ entries:
       - name: refresh_token
         description: |
           Refresh OAuth access token using refresh token.
-    
+
           Example:
           - { "refresh_token": "refresh_abc123" }
         input_schemas:
@@ -280,7 +278,7 @@ entries:
                 "required": ["success"]
               }
             format: application/schema+json
-    
+
   # userspace.oauth:delete_connection_func
   - name: delete_connection_func
     kind: function.lua
@@ -297,7 +295,7 @@ entries:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
     method: handle
-    
+
   # userspace.oauth:get_access_token_func
   - name: get_access_token_func
     kind: function.lua
@@ -315,7 +313,7 @@ entries:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
     method: handle
-    
+
   # userspace.oauth:get_connection_status_func
   - name: get_connection_status_func
     kind: function.lua
@@ -333,7 +331,7 @@ entries:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
     method: handle
-    
+
   # userspace.oauth:get_info_func
   - name: get_info_func
     kind: function.lua
@@ -350,7 +348,7 @@ entries:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
     method: handle
-    
+
   # userspace.oauth:handle_callback_func
   - name: handle_callback_func
     kind: function.lua
@@ -368,7 +366,7 @@ entries:
       - env
       - logger
     method: handle
-    
+
   # userspace.oauth:init_oauth_func
   - name: init_oauth_func
     kind: function.lua
@@ -387,7 +385,7 @@ entries:
       - logger
       - base64
     method: handle
-    
+
   # userspace.oauth:oauth_connection
   - name: oauth_connection
     kind: contract.binding
@@ -420,7 +418,7 @@ entries:
           - component_id
         methods:
           get_status: userspace.oauth:get_connection_status_func
-    
+
   # userspace.oauth:oauth_connection_contract
   - name: oauth_connection_contract
     kind: contract.definition
@@ -523,7 +521,7 @@ entries:
                 "required": ["provider", "connection_name", "connection_state", "created_at"]
               }
             format: application/schema+json
-    
+
   # userspace.oauth:refresh_token_func
   - name: refresh_token_func
     kind: function.lua
@@ -541,4 +539,3 @@ entries:
       - env
       - logger
     method: handle
-    

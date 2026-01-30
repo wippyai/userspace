@@ -26,7 +26,7 @@ entries:
         methods:
           count_resources: userspace.uploads:count_resources_func
           list_resources: userspace.uploads:list_resources_func
-    
+
   # userspace.uploads:content_repo
   - name: content_repo
     kind: library.lua
@@ -38,7 +38,7 @@ entries:
       - json
       - time
       - uuid
-    
+
   # userspace.uploads:count_resources_func
   - name: count_resources_func
     kind: function.lua
@@ -55,7 +55,7 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
     method: handle
-    
+
   # userspace.uploads:get_content_func
   - name: get_content_func
     kind: function.lua
@@ -73,7 +73,7 @@ entries:
       content_repo: userspace.uploads:content_repo
       upload_repo: userspace.uploads:upload_repo
     method: handle
-    
+
   # userspace.uploads:get_info_func
   - name: get_info_func
     kind: function.lua
@@ -91,7 +91,7 @@ entries:
       content_repo: userspace.uploads:content_repo
       upload_repo: userspace.uploads:upload_repo
     method: handle
-    
+
   # userspace.uploads:list_resources_func
   - name: list_resources_func
     kind: function.lua
@@ -109,18 +109,12 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
     method: handle
-    
+
   # userspace.uploads:pipeline
   - name: pipeline
     kind: process.lua
     meta:
       comment: Process that manages upload processing pipeline
-      depends_on:
-        - upload_repo
-        - upload_lib
-        - upload_type
-        - content_repo
-        - pipeline_lib
     source: file://pipeline.lua
     modules:
       - time
@@ -132,7 +126,7 @@ entries:
       upload_repo: userspace.uploads:upload_repo
       upload_type: userspace.uploads:upload_type
     method: run
-    
+
   # userspace.uploads:pipeline.service
   - name: pipeline.service
     kind: process.service
@@ -147,15 +141,12 @@ entries:
         groups:
           - wippy.security:process
     process: pipeline
-    
+
   # userspace.uploads:pipeline_lib
   - name: pipeline_lib
     kind: library.lua
     meta:
       comment: Library for upload processing pipeline functions
-      depends_on:
-        - upload_repo
-        - upload_type
     source: file://pipeline_lib.lua
     modules:
       - time
@@ -164,15 +155,12 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
       upload_type: userspace.uploads:upload_type
-    
+
   # userspace.uploads:upload_lib
   - name: upload_lib
     kind: library.lua
     meta:
       comment: Library for handling file uploads to various storage backends
-      depends_on:
-        - upload_repo
-        - upload_type
     source: file://upload_lib.lua
     modules:
       - fs
@@ -184,7 +172,7 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
       upload_type: userspace.uploads:upload_type
-    
+
   # userspace.uploads:upload_repo
   - name: upload_repo
     kind: library.lua
@@ -195,7 +183,7 @@ entries:
       - sql
       - json
       - time
-    
+
   # userspace.uploads:upload_type
   - name: upload_type
     kind: library.lua
@@ -205,4 +193,3 @@ entries:
     modules:
       - registry
       - time
-    

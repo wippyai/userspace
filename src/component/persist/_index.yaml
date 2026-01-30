@@ -17,7 +17,7 @@ entries:
     modules:
       - sql
       - json
-    
+
   # userspace.component.persist:component_reader_test
   - name: component_reader_test
     kind: function.lua
@@ -33,8 +33,6 @@ entries:
         - tests
         - reader
       description: Comprehensive tests for the component reader library covering filtering, pagination, access control, and edge cases
-      depends_on:
-        - ns:wippy.sql
     source: file://component_reader_test.lua
     modules:
       - sql
@@ -45,7 +43,7 @@ entries:
       component_reader: userspace.component.persist:component_reader
       test: wippy.test:test
     method: run_tests
-    
+
   # userspace.component.persist:ops
   - name: ops
     kind: library.lua
@@ -64,4 +62,3 @@ entries:
       - time
       - uuid
       - json
-    

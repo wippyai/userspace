@@ -12,8 +12,6 @@ entries:
         - api
         - browse
         - tree
-      depends_on:
-        - app:api
     source: file://browse.lua
     modules:
       - http
@@ -21,7 +19,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:browse.endpoint
   - name: browse.endpoint
     kind: http.endpoint
@@ -32,13 +30,11 @@ entries:
         - api
         - endpoint
         - browse
-      depends_on:
-        - app:api
       router: app:api
     method: GET
     func: browse
     path: /userspace/kb/kb9/{component_id}/browse
-    
+
   # userspace.kb9.api:create_kb9
   - name: create_kb9
     kind: function.lua
@@ -48,8 +44,6 @@ entries:
         - kb9
         - api
         - create
-      depends_on:
-        - app:api
     source: file://create_kb9.lua
     modules:
       - http
@@ -57,7 +51,7 @@ entries:
       - uuid
       - contract
     method: handler
-    
+
   # userspace.kb9.api:create_kb9.endpoint
   - name: create_kb9.endpoint
     kind: http.endpoint
@@ -67,13 +61,11 @@ entries:
         - kb9
         - api
         - endpoint
-      depends_on:
-        - app:api
       router: app:api
     method: POST
     func: create_kb9
     path: /userspace/kb/kb9/create
-    
+
   # userspace.kb9.api:delete_node
   - name: delete_node
     kind: function.lua
@@ -84,8 +76,6 @@ entries:
         - api
         - delete
         - node
-      depends_on:
-        - app:api
     source: file://delete_node.lua
     modules:
       - http
@@ -94,7 +84,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:delete_node.endpoint
   - name: delete_node.endpoint
     kind: http.endpoint
@@ -105,13 +95,11 @@ entries:
         - api
         - endpoint
         - delete
-      depends_on:
-        - app:api
       router: app:api
     method: DELETE
     func: delete_node
     path: /userspace/kb/kb9/{component_id}/node/{node_id}
-    
+
   # userspace.kb9.api:embed_content
   - name: embed_content
     kind: function.lua
@@ -121,8 +109,6 @@ entries:
         - kb9
         - api
         - embed
-      depends_on:
-        - app:api
     source: file://embed_content.lua
     modules:
       - http
@@ -130,7 +116,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:embed_content.endpoint
   - name: embed_content.endpoint
     kind: http.endpoint
@@ -140,13 +126,11 @@ entries:
         - kb9
         - api
         - endpoint
-      depends_on:
-        - app:api
       router: app:api
     method: POST
     func: embed_content
     path: /userspace/kb/kb9/{component_id}/embed_content
-    
+
   # userspace.kb9.api:get_implementations
   - name: get_implementations
     kind: function.lua
@@ -156,8 +140,6 @@ entries:
         - kb9
         - api
         - implementations
-      depends_on:
-        - app:api
     source: file://get_implementations.lua
     modules:
       - http
@@ -165,7 +147,7 @@ entries:
       - contract
       - registry
     method: handler
-    
+
   # userspace.kb9.api:get_implementations.endpoint
   - name: get_implementations.endpoint
     kind: http.endpoint
@@ -175,13 +157,11 @@ entries:
         - kb9
         - api
         - endpoint
-      depends_on:
-        - app:api
       router: app:api
     method: GET
     func: get_implementations
     path: /userspace/kb/kb9/implementations
-    
+
   # userspace.kb9.api:get_info
   - name: get_info
     kind: function.lua
@@ -191,8 +171,6 @@ entries:
         - kb9
         - api
         - info
-      depends_on:
-        - app:api
     source: file://get_info.lua
     modules:
       - http
@@ -200,7 +178,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:get_info.endpoint
   - name: get_info.endpoint
     kind: http.endpoint
@@ -210,13 +188,11 @@ entries:
         - kb9
         - api
         - endpoint
-      depends_on:
-        - app:api
       router: app:api
     method: GET
     func: get_info
     path: /userspace/kb/kb9/{component_id}/info
-    
+
   # userspace.kb9.api:get_stats
   - name: get_stats
     kind: function.lua
@@ -227,8 +203,6 @@ entries:
         - api
         - stats
         - analytics
-      depends_on:
-        - app:api
     source: file://get_stats.lua
     modules:
       - http
@@ -236,7 +210,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:get_stats.endpoint
   - name: get_stats.endpoint
     kind: http.endpoint
@@ -247,13 +221,11 @@ entries:
         - api
         - endpoint
         - stats
-      depends_on:
-        - app:api
       router: app:api
     method: GET
     func: get_stats
     path: /userspace/kb/kb9/{component_id}/stats
-    
+
   # userspace.kb9.api:query
   - name: query
     kind: function.lua
@@ -263,8 +235,6 @@ entries:
         - kb9
         - api
         - query
-      depends_on:
-        - app:api
     source: file://query.lua
     modules:
       - http
@@ -272,7 +242,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:query.endpoint
   - name: query.endpoint
     kind: http.endpoint
@@ -282,13 +252,11 @@ entries:
         - kb9
         - api
         - endpoint
-      depends_on:
-        - app:api
       router: app:api
     method: POST
     func: query
     path: /userspace/kb/kb9/{component_id}/query
-    
+
   # userspace.kb9.api:update_config
   - name: update_config
     kind: function.lua
@@ -298,8 +266,6 @@ entries:
         - kb9
         - api
         - config
-      depends_on:
-        - app:api
     source: file://update_config.lua
     modules:
       - http
@@ -307,7 +273,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:update_config.endpoint
   - name: update_config.endpoint
     kind: http.endpoint
@@ -317,13 +283,11 @@ entries:
         - kb9
         - api
         - endpoint
-      depends_on:
-        - app:api
       router: app:api
     method: PUT
     func: update_config
     path: /userspace/kb/kb9/{component_id}/config
-    
+
   # userspace.kb9.api:upload
   - name: upload
     kind: function.lua
@@ -333,8 +297,6 @@ entries:
         - kb9
         - api
         - upload
-      depends_on:
-        - app:api
     source: file://upload.lua
     modules:
       - http
@@ -342,7 +304,7 @@ entries:
     imports:
       component: userspace.component:component
     method: handler
-    
+
   # userspace.kb9.api:upload.endpoint
   - name: upload.endpoint
     kind: http.endpoint
@@ -352,10 +314,7 @@ entries:
         - kb9
         - api
         - endpoint
-      depends_on:
-        - app:api
       router: app:api
     method: POST
     func: upload
     path: /userspace/kb/kb9/{component_id}/upload
-    

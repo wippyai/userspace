@@ -14,8 +14,6 @@ entries:
         - encryption
         - tokens
       description: Database operations library for OAuth connection storage with encrypted token management
-      depends_on:
-        - ns:wippy.sql
     source: file://oauth_repo.lua
     modules:
       - sql
@@ -24,7 +22,7 @@ entries:
       - time
       - env
       - crypto
-    
+
   # userspace.oauth.persist:oauth_repo_test
   - name: oauth_repo_test
     kind: function.lua
@@ -40,8 +38,6 @@ entries:
         - tokens
         - tests
       description: Database operations library for OAuth connection storage with encrypted token management
-      depends_on:
-        - ns:wippy.sql
     source: file://oauth_repo_test.lua
     modules:
       - sql
@@ -53,4 +49,3 @@ entries:
       oauth_repo: userspace.oauth.persist:oauth_repo
       test: wippy.test:test
     method: run_tests
-    
