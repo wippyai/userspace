@@ -19,7 +19,7 @@ entries:
     imports:
       reader: userspace.kb9.persist:reader
     method: handle
-    
+
   # userspace.kb9.binding:create_kb9_func
   - name: create_kb9_func
     kind: function.lua
@@ -39,7 +39,7 @@ entries:
       consts: userspace.kb9:consts
       store: userspace.kb9.persist:store
     method: handle
-    
+
   # userspace.kb9.binding:delete_func
   - name: delete_func
     kind: function.lua
@@ -51,12 +51,10 @@ entries:
     source: file://delete_func.lua
     modules:
       - ctx
-      - sql
     imports:
       consts: userspace.kb9:consts
-      store: userspace.kb9.persist:store
     method: handle
-    
+
   # userspace.kb9.binding:embed_content_func
   - name: embed_content_func
     kind: function.lua
@@ -73,7 +71,7 @@ entries:
     imports:
       consts: userspace.kb9:consts
     method: handle
-    
+
   # userspace.kb9.binding:embed_reference_func
   - name: embed_reference_func
     kind: function.lua
@@ -91,7 +89,7 @@ entries:
     imports:
       consts: userspace.kb9:consts
     method: handle
-    
+
   # userspace.kb9.binding:execute_commands_func
   - name: execute_commands_func
     kind: function.lua
@@ -109,7 +107,7 @@ entries:
     imports:
       consts: userspace.kb9:consts
     method: handle
-    
+
   # userspace.kb9.binding:get_config_func
   - name: get_config_func
     kind: function.lua
@@ -125,7 +123,7 @@ entries:
     imports:
       store: userspace.kb9.persist:store
     method: handle
-    
+
   # userspace.kb9.binding:get_stats_func
   - name: get_stats_func
     kind: function.lua
@@ -141,7 +139,7 @@ entries:
       - json
       - sql
     method: handle
-    
+
   # userspace.kb9.binding:get_status_func
   - name: get_status_func
     kind: function.lua
@@ -158,7 +156,7 @@ entries:
       consts: userspace.kb9:consts
       store: userspace.kb9.persist:store
     method: handle
-    
+
   # userspace.kb9.binding:kb9_component
   - name: kb9_component
     kind: contract.binding
@@ -206,7 +204,7 @@ entries:
           get_config: userspace.kb9.binding:get_config_func
           get_stats: userspace.kb9.binding:get_stats_func
           update_config: userspace.kb9.binding:update_config_func
-    
+
   # userspace.kb9.binding:kb_service
   - name: kb_service
     kind: contract.binding
@@ -220,7 +218,7 @@ entries:
         default: true
         methods:
           create_kb9: userspace.kb9.binding:create_kb9_func
-    
+
   # userspace.kb9.binding:query_func
   - name: query_func
     kind: function.lua
@@ -239,7 +237,7 @@ entries:
       llm: wippy.llm:llm
       store: userspace.kb9.persist:store
     method: handle
-    
+
   # userspace.kb9.binding:update_config_func
   - name: update_config_func
     kind: function.lua
@@ -256,4 +254,3 @@ entries:
       consts: userspace.kb9:consts
       store: userspace.kb9.persist:store
     method: handle
-    
