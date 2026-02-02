@@ -12,15 +12,13 @@ entries:
         - userspace
         - schedules
       description: Create schedules table for task scheduling with user, system, and component support
-      depends_on:
-        - ns:wippy.migration
       target_db: app:db
       timestamp: "2025-06-19T10:00:00Z"
     source: file://01_create_schedules_table.lua
     imports:
       migration: wippy.migration:migration
     method: migrate
-    
+
   # userspace.scheduler.migrations:02_add_actor_scope_to_schedules
   - name: 02_add_actor_scope_to_schedules
     kind: function.lua
@@ -34,13 +32,9 @@ entries:
         - scope
         - security
       description: Add actor and scope columns to schedules table for security context support
-      depends_on:
-        - ns:wippy.migration
-        - userspace.scheduler.migrations:01_create_schedules_table
       target_db: app:db
       timestamp: "2025-06-22T15:30:00Z"
     source: file://02_add_actor_scope_to_schedules.lua
     imports:
       migration: wippy.migration:migration
     method: migrate
-    

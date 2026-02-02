@@ -7,8 +7,6 @@ entries:
     kind: function.lua
     meta:
       comment: Sets up OpenRouter API connection and validates key
-      depends_on:
-        - ns:app
       router: app:api
     source: file://openrouter.lua
     modules:
@@ -24,8 +22,6 @@ entries:
     kind: http.endpoint
     meta:
       comment: Endpoint for OpenRouter API key setup and validation
-      depends_on:
-        - ns:app
       router: app:api
     method: POST
     func: openrouter
@@ -36,8 +32,6 @@ entries:
     kind: function.lua
     meta:
       comment: Sets up OpenAI API for embeddings and validates key
-      depends_on:
-        - ns:app
       router: app:api
     source: file://embeddings.lua
     modules:
@@ -53,8 +47,6 @@ entries:
     kind: http.endpoint
     meta:
       comment: Endpoint for OpenAI embeddings setup and validation
-      depends_on:
-        - ns:app
       router: app:api
     method: POST
     func: embeddings
@@ -65,8 +57,6 @@ entries:
     kind: function.lua
     meta:
       comment: Verifies and configures additional capabilities like Google search
-      depends_on:
-        - ns:app
       router: app:api
     source: file://capabilities.lua
     modules:
@@ -82,8 +72,6 @@ entries:
     kind: http.endpoint
     meta:
       comment: Endpoint for verifying additional capabilities setup
-      depends_on:
-        - ns:app
       router: app:api
     method: POST
     func: capabilities

@@ -7,34 +7,28 @@ entries:
     kind: function.lua
     meta:
       comment: Discovers available OAuth providers for connection
-      depends_on:
-        - app:api
     source: file://discover_providers.lua
     modules:
       - http
       - json
       - contract
     method: handler
-    
+
   # userspace.oauth.api:discover_providers.endpoint
   - name: discover_providers.endpoint
     kind: http.endpoint
     meta:
       comment: Endpoint that discovers available OAuth providers
-      depends_on:
-        - app:api
       router: app:api
     method: GET
     func: discover_providers
     path: /userspace/oauth/providers/discover
-    
+
   # userspace.oauth.api:get_connection_details
   - name: get_connection_details
     kind: function.lua
     meta:
       comment: Get OAuth connection details for management interface
-      depends_on:
-        - app:api
     source: file://get_connection_details.lua
     modules:
       - http
@@ -45,52 +39,44 @@ entries:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
     method: handler
-    
+
   # userspace.oauth.api:get_connection_details.endpoint
   - name: get_connection_details.endpoint
     kind: http.endpoint
     meta:
       comment: Endpoint to get OAuth connection details
-      depends_on:
-        - app:api
       router: app:api
     method: GET
     func: get_connection_details
     path: /userspace/oauth/connections/{component_id}
-    
+
   # userspace.oauth.api:get_provider_info
   - name: get_provider_info
     kind: function.lua
     meta:
       comment: Gets detailed information about a specific OAuth provider
-      depends_on:
-        - app:api
     source: file://get_provider_info.lua
     modules:
       - http
       - json
       - contract
     method: handler
-    
+
   # userspace.oauth.api:get_provider_info.endpoint
   - name: get_provider_info.endpoint
     kind: http.endpoint
     meta:
       comment: Endpoint that gets OAuth provider information
-      depends_on:
-        - app:api
       router: app:api
     method: GET
     func: get_provider_info
     path: /userspace/oauth/providers/{provider_name}
-    
+
   # userspace.oauth.api:init_connection
   - name: init_connection
     kind: function.lua
     meta:
       comment: Initiates OAuth connection flow for a specific provider
-      depends_on:
-        - app:api
     source: file://init_connection.lua
     modules:
       - http
@@ -100,26 +86,22 @@ entries:
       - env
       - logger
     method: handler
-    
+
   # userspace.oauth.api:init_connection.endpoint
   - name: init_connection.endpoint
     kind: http.endpoint
     meta:
       comment: Endpoint that initiates OAuth connection flow
-      depends_on:
-        - app:api
       router: app:api
     method: POST
     func: init_connection
     path: /userspace/oauth/providers/{provider_name}/init
-    
+
   # userspace.oauth.api:update_connection
   - name: update_connection
     kind: function.lua
     meta:
       comment: Updates existing OAuth connection name and description
-      depends_on:
-        - app:api
     source: file://update_connection.lua
     modules:
       - http
@@ -129,16 +111,13 @@ entries:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
     method: handler
-    
+
   # userspace.oauth.api:update_connection.endpoint
   - name: update_connection.endpoint
     kind: http.endpoint
     meta:
       comment: Endpoint that updates OAuth connection details
-      depends_on:
-        - app:api
       router: app:api
     method: PUT
     func: update_connection
     path: /userspace/oauth/connections/{component_id}
-    

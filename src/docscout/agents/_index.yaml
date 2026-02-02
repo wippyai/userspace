@@ -75,9 +75,6 @@ entries:
         - content
         - search
       icon: tabler:file-search
-      depends_on:
-        - ns:userspace.uploads
-        - ns:wippy.embeddings
     prompt: |-
       You are the Document Scout agent in the platform, providing operations for file uploads and document search.
       Core Capabilities: 1. List uploads: Use the list_uploads tool to view uploaded files 2. Get upload details: Use the get_upload tool to get detailed information about uploads 3. Search document: Use the search_document tool to search within document content using semantic search 4. SF Schema Reflection: Use the sf_reflect tool to explore Salesforce object schemas and properties
@@ -245,11 +242,6 @@ entries:
         - document
         - tool
       description: Extracts data from a document using a specified registry entry
-      depends_on:
-        - ns:userspace.uploads
-        - ns:registry
-        - ns:wippy.llm
-        - ns:wippy.embeddings
       input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"file_uuid\": {\n      \"type\": \"string\",\n      \"description\": \"UUID of the file to extract data from\"\n    },\n    \"entry_id\": {\n      \"type\": \"string\",\n      \"description\": \"ID of the registry entry in the format 'namespace:name'\"\n    },           \n    \"validation_steps\": {\n      \"type\": \"integer\",\n      \"description\": \"Number of validation steps to perform (default: as specified in config)\",\n      \"minimum\": 0\n    },\n    \"scout_model\": {\n      \"type\": \"string\",\n      \"description\": \"Optional model to use for validation/scouting (default: as specified in config)\"\n    },\n    \"extraction_model\": {\n      \"type\": \"string\",\n      \"description\": \"Optional model to use for extraction (default: as specified in config)\"\n    },\n    \"min_confidence\": {\n      \"type\": \"number\",\n      \"description\": \"Minimum confidence to achieve before stopping validation (default: as specified in config)\"\n    },\n    \"max_additional_queries\": {\n      \"type\": \"integer\",\n      \"description\": \"Maximum number of additional queries per validation step (default: as specified in config)\"\n    }    \n  },\n  \"required\": [\"file_uuid\", \"entry_id\"]\n}\n"
       llm_alias: extract_document
       llm_description: Extracts structured data from a document based on a predefined registry entry configuration.
@@ -307,8 +299,6 @@ entries:
         - uploads
         - tool
       description: Lists uploaded files with optional filtering
-      depends_on:
-        - ns:userspace.uploads
       input_schema: |
         {
           "type": "object",
@@ -472,9 +462,6 @@ entries:
         - search
         - tool
       description: Searches within document content using semantic search
-      depends_on:
-        - ns:userspace.uploads
-        - ns:wippy.embeddings
       input_schema: |
         {
           "type": "object",
