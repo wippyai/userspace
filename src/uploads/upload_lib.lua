@@ -1,15 +1,12 @@
-local fs = require("fs")
 local uuid = require("uuid")
-local cloudstorage = require("cloudstorage")
 local json = require("json")
-local env = require("env")
+local time = require("time")
 
 local upload_repo = require("upload_repo")
 local upload_type = require("upload_type")
-local upload_lib = {}
+local resources = require("uploads_resources")
 
-local UPLOAD_PROCESS = "upload_pipeline"
-local UPLOAD_TOPIC = "process_upload"
+local upload_lib = {}
 
 -- MIME type mapping table for common file extensions (todo: replace with proper module)
 local MIME_TYPES = {
@@ -137,27 +134,13 @@ local function determine_upload_type(mime_type, filename)
     return type_entry.id
 end
 
--- Get the appropriate storage based on storage ID
-local function get_storage(storage_id)
-    local fs_instance, err = fs.get(storage_id)
-    if err then
-        return nil, "Failed to get filesystem: " .. err
-    end
-    return fs_instance, nil, "fs"
-end
-
 -- Upload a file to the specified storage and create a record
 function upload_lib.upload_file(user_id, file_data, filename, size, mime_type, storage_id, metadata)
-    -- Get default storage ID from environment if not specified
-    if not storage_id or storage_id == "" then
-        storage_id = env.get("UPLOAD_STORAGE_ID")
-    end
-
     -- Generate a unique upload ID
     local upload_uuid = generate_upload_id()
 
     -- Get the appropriate storage
-    local storage, err, actual_storage_id = get_storage(storage_id)
+    local storage, err = resources.get_storage(storage_id)
     if err then
         return nil, err
     end
@@ -188,18 +171,10 @@ function upload_lib.upload_file(user_id, file_data, filename, size, mime_type, s
         return nil, type_err
     end
 
-    -- Store the file based on storage ID
-    if actual_storage_id == "cs" then
-        success, err = storage:upload_object(storage_path, file_data)
-        if not success then
-            return nil, "Failed to upload to cloud storage: " .. err
-        end
-    else
-        -- Write the file directly using the UUID as the filename
-        success, err = storage:writefile(storage_path, file_data)
-        if not success then
-            return nil, "Failed to write file: " .. err
-        end
+    -- Write the file to storage
+    success, err = storage:writefile(storage_path, file_data)
+    if not success then
+        return nil, "Failed to write file: " .. err
     end
 
     -- Create the upload record
@@ -208,24 +183,19 @@ function upload_lib.upload_file(user_id, file_data, filename, size, mime_type, s
         user_id,
         size,
         mime_type,
-        storage_id,
+        storage_id or "default",
         storage_path,
         type_id,
         metadata
     )
 
     if err then
-        -- Try to clean up the stored file if record creation fails
-        if actual_storage_id == "cs" then
-            pcall(function() storage:delete_objects(storage_path) end)
-        else
-            pcall(function() storage:remove(storage_path) end)
-        end
+        pcall(function() storage:remove(storage_path) end)
         return nil, "Failed to create upload record: " .. err
     end
 
     -- notify our pipeline about new upload to process
-    process.send(UPLOAD_PROCESS, UPLOAD_TOPIC, { upload_id = upload_uuid })
+    process.send(resources.UPLOAD_PROCESS, resources.UPLOAD_TOPIC, { upload_id = upload_uuid })
 
     return upload
 end
@@ -273,17 +243,12 @@ function upload_lib.delete_upload(uuid)
         return nil, err
     end
 
-    -- Delete the file based on storage type
-    local storage, err = get_storage(upload.storage_id)
+    -- Delete the file from storage
+    local storage, err = resources.get_storage(upload.storage_id)
     if err then
-        -- Continue with deletion even if we can't get storage
         print("Warning: Failed to get storage for cleanup: " .. err)
     else
-        if upload.storage_type == "cs" then
-            pcall(function() storage:delete_objects(upload.storage_path) end)
-        else
-            pcall(function() storage:remove(upload.storage_path) end)
-        end
+        pcall(function() storage:remove(upload.storage_path) end)
     end
 
     -- Delete the record
@@ -338,7 +303,7 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
     local object_key = user_id .. "/" .. uuid .. "/" .. sanitized_filename
 
     -- Get the S3 storage instance
-    local s3, err = cloudstorage.get("app:uploads.s3")
+    local s3, err = resources.get_s3()
     if err then
         return nil, err
     end
@@ -369,8 +334,7 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
         return nil, type_err
     end
 
-    -- Create upload record using the existing upload_repo.create method
-    local upload_repo = require("upload_repo")
+    -- Create upload record
     local record, err = upload_repo.create(
         uuid,                -- uuid
         user_id,             -- user_id
@@ -388,8 +352,8 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
     end
 
     -- Calculate expiration time for client reference
-    local now = require("time").now()
-    local duration = require("time").parse_duration(expires_in .. "s")
+    local now = time.now()
+    local duration = time.parse_duration(expires_in .. "s")
     local expires_at = now:add(duration)
 
     -- Return presigned URL information
@@ -416,7 +380,7 @@ function upload_lib.complete_presigned_url(user_id, upload_id, etag, metadata_up
     end
 
     -- notify our pipeline about new upload to process
-    process.send(UPLOAD_PROCESS, UPLOAD_TOPIC, { upload_id = upload_id })
+    process.send(resources.UPLOAD_PROCESS, resources.UPLOAD_TOPIC, { upload_id = upload_id })
 
     return upload, nil
 end

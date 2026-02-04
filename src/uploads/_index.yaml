@@ -9,6 +9,55 @@ entries:
       title: Userspace Uploads
       description: File upload handling with content processing
 
+  # Requirements
+  - name: database_resource
+    kind: ns.requirement
+    meta:
+      description: Database resource for uploads storage
+    default: app:db
+    targets:
+      - entry: userspace.uploads.env:database_resource
+        path: .default
+      - entry: userspace.uploads.migrations:01_create_uploads_table
+        path: .meta.target_db
+      - entry: userspace.uploads.migrations:02_add_type_id_to_uploads
+        path: .meta.target_db
+      - entry: userspace.uploads.migrations:03_create_content_table
+        path: .meta.target_db
+
+  - name: storage_id
+    kind: ns.requirement
+    meta:
+      description: Storage service ID for file uploads
+    default: app:uploads
+    targets:
+      - entry: userspace.uploads.env:storage_id
+        path: .default
+
+  - name: storage_s3
+    kind: ns.requirement
+    meta:
+      description: S3 cloud storage service ID for presigned uploads
+    default: app:uploads.s3
+    targets:
+      - entry: userspace.uploads.env:storage_s3
+        path: .default
+
+  # Dependencies
+  - name: __dependency.userspace.contract
+    kind: ns.dependency
+    meta:
+      description: Base contracts for content provider
+    component: userspace/contract
+    version: ">=0.4.0"
+
+  - name: __dependency.wippy.migration
+    kind: ns.dependency
+    meta:
+      description: Migration framework
+    component: wippy/migration
+    version: ">=0.3.0"
+
   # userspace.uploads:content_provider
   - name: content_provider
     kind: contract.binding
@@ -41,10 +90,11 @@ entries:
       comment: Repository for managing upload content records
     source: file://content_repo.lua
     modules:
-      - sql
       - json
       - time
       - uuid
+    imports:
+      uploads_resources: userspace.uploads:uploads_resources
 
   # userspace.uploads:count_resources_func
   - name: count_resources_func
@@ -170,15 +220,13 @@ entries:
       comment: Library for handling file uploads to various storage backends
     source: file://upload_lib.lua
     modules:
-      - fs
       - uuid
       - json
-      - cloudstorage
-      - env
       - time
     imports:
       upload_repo: userspace.uploads:upload_repo
       upload_type: userspace.uploads:upload_type
+      uploads_resources: userspace.uploads:uploads_resources
 
   # userspace.uploads:upload_repo
   - name: upload_repo
@@ -187,9 +235,10 @@ entries:
       comment: Repository for managing file uploads
     source: file://upload_repo.lua
     modules:
-      - sql
       - json
       - time
+    imports:
+      uploads_resources: userspace.uploads:uploads_resources
 
   # userspace.uploads:upload_type
   - name: upload_type
@@ -200,3 +249,15 @@ entries:
     modules:
       - registry
       - time
+
+  # userspace.uploads:uploads_resources
+  - name: uploads_resources
+    kind: library.lua
+    meta:
+      comment: Resource accessors for uploads module
+    source: file://uploads_resources.lua
+    modules:
+      - sql
+      - env
+      - fs
+      - cloudstorage
