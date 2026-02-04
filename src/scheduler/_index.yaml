@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.scheduler
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace Scheduler
+      description: Task scheduling service with interval and cron support
+
   # userspace.scheduler:schedulable
   - name: schedulable
     kind: contract.definition

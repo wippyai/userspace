@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.user
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace User
+      description: User management and security tokens
+
   # userspace.user:__dependency.wippy.migration
   - version: '>=v0.0.1'
     name: __dependency.wippy.migration

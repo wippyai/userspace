@@ -1,0 +1,14 @@
+organization: userspace
+module: oauth
+description: OAuth 2.0 connection management with PKCE support
+license: Apache-2.0
+repository: https://github.com/wippyai/userspace
+homepage: https://wippy.ai
+keywords:
+  - oauth
+  - authentication
+  - connections
+  - pkce
+exclude_meta:
+  type:
+    - test

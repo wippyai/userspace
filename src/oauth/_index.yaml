@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.oauth
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace OAuth
+      description: OAuth 2.0 connection management with PKCE support
+
   # userspace.oauth:base_connector
   - name: base_connector
     kind: contract.binding

@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.uploads
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace Uploads
+      description: File upload handling with content processing
+
   # userspace.uploads:content_provider
   - name: content_provider
     kind: contract.binding

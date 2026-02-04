@@ -1,0 +1,14 @@
+organization: userspace
+module: kb9
+description: Knowledge base system with embedding and query support
+license: Apache-2.0
+repository: https://github.com/wippyai/userspace
+homepage: https://wippy.ai
+keywords:
+  - knowledge-base
+  - embeddings
+  - search
+  - rag
+exclude_meta:
+  type:
+    - test
