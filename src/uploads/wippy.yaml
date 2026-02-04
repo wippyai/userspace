@@ -1,0 +1,15 @@
+organization: userspace
+module: uploads
+description: File upload handling with content processing and resource management
+license: Apache-2.0
+repository: https://github.com/wippyai/userspace
+homepage: https://wippy.ai
+keywords:
+  - uploads
+  - files
+  - content
+  - storage
+  - processing
+exclude_meta:
+  type:
+    - test
