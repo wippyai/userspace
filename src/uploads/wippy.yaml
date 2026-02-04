@@ -1,6 +1,6 @@
 organization: userspace
 module: uploads
-version: 0.4.2
+version: 0.4.3
 description: File upload handling with content processing and resource management
 license: Apache-2.0
 repository: https://github.com/wippyai/userspace

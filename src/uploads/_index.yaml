@@ -44,14 +44,14 @@ entries:
         path: .default
 
   # Dependencies
-  - name: __dependency.userspace.contract
+  - name: dependency.contract
     kind: ns.dependency
     meta:
       description: Base contracts for content provider
     component: userspace/contract
     version: ">=0.4.0"
 
-  - name: __dependency.wippy.migration
+  - name: dependency.migration
     kind: ns.dependency
     meta:
       description: Migration framework
