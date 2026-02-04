@@ -14,9 +14,10 @@ File upload handling with content processing and resource management for Wippy a
 
 ```yaml
 # In your deps/_index.yaml
-- name: __dependency.userspace.uploads
+- name: dependency.uploads
   kind: ns.dependency
   component: userspace/uploads
+  version: ">=0.4.0"
 ```
 
 ## Usage
