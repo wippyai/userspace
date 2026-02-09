@@ -29,11 +29,16 @@ function resources.get_db()
     return db
 end
 
-function resources.get_storage(storage_id)
-    if not storage_id or storage_id == "" then
-        storage_id = env.get(ENV.STORAGE) or DEFAULTS.STORAGE
+function resources.get_storage_id(storage_id)
+    if storage_id and storage_id ~= "" then
+        return storage_id
     end
-    local storage, err = fs.get(storage_id)
+
+    return env.get(ENV.STORAGE) or DEFAULTS.STORAGE
+end
+
+function resources.get_storage(storage_id)
+    local storage, err = fs.get(resources.get_storage_id(storage_id))
     if err then
         return nil, "Failed to get storage: " .. err
     end

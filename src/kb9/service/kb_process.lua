@@ -577,7 +577,7 @@ function KBProcess:handle_delete_kb(reply_to)
         })
     end
 
-    local ok, err = cpcall(purge_operation)
+    local ok, err = pcall(purge_operation)
 
     if not ok then
         purge_success = false

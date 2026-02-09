@@ -261,3 +261,16 @@ entries:
       - env
       - fs
       - cloudstorage
+
+  # userspace.uploads:env_storage
+  - name: env_storage
+    kind: ns.requirement
+    meta:
+    description: Environment variable storage location
+    targets:
+      - entry: userspace.uploads.env:database_resource
+        path: .storage
+      - entry: userspace.uploads.env:storage_id
+        path: .storage
+      - entry: userspace.uploads.env:storage_s3
+        path: .storage
