@@ -183,7 +183,7 @@ function upload_lib.upload_file(user_id, file_data, filename, size, mime_type, s
         user_id,
         size,
         mime_type,
-        storage_id or "default",
+        resources.get_storage_id(storage_id),
         storage_path,
         type_id,
         metadata

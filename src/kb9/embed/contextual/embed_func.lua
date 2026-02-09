@@ -333,7 +333,7 @@ local function chunk_worker(worker_id, work_ch, result_ch, done_ch, pre_summary,
             break -- Channel is closed, no more work
         end
 
-        local success, result_or_err = cpcall(function()
+        local success, result_or_err = pcall(function()
             local contextual_info, err = generate_chunk_context(pre_summary, work.chunk, chunk_enrichment_model, context_length, true)
             if err then
                 return { index = work.index, chunk = work.chunk, contextual_info = nil, error = "LLM_ERROR: " .. tostring(err), worker_id = worker_id }
