@@ -4,7 +4,13 @@ local consts = require("consts")
 
 local embed_lib = {}
 
+local MAX_TOKENS_PER_BATCH = 8000
+
 local contract_cache = {}
+
+local function estimate_tokens(text)
+    return math.ceil(#text / 4)
+end
 
 local function get_embed_contract(embed_binding, component_id)
     local cache_key = embed_binding .. ":" .. component_id
@@ -115,32 +121,64 @@ function embed_lib.generate_embeddings_for_ops(ops_list, embedding_model)
         return embedding_ops
     end
 
-    local embed_response, err = llm.embed(texts_to_embed, {
-        model = embedding_model,
-        dimensions = 512
-    })
+    local batches = {}
+    local batch_node_maps = {}
+    local current_batch = {}
+    local current_map = {}
+    local current_tokens = 0
 
-    if err then
-        return {}
-    end
+    for i, text in ipairs(texts_to_embed) do
+        local text_tokens = estimate_tokens(text)
 
-    if not embed_response.result then
-        return {}
-    end
-
-    for i, embedding_vector in ipairs(embed_response.result) do
-        local node_id = node_mappings[i]
-        if node_id and embedding_vector then
-            table.insert(embedding_ops, {
-                type = consts.COMMAND_TYPES.UPSERT_EMBEDDING,
-                payload = {
-                    node_id = node_id,
-                    embedding = embedding_vector,
-                    model_name = embedding_model,
-                    embedding_type = "content"
-                }
-            })
+        if current_tokens + text_tokens > MAX_TOKENS_PER_BATCH and #current_batch > 0 then
+            table.insert(batches, current_batch)
+            table.insert(batch_node_maps, current_map)
+            current_batch = {}
+            current_map = {}
+            current_tokens = 0
         end
+
+        table.insert(current_batch, text)
+        current_map[#current_batch] = node_mappings[i]
+        current_tokens = current_tokens + text_tokens
+    end
+
+    if #current_batch > 0 then
+        table.insert(batches, current_batch)
+        table.insert(batch_node_maps, current_map)
+    end
+
+    -- Process each batch
+    for batch_idx, batch_texts in ipairs(batches) do
+        local embed_response, err = llm.embed(batch_texts, {
+            model = embedding_model,
+            dimensions = 512
+        })
+
+        if err then
+            goto continue
+        end
+
+        if not embed_response.result then
+            goto continue
+        end
+
+        for i, embedding_vector in ipairs(embed_response.result) do
+            local node_id = batch_node_maps[batch_idx][i]
+            if node_id and embedding_vector then
+                table.insert(embedding_ops, {
+                    type = consts.COMMAND_TYPES.UPSERT_EMBEDDING,
+                    payload = {
+                        node_id = node_id,
+                        embedding = embedding_vector,
+                        model_name = embedding_model,
+                        embedding_type = "content"
+                    }
+                })
+            end
+        end
+
+        ::continue::
     end
 
     return embedding_ops
