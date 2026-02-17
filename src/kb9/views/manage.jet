@@ -1096,6 +1096,7 @@
                         await this.loadStats();
                         await this.loadExistingUploads();
                         await this.loadActiveOperations();
+                        await this.restorePendingUploads();
                     }
                 } catch (error) {
                     console.error('Failed to initialize:', error);
@@ -1432,6 +1433,9 @@
                                 throw new Error(`Failed to upload ${file.name}: ${uploadResponse.data.error}`);
                             }
 
+                            // Save to localStorage for recovery if page is left
+                            this.savePendingUpload(uploadResponse.data.uuid, file.name);
+
                             // Add to processing uploads - DON'T register yet!
                             this.addProcessingUpload({
                                 uuid: uploadResponse.data.uuid,
@@ -1486,6 +1490,27 @@
                 this.processingUploads = this.processingUploads.filter(u => u.uuid !== uuid);
             },
 
+            // localStorage helpers for pending uploads persistence
+            getStorageKey() {
+                return `kb9_pending_uploads_${this.componentId}`;
+            },
+
+            savePendingUpload(uuid, filename) {
+                const key = this.getStorageKey();
+                const pending = JSON.parse(localStorage.getItem(key) || '[]');
+                if (!pending.some(p => p.uuid === uuid)) {
+                    pending.push({ uuid, filename, timestamp: Date.now() });
+                    localStorage.setItem(key, JSON.stringify(pending));
+                }
+            },
+
+            removePendingUpload(uuid) {
+                const key = this.getStorageKey();
+                const pending = JSON.parse(localStorage.getItem(key) || '[]');
+                const filtered = pending.filter(p => p.uuid !== uuid);
+                localStorage.setItem(key, JSON.stringify(filtered));
+            },
+
             subscribeToUploadEvents(uuid, filename) {
                 if (this.uploadSubscriptions[uuid]) {
                     return; // Already subscribed
@@ -1510,6 +1535,7 @@
                     if (eventData.error) {
                         this.showStatus('error', `Failed to process ${filename}: ${eventData.error}`);
                         this.removeProcessingUpload(uuid);
+                        this.removePendingUpload(uuid);
                         this.unsubscribeFromUploadEvents(uuid);
                         return;
                     }
@@ -1520,6 +1546,7 @@
                     } else if (eventData.status === 'failed' || eventData.status === 'error') {
                         this.showStatus('error', `Processing failed for ${filename}`);
                         this.removeProcessingUpload(uuid);
+                        this.removePendingUpload(uuid);
                         this.unsubscribeFromUploadEvents(uuid);
                     }
                 };
@@ -1592,6 +1619,7 @@
 
                         // Unsubscribe from upload events (upload phase is done)
                         this.unsubscribeFromUploadEvents(uuid);
+                        this.removePendingUpload(uuid);
                     } else {
                         throw new Error(`Failed to register ${filename} in KB: ${registerResponse.data.error}`);
                     }
@@ -1599,6 +1627,7 @@
                     this.showStatus('error', `Failed to add ${filename} to KB: ${error.message}`);
                     this.removeProcessingUpload(uuid);
                     this.unsubscribeFromUploadEvents(uuid);
+                    this.removePendingUpload(uuid);
                 }
             },
 
@@ -1645,6 +1674,52 @@
                     }
                 } catch (error) {
                     console.error('Failed to load active operations:', error);
+                }
+            },
+
+            async restorePendingUploads() {
+                if (!this.componentId || !this.api) return;
+
+                const key = this.getStorageKey();
+                const pending = JSON.parse(localStorage.getItem(key) || '[]');
+                if (pending.length === 0) return;
+
+                for (const entry of pending) {
+                    try {
+                        const response = await this.api.get(`/api/v1/uploads/${entry.uuid}`);
+                        if (!response.data?.success || !response.data.upload) {
+                            this.removePendingUpload(entry.uuid);
+                            continue;
+                        }
+
+                        const upload = response.data.upload;
+
+                        if (upload.status === 'completed') {
+                            // Upload finished while we were away — register with KB
+                            this.addProcessingUpload({
+                                uuid: entry.uuid,
+                                filename: entry.filename,
+                                status: 'processing',
+                                stage: 'Registering with KB...'
+                            });
+                            this.registerUploadWithKB(entry.uuid, entry.filename);
+                        } else if (upload.status === 'processing' || upload.status === 'queued' || upload.status === 'uploading') {
+                            // Still processing — subscribe to events
+                            this.addProcessingUpload({
+                                uuid: entry.uuid,
+                                filename: entry.filename,
+                                status: upload.status,
+                                stage: upload.status
+                            });
+                            this.subscribeToUploadEvents(entry.uuid, entry.filename);
+                        } else {
+                            // Failed or unknown — clean up
+                            this.removePendingUpload(entry.uuid);
+                        }
+                    } catch (error) {
+                        console.error(`Failed to check pending upload ${entry.uuid}:`, error);
+                        this.removePendingUpload(entry.uuid);
+                    }
                 }
             },
 
