@@ -106,6 +106,13 @@ consts.PATH = {
     INCREMENT = 100    -- Leave gaps for future insertions (00100, 00200, 00300...)
 }
 
+-- Operation status constants
+consts.OPERATION_STATUS = {
+    PROCESSING = "processing",
+    COMPLETED = "completed",
+    FAILED = "failed"
+}
+
 -- Content type constants
 consts.CONTENT_TYPES = {
     TEXT = "text/plain",

@@ -19,7 +19,7 @@ entries:
     imports:
       consts: userspace.kb9:consts
       llm: wippy.llm:llm
-    
+
   # userspace.kb9.service:kb_process
   - name: kb_process
     kind: process.lua
@@ -33,13 +33,13 @@ entries:
     modules:
       - time
       - logger
-      - contract
     imports:
       consts: userspace.kb9:consts
       embed_lib: userspace.kb9.service:embed_lib
       store: userspace.kb9.persist:store
+      userspace_operations_repo: userspace.kb9.persist:operations_repo
     method: run
-    
+
   # userspace.kb9.service:root
   - name: root
     kind: process.lua
@@ -57,7 +57,7 @@ entries:
     imports:
       consts: userspace.kb9:consts
     method: run
-    
+
   # userspace.kb9.service:service
   - name: service
     kind: process.service
@@ -79,4 +79,3 @@ entries:
         groups:
           - wippy.security:process
     process: root
-    

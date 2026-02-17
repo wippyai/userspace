@@ -1,6 +1,10 @@
 local http = require("http")
 local json = require("json")
+local uuid = require("uuid")
 local component = require("component")
+local consts = require("userspace_consts")
+local operations_repo = require("userspace_operations_repo")
+local security = require("security")
 
 local CONTENT_PROVIDER_BINDING_ID = "userspace.uploads:content_provider"
 
@@ -86,43 +90,67 @@ local function handler()
         return
     end
 
-    -- Prepare embed reference request (using content provider for uploads)
-    local embed_request = {
-        reference = {
-            binding_id = CONTENT_PROVIDER_BINDING_ID,
-            context = {
-                upload_id = request_data.upload_uuid
-            }
-        },
-        metadata = request_data.metadata or {}
-    }
+    local operation_id = uuid.v7()
 
-    -- Embed content from uploaded file
-    local result, embed_err = kb9_instance:embed_reference(embed_request)
-    if embed_err then
+    local _, create_err = operations_repo.create({
+        id = operation_id,
+        component_id = component_id,
+        upload_uuid = request_data.upload_uuid,
+        status = consts.OPERATION_STATUS.PROCESSING
+    })
+
+    if create_err then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
         res:write_json({
             success = false,
-            error = "Failed to embed uploaded file: " .. embed_err
+            error = "Failed to create operation record: " .. create_err
         })
         return
     end
 
-    if not result.success then
-        res:set_status(http.STATUS.BAD_REQUEST)
+    local commands = {
+        {
+            type = consts.COMMAND_TYPES.EMBED_REFERENCE,
+            payload = {
+                reference = {
+                    binding_id = CONTENT_PROVIDER_BINDING_ID,
+                    context = {
+                        upload_id = request_data.upload_uuid
+                    }
+                },
+                metadata = request_data.metadata or {},
+                operation_id = operation_id,
+                uploaded_by = security.actor():id()
+            }
+        }
+    }
+
+    local command_msg = {
+        component_id = component_id,
+        commands = commands,
+        reply_to = consts.PROCESS_NAMES.ROOT_SERVICE
+    }
+
+    local ok, send_err = process.send(consts.PROCESS_NAMES.ROOT_SERVICE, consts.MESSAGE_TOPICS.KB_COMMAND, command_msg)
+    if not ok then
+        operations_repo.update_status(operation_id, consts.OPERATION_STATUS.FAILED, 0, "Failed to send command: " .. (send_err or "unknown error"))
+
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json(result)
+        res:write_json({
+            success = false,
+            error = "Failed to send embed command: " .. (send_err or "unknown error")
+        })
         return
     end
 
-    -- Return success response
-    res:set_status(http.STATUS.OK)
+    res:set_status(http.STATUS.ACCEPTED)
     res:set_content_type(http.CONTENT.JSON)
     res:write_json({
         success = true,
-        ops_executed = result.ops_executed or 0,
-        retrieved_content_type = result.retrieved_content_type
+        operation_id = operation_id,
+        status = consts.OPERATION_STATUS.PROCESSING
     })
 end
 

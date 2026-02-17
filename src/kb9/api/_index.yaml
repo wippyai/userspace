@@ -292,7 +292,7 @@ entries:
   - name: upload
     kind: function.lua
     meta:
-      comment: Registers uploaded file and embeds it into KB9 knowledge base
+      comment: Registers uploaded file and starts async embedding into KB9 knowledge base
       tags:
         - kb9
         - api
@@ -301,8 +301,12 @@ entries:
     modules:
       - http
       - json
+      - uuid
+      - security
     imports:
       component: userspace.component:component
+      userspace_consts: userspace.kb9:consts
+      userspace_operations_repo: userspace.kb9.persist:operations_repo
     method: handler
 
   # userspace.kb9.api:upload.endpoint
@@ -318,3 +322,49 @@ entries:
     method: POST
     func: upload
     path: /userspace/kb/kb9/{component_id}/upload
+
+  # userspace.kb9.api:upload_status
+  - name: upload_status
+    kind: function.lua
+    meta:
+      comment: Gets status of a specific KB9 embed operation
+    source: file://upload_status.lua
+    modules:
+      - http
+    imports:
+      component: userspace.component:component
+      userspace_operations_repo: userspace.kb9.persist:operations_repo
+    method: handler
+
+  # userspace.kb9.api:upload_status.endpoint
+  - name: upload_status.endpoint
+    kind: http.endpoint
+    meta:
+      comment: API endpoint for getting KB9 operation status
+      router: app:api
+    method: GET
+    func: userspace.kb9.api:upload_status
+    path: /userspace/kb/kb9/{component_id}/operations/{operation_id}
+
+  # userspace.kb9.api:operations_list
+  - name: operations_list
+    kind: function.lua
+    meta:
+      comment: Lists KB9 embed operations for a component with filtering
+    source: file://operations_list.lua
+    modules:
+      - http
+    imports:
+      component: userspace.component:component
+      userspace_operations_repo: userspace.kb9.persist:operations_repo
+    method: handler
+
+  # userspace.kb9.api:operations_list.endpoint
+  - name: operations_list.endpoint
+    kind: http.endpoint
+    meta:
+      comment: API endpoint for listing KB9 operations
+      router: app:api
+    method: GET
+    func: userspace.kb9.api:operations_list
+    path: /userspace/kb/kb9/{component_id}/operations

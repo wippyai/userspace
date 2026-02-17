@@ -1,10 +1,10 @@
 local time = require("time")
 local logger = require("logger")
-local contract = require("contract")
 local json = require("json")
 local consts = require("consts")
 local store = require("store")
 local embed_lib = require("embed_lib")
+local operations_repo = require("userspace_operations_repo")
 
 -- ============================================================================
 -- CONSTANTS
@@ -142,6 +142,8 @@ function WorkerPool:process_work_item(work_item, worker_id, log)
         batch_id = work_item.batch_id,
         worker_id = worker_id,
         reply_to = work_item.reply_to,
+        operation_id = command.payload and command.payload.operation_id or nil,
+        uploaded_by = command.payload and command.payload.uploaded_by or nil,
         success = true,
         ops = {},
         content_type = nil,
@@ -322,6 +324,25 @@ function WorkerPool:send_batch_acknowledgments(batch_results, log)
                 ops_executed = result.success and #(result.ops or {}) or 0,
                 retrieved_content_type = result.content_type,
                 component_id = self.component_id
+            })
+        end
+
+        if result.operation_id then
+            local ops_count = result.success and #(result.ops or {}) or 0
+            local op_status = result.success and consts.OPERATION_STATUS.COMPLETED or consts.OPERATION_STATUS.FAILED
+
+            local _, update_err = operations_repo.update_status(result.operation_id, op_status, ops_count, result.error)
+            if update_err then
+                log:warn("Failed to update operation status", {
+                    operation_id = result.operation_id,
+                    error = update_err
+                })
+            end
+
+            process.send("user." .. result.uploaded_by, "kb9.operation:" .. result.operation_id, {
+                status = op_status,
+                ops_executed = ops_count,
+                error = result.error
             })
         end
     end
