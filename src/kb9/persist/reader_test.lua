@@ -857,7 +857,9 @@ local function run_tests()
 
             it("should order operations by created_at DESC", function()
                 local op1 = create_committed_operation()
+                time.sleep("1s")
                 local op2 = create_committed_operation()
+                time.sleep("1s")
                 local op3 = create_committed_operation()
 
                 local results = reader.for_operations(test_ctx.kb_id):all()
