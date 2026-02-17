@@ -1,6 +1,6 @@
 local http = require("http")
 local component = require("component")
-local operations_repo = require("userspace_operations_repo")
+local reader = require("userspace_reader")
 
 local function handler()
     local res = http.response()
@@ -60,7 +60,7 @@ local function handler()
         return
     end
 
-    local operation, get_err = operations_repo.get(operation_id)
+    local operation, get_err = reader.get_operation(operation_id)
     if get_err then
         res:set_status(http.STATUS.NOT_FOUND)
         res:set_content_type(http.CONTENT.JSON)

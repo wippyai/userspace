@@ -144,16 +144,3 @@ entries:
     imports:
       consts: userspace.kb9:consts
       ops: userspace.kb9.persist:ops
-
-  # userspace.kb9.persist:operations_repo
-  - name: operations_repo
-    kind: library.lua
-    meta:
-      comment: CRUD repository for kb_embed_operations table
-    source: file://operations_repo.lua
-    modules:
-      - sql
-      - time
-      - uuid
-    imports:
-      userspace_consts: userspace.kb9:consts

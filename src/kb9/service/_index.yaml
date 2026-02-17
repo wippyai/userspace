@@ -37,7 +37,6 @@ entries:
       consts: userspace.kb9:consts
       embed_lib: userspace.kb9.service:embed_lib
       store: userspace.kb9.persist:store
-      userspace_operations_repo: userspace.kb9.persist:operations_repo
     method: run
 
   # userspace.kb9.service:root

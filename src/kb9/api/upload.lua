@@ -3,7 +3,7 @@ local json = require("json")
 local uuid = require("uuid")
 local component = require("component")
 local consts = require("userspace_consts")
-local operations_repo = require("userspace_operations_repo")
+local store = require("userspace_store")
 local security = require("security")
 
 local CONTENT_PROVIDER_BINDING_ID = "userspace.uploads:content_provider"
@@ -92,12 +92,17 @@ local function handler()
 
     local operation_id = uuid.v7()
 
-    local _, create_err = operations_repo.create({
-        id = operation_id,
-        component_id = component_id,
-        upload_uuid = request_data.upload_uuid,
-        status = consts.OPERATION_STATUS.PROCESSING
-    })
+    local _, create_err = store.new_batch(component_id):ops({
+        {
+            type = consts.COMMAND_TYPES.CREATE_EMBED_OPERATION,
+            payload = {
+                id = operation_id,
+                component_id = component_id,
+                upload_uuid = request_data.upload_uuid,
+                status = consts.OPERATION_STATUS.PROCESSING
+            }
+        }
+    }):execute()
 
     if create_err then
         res:set_status(http.STATUS.INTERNAL_ERROR)
@@ -134,7 +139,17 @@ local function handler()
 
     local ok, send_err = process.send(consts.PROCESS_NAMES.ROOT_SERVICE, consts.MESSAGE_TOPICS.KB_COMMAND, command_msg)
     if not ok then
-        operations_repo.update_status(operation_id, consts.OPERATION_STATUS.FAILED, 0, "Failed to send command: " .. (send_err or "unknown error"))
+        store.new_batch(component_id):ops({
+            {
+                type = consts.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS,
+                payload = {
+                    id = operation_id,
+                    status = consts.OPERATION_STATUS.FAILED,
+                    ops_executed = 0,
+                    error = "Failed to send command: " .. (send_err or "unknown error")
+                }
+            }
+        }):execute()
 
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)

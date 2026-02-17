@@ -1,6 +1,6 @@
 local http = require("http")
 local component = require("component")
-local operations_repo = require("userspace_operations_repo")
+local reader = require("userspace_reader")
 
 local function handler()
     local res = http.response()
@@ -55,11 +55,12 @@ local function handler()
     if limit < 1 then limit = 1 end
     if limit > 100 then limit = 100 end
 
-    local operations, list_err = operations_repo.list_by_component(component_id, {
-        limit = limit,
-        offset = offset,
-        status = status_filter
-    })
+    local ops_reader = reader.for_operations(component_id)
+    if status_filter then
+        ops_reader = ops_reader:with_status(status_filter)
+    end
+
+    local operations, list_err = ops_reader:limit(limit):offset(offset):all()
 
     if list_err then
         res:set_status(http.STATUS.INTERNAL_ERROR)
@@ -71,9 +72,7 @@ local function handler()
         return
     end
 
-    local total, count_err = operations_repo.count_by_component(component_id, {
-        status = status_filter
-    })
+    local total, count_err = ops_reader:count()
 
     if count_err then
         res:set_status(http.STATUS.INTERNAL_ERROR)

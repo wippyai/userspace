@@ -4,7 +4,6 @@ local json = require("json")
 local consts = require("consts")
 local store = require("store")
 local embed_lib = require("embed_lib")
-local operations_repo = require("userspace_operations_repo")
 
 -- ============================================================================
 -- CONSTANTS
@@ -331,7 +330,18 @@ function WorkerPool:send_batch_acknowledgments(batch_results, log)
             local ops_count = result.success and #(result.ops or {}) or 0
             local op_status = result.success and consts.OPERATION_STATUS.COMPLETED or consts.OPERATION_STATUS.FAILED
 
-            local _, update_err = operations_repo.update_status(result.operation_id, op_status, ops_count, result.error)
+            local _, update_err = store.new_batch(self.component_id):ops({
+                {
+                    type = consts.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS,
+                    payload = {
+                        id = result.operation_id,
+                        status = op_status,
+                        ops_executed = ops_count,
+                        error = result.error
+                    }
+                }
+            }):execute()
+
             if update_err then
                 log:warn("Failed to update operation status", {
                     operation_id = result.operation_id,

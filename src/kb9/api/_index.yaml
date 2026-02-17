@@ -306,7 +306,7 @@ entries:
     imports:
       component: userspace.component:component
       userspace_consts: userspace.kb9:consts
-      userspace_operations_repo: userspace.kb9.persist:operations_repo
+      userspace_store: userspace.kb9.persist:store
     method: handler
 
   # userspace.kb9.api:upload.endpoint
@@ -333,7 +333,7 @@ entries:
       - http
     imports:
       component: userspace.component:component
-      userspace_operations_repo: userspace.kb9.persist:operations_repo
+      userspace_reader: userspace.kb9.persist:reader
     method: handler
 
   # userspace.kb9.api:upload_status.endpoint
@@ -356,7 +356,7 @@ entries:
       - http
     imports:
       component: userspace.component:component
-      userspace_operations_repo: userspace.kb9.persist:operations_repo
+      userspace_reader: userspace.kb9.persist:reader
     method: handler
 
   # userspace.kb9.api:operations_list.endpoint
