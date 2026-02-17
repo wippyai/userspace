@@ -978,6 +978,10 @@
             processingUploads: [], // Track uploads that are still processing
             uploadSubscriptions: {}, // Keep track of active subscriptions
 
+            // Embed operations (tracking async KB embedding)
+            embeddingOperations: {},     // Map: operation_id → {filename, upload_uuid, status}
+            operationSubscriptions: {},  // Map: operation_id → handler
+
             // Existing uploads
             existingUploads: [],
             selectedUploads: [],
@@ -1091,6 +1095,7 @@
                         await this.loadKBInfo();
                         await this.loadStats();
                         await this.loadExistingUploads();
+                        await this.loadActiveOperations();
                     }
                 } catch (error) {
                     console.error('Failed to initialize:', error);
@@ -1533,6 +1538,34 @@
                 delete this.uploadSubscriptions[uuid];
             },
 
+            subscribeToOperationEvents(operationId, filename) {
+                if (this.operationSubscriptions[operationId]) return;
+
+                const handler = (data) => {
+                    const eventData = data.data || data;
+                    if (eventData.status === 'completed') {
+                        this.showStatus('success', `${filename} successfully embedded!`);
+                        this.removeEmbeddingOperation(operationId);
+                        this.loadStats();
+                    } else if (eventData.status === 'failed') {
+                        this.showStatus('error', `Embedding failed for ${filename}: ${eventData.error || 'Unknown error'}`);
+                        this.removeEmbeddingOperation(operationId);
+                    }
+                };
+
+                this.wippyApi.on(`kb9.operation:${operationId}`, handler);
+                this.operationSubscriptions[operationId] = handler;
+            },
+
+            removeEmbeddingOperation(operationId) {
+                const op = this.embeddingOperations[operationId];
+                if (op) {
+                    this.removeProcessingUpload(op.upload_uuid);
+                    delete this.embeddingOperations[operationId];
+                }
+                delete this.operationSubscriptions[operationId];
+            },
+
             async registerUploadWithKB(uuid, filename) {
                 try {
                     const registerResponse = await this.api.post(`/api/v1/userspace/kb/kb9/${this.componentId}/upload`, {
@@ -1540,14 +1573,30 @@
                     });
 
                     if (registerResponse.data.success) {
-                        this.showStatus('success', `${filename} successfully added to knowledge base!`);
+                        const operationId = registerResponse.data.operation_id;
+
+                        // Update processing upload stage to embedding
+                        this.addProcessingUpload({
+                            uuid: uuid,
+                            filename: filename,
+                            status: 'processing',
+                            stage: 'Embedding...'
+                        });
+
+                        this.embeddingOperations[operationId] = {
+                            filename: filename,
+                            upload_uuid: uuid
+                        };
+
+                        this.subscribeToOperationEvents(operationId, filename);
+
+                        // Unsubscribe from upload events (upload phase is done)
+                        this.unsubscribeFromUploadEvents(uuid);
                     } else {
                         throw new Error(`Failed to register ${filename} in KB: ${registerResponse.data.error}`);
                     }
                 } catch (error) {
                     this.showStatus('error', `Failed to add ${filename} to KB: ${error.message}`);
-                } finally {
-                    // Remove from processing list and unsubscribe
                     this.removeProcessingUpload(uuid);
                     this.unsubscribeFromUploadEvents(uuid);
                 }
@@ -1568,6 +1617,34 @@
                     this.existingUploads = [];
                 } finally {
                     this.isLoadingUploads = false;
+                }
+            },
+
+            async loadActiveOperations() {
+                if (!this.componentId || !this.api) return;
+                try {
+                    const response = await this.api.get(
+                        `/api/v1/userspace/kb/kb9/${this.componentId}/operations?status=processing`
+                    );
+                    if (response.data?.success && response.data.operations) {
+                        for (const op of response.data.operations) {
+                            const filename = op.upload_uuid || 'Unknown file';
+                            this.embeddingOperations[op.id] = {
+                                filename,
+                                upload_uuid: op.upload_uuid,
+                                status: op.status
+                            };
+                            this.addProcessingUpload({
+                                uuid: op.upload_uuid || op.id,
+                                filename,
+                                status: 'processing',
+                                stage: 'Embedding...'
+                            });
+                            this.subscribeToOperationEvents(op.id, filename);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load active operations:', error);
                 }
             },
 
@@ -1598,7 +1675,7 @@
                             const filename = this.getFilename(upload);
 
                             if (response.data.success) {
-                                return { success: true, filename, uploadUuid };
+                                return { success: true, filename, uploadUuid, operationId: response.data.operation_id };
                             } else {
                                 return {
                                     success: false,
@@ -1631,6 +1708,20 @@
                             const uploadResult = result.value;
                             if (uploadResult.success) {
                                 successCount++;
+
+                                this.addProcessingUpload({
+                                    uuid: uploadResult.uploadUuid,
+                                    filename: uploadResult.filename,
+                                    status: 'processing',
+                                    stage: 'Embedding...'
+                                });
+
+                                this.embeddingOperations[uploadResult.operationId] = {
+                                    filename: uploadResult.filename,
+                                    upload_uuid: uploadResult.uploadUuid
+                                };
+
+                                this.subscribeToOperationEvents(uploadResult.operationId, uploadResult.filename);
                             } else {
                                 errors.push(`${uploadResult.filename}: ${uploadResult.error}`);
                             }
@@ -1645,7 +1736,7 @@
 
                     // Show results
                     if (successCount > 0) {
-                        this.showStatus('success', `Successfully added ${successCount} file(s) to knowledge base!`);
+                        this.showStatus('info', `${successCount} file(s) submitted for embedding`);
                         this.selectedUploads = [];
                     }
 
