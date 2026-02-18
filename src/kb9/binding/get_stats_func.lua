@@ -56,8 +56,11 @@ local function handle(request_dto)
     end
 
     -- Get internal KB ID from component_id
-    local kb_comp_sql = "SELECT " .. COLUMNS.ID .. " FROM " .. TABLES.KB_COMPONENTS .. " WHERE " .. COLUMNS.COMPONENT_ID .. " = ?"
-    local kb_comp_result, kb_comp_err = db:query(kb_comp_sql, {component_id})
+    local kb_query = sql.builder.select(COLUMNS.ID)
+        :from(TABLES.KB_COMPONENTS)
+        :where(COLUMNS.COMPONENT_ID .. " = ?", component_id)
+
+    local kb_comp_result, kb_comp_err = kb_query:run_with(db):query()
 
     if kb_comp_err then
         db:release()
@@ -78,14 +81,23 @@ local function handle(request_dto)
     local kb_id = kb_comp_result[1].id
 
     -- 1. Get basic node stats
-    local basic_sql
+    local basic_query = sql.builder.select(
+            "COUNT(*) as total",
+            "COUNT(" .. COLUMNS.CONTENT .. ") as with_content",
+            "MIN(" .. COLUMNS.CREATED_AT .. ") as first_created",
+            "MAX(" .. COLUMNS.UPDATED_AT .. ") as last_updated"
+        )
+        :from(TABLES.KB_NODES)
+        :where(COLUMNS.KB_ID .. " = ?", kb_id)
+
     if include_content_size then
-        basic_sql = "SELECT COUNT(*) as total, COUNT(" .. COLUMNS.CONTENT .. ") as with_content, MIN(" .. COLUMNS.CREATED_AT .. ") as first_created, MAX(" .. COLUMNS.UPDATED_AT .. ") as last_updated, SUM(LENGTH(COALESCE(" .. COLUMNS.CONTENT .. ", ''))) as total_content_size, SUM(LENGTH(COALESCE(" .. COLUMNS.METADATA .. ", ''))) as total_metadata_size FROM " .. TABLES.KB_NODES .. " WHERE " .. COLUMNS.KB_ID .. " = ?"
-    else
-        basic_sql = "SELECT COUNT(*) as total, COUNT(" .. COLUMNS.CONTENT .. ") as with_content, MIN(" .. COLUMNS.CREATED_AT .. ") as first_created, MAX(" .. COLUMNS.UPDATED_AT .. ") as last_updated FROM " .. TABLES.KB_NODES .. " WHERE " .. COLUMNS.KB_ID .. " = ?"
+        basic_query = basic_query:columns(
+            "SUM(LENGTH(COALESCE(CAST(" .. COLUMNS.CONTENT .. " AS TEXT), ''))) as total_content_size",
+            "SUM(LENGTH(COALESCE(CAST(" .. COLUMNS.METADATA .. " AS TEXT), ''))) as total_metadata_size"
+        )
     end
 
-    local basic_result, basic_err = db:query(basic_sql, {kb_id})
+    local basic_result, basic_err = basic_query:run_with(db):query()
 
     if basic_err then
         db:release()
@@ -98,8 +110,15 @@ local function handle(request_dto)
     local basic_stats = basic_result[1]
 
     -- 2. Get node type distribution
-    local type_sql = "SELECT " .. COLUMNS.NODE_TYPE .. ", COUNT(*) as count FROM " .. TABLES.KB_NODES .. " WHERE " .. COLUMNS.KB_ID .. " = ? GROUP BY " .. COLUMNS.NODE_TYPE
-    local type_result, type_err = db:query(type_sql, {kb_id})
+    local type_query = sql.builder.select(
+            COLUMNS.NODE_TYPE,
+            "COUNT(*) as count"
+        )
+        :from(TABLES.KB_NODES)
+        :where(COLUMNS.KB_ID .. " = ?", kb_id)
+        :group_by(COLUMNS.NODE_TYPE)
+
+    local type_result, type_err = type_query:run_with(db):query()
 
     if type_err then
         db:release()

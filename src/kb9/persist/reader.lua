@@ -495,4 +495,131 @@ function methods:exists()
     return count > 0
 end
 
+-- ============================================================================
+-- EMBED OPERATIONS READER
+-- ============================================================================
+
+local ops_methods = {}
+local ops_mt = { __index = ops_methods }
+
+function reader.for_operations(component_id)
+    if not component_id or component_id == "" then
+        error(consts.ERROR.INVALID_COMPONENT_ID)
+    end
+
+    local instance = {
+        _component_id = component_id,
+        _status = nil,
+        _limit = nil,
+        _offset = nil,
+    }
+    return setmetatable(instance, ops_mt)
+end
+
+function ops_methods:_copy()
+    local new_instance = {}
+    for k, v in pairs(self) do
+        new_instance[k] = v
+    end
+    return setmetatable(new_instance, ops_mt)
+end
+
+function ops_methods:with_status(status)
+    local new_instance = self:_copy()
+    new_instance._status = status
+    return new_instance
+end
+
+function ops_methods:limit(n)
+    local new_instance = self:_copy()
+    new_instance._limit = n
+    return new_instance
+end
+
+function ops_methods:offset(n)
+    local new_instance = self:_copy()
+    new_instance._offset = n
+    return new_instance
+end
+
+function ops_methods:all()
+    local db = get_db()
+
+    local query = sql.builder.select("id", "component_id", "upload_uuid", "status", "error", "ops_executed", "created_at", "updated_at")
+        :from("kb_embed_operations")
+        :where("component_id = ?", self._component_id)
+        :order_by("created_at DESC")
+
+    if self._status then
+        query = query:where("status = ?", self._status)
+    end
+
+    if self._limit then
+        query = query:limit(self._limit)
+    end
+
+    if self._offset then
+        query = query:offset(self._offset)
+    end
+
+    local executor = query:run_with(db)
+    local results, err = executor:query()
+    db:release()
+
+    if err then
+        return nil, "Failed to list operations: " .. err
+    end
+
+    return results
+end
+
+function ops_methods:count()
+    local db = get_db()
+
+    local query = sql.builder.select("COUNT(*) as count")
+        :from("kb_embed_operations")
+        :where("component_id = ?", self._component_id)
+
+    if self._status then
+        query = query:where("status = ?", self._status)
+    end
+
+    local executor = query:run_with(db)
+    local results, err = executor:query()
+    db:release()
+
+    if err then
+        return nil, "Failed to count operations: " .. err
+    end
+
+    return results[1].count
+end
+
+function reader.get_operation(operation_id)
+    if not operation_id or operation_id == "" then
+        error("Operation ID is required")
+    end
+
+    local db = get_db()
+
+    local query = sql.builder.select("id", "component_id", "upload_uuid", "status", "error", "ops_executed", "created_at", "updated_at")
+        :from("kb_embed_operations")
+        :where("id = ?", operation_id)
+        :limit(1)
+
+    local executor = query:run_with(db)
+    local results, err = executor:query()
+    db:release()
+
+    if err then
+        return nil, "Failed to get operation: " .. err
+    end
+
+    if #results == 0 then
+        return nil, "Operation not found"
+    end
+
+    return results[1]
+end
+
 return reader
