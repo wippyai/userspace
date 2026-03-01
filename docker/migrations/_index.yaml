@@ -1,0 +1,35 @@
+version: "1.0"
+namespace: userspace.docker.migrations
+
+entries:
+  - name: 01_create_containers
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - docker
+        - containers
+        - database
+      description: Create containers and container_logs tables
+      target_db: app:db
+      timestamp: "2026-02-13T10:00:00Z"
+    source: file://01_create_containers.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  - name: 02_create_images
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - docker
+        - images
+        - database
+      description: Create images and image_builds tables
+      target_db: app:db
+      timestamp: "2026-02-13T10:01:00Z"
+    source: file://02_create_images.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

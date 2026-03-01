@@ -109,7 +109,7 @@ local function handle(request_dto)
     end
 
     -- Parse next run time
-    local next_run_time_obj, parse_err = time.parse(time.RFC3339, next_run_time)
+    local next_run_time_obj, parse_err = time.parse(time.RFC3339, next_run_time :: string)
     if parse_err then
         return { success = false, error = BUSINESS_ERRORS.SCHEDULE_CALCULATION_FAILED .. ": " .. parse_err }
     end

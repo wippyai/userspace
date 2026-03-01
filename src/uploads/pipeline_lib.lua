@@ -2,6 +2,7 @@ local time = require("time")
 local funcs = require("funcs")
 local upload_repo = require("upload_repo")
 local upload_type = require("upload_type")
+local upload_tokens = require("upload_tokens")
 local security = require("security")
 
 -- Upload status constants
@@ -77,6 +78,62 @@ function pipeline_lib.merge_metadata(existing_metadata, new_metadata)
     return merged
 end
 
+-- Invoke upload completion token callback (fire-and-forget)
+function pipeline_lib.invoke_upload_token(upload, success, error_msg)
+    if not upload or not upload.metadata or not upload.metadata.__upload_token then
+        return
+    end
+
+    local payload, err = upload_tokens.unpack(tostring(upload.metadata.__upload_token))
+    if err then
+        print("Upload token unpack failed for", upload.uuid, ":", err)
+        return
+    end
+
+    local func_id = tostring(success and payload.function_id or payload.on_error_id)
+    if not func_id or func_id == "nil" then
+        return
+    end
+
+    local actor = security.new_actor(tostring(payload.actor_id), {})
+    local scope = security.named_scope(tostring(payload.actor_scope))
+
+    local executor = funcs.new()
+        :with_actor(actor)
+        :with_scope(scope)
+        :with_context({
+            upload_id = upload.uuid,
+            user_id = upload.user_id,
+        })
+
+    -- Build callback metadata without the token itself
+    local clean_metadata = {}
+    if upload.metadata then
+        for k, v in pairs(upload.metadata) do
+            if k ~= "__upload_token" then
+                clean_metadata[k] = v
+            end
+        end
+    end
+
+    local _, call_err = executor:call(tostring(func_id), {
+        upload_id = upload.uuid,
+        status = success and "completed" or "error",
+        error = error_msg,
+        mime_type = upload.mime_type,
+        size = upload.size,
+        storage_id = upload.storage_id,
+        storage_path = upload.storage_path,
+        type_id = upload.type_id,
+        metadata = clean_metadata,
+        params = payload.params,
+    })
+
+    if call_err then
+        print("Upload token callback failed for", upload.uuid, ":", call_err)
+    end
+end
+
 -- Process a single upload using funcs library
 function pipeline_lib.process_upload(upload)
     -- Update status to processing
@@ -108,6 +165,8 @@ function pipeline_lib.process_upload(upload)
         -- Notify about error status
         pipeline_lib.notify_status_change(upload, STATUS.ERROR, nil, error_msg)
 
+        pipeline_lib.invoke_upload_token(upload, false, error_msg)
+
         return false, error_msg
     end
 
@@ -131,10 +190,12 @@ function pipeline_lib.process_upload(upload)
         -- Notify about error status
         pipeline_lib.notify_status_change(upload, STATUS.ERROR, nil, error_msg)
 
+        pipeline_lib.invoke_upload_token(upload, false, error_msg)
+
         return false, error_msg
     end
 
-    local actor = security.new_actor(upload.user_id, { context_id = "upload:" .. upload.uuid })
+    local actor = security.new_actor(tostring(upload.user_id), { context_id = "upload:" .. tostring(upload.uuid) })
 
     -- Create a function executor with context
     local executor = funcs.new():with_context({
@@ -155,7 +216,7 @@ function pipeline_lib.process_upload(upload)
         pipeline_lib.notify_status_change(upload, STATUS.PROCESSING, stage_title)
 
         -- Call the processor function
-        local result, err = executor:call(processor_id, {
+        local result, err = executor:call(tostring(processor_id), {
             upload_id = upload.uuid,
             mime_type = upload.mime_type,
             storage_id = upload.storage_id,
@@ -183,6 +244,8 @@ function pipeline_lib.process_upload(upload)
 
             -- Notify about error status with stage info
             pipeline_lib.notify_status_change(upload, STATUS.ERROR, stage_title, error_msg)
+
+            pipeline_lib.invoke_upload_token(upload, false, error_msg)
 
             return false, error_msg
         end
@@ -215,6 +278,8 @@ function pipeline_lib.process_upload(upload)
 
     -- Notify about completion status
     pipeline_lib.notify_status_change(upload, STATUS.COMPLETED)
+
+    pipeline_lib.invoke_upload_token(upload, true, nil)
 
     return true
 end

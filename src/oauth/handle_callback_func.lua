@@ -65,7 +65,7 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.MISSING_CLIENT_ID }
     end
 
-    local client_id, err = env.get(client_id_env)
+    local client_id, err = env.get(client_id_env :: string)
     if err then
         return {
             success = false,
@@ -95,7 +95,7 @@ local function handle(request_dto)
     local client_secret_env, err = ctx.get("oauth_client_secret_env")
     if client_secret_env and client_secret_env ~= "" then
         -- Only try to get the secret if the env var name is configured
-        local env_secret, env_err = env.get(client_secret_env)
+        local env_secret, env_err = env.get(client_secret_env :: string)
         if not env_err and env_secret and env_secret ~= "" then
             client_secret = env_secret
             has_client_secret = true
@@ -146,7 +146,7 @@ local function handle(request_dto)
     local request_body = table.concat(form_data, "&")
 
     -- Exchange authorization code for access token
-    local token_response, err = http_client.post(token_endpoint, {
+    local token_response, err = http_client.post(token_endpoint :: string, {
         headers = {
             ["Content-Type"] = "application/x-www-form-urlencoded",
             ["Accept"] = "application/json"
@@ -293,11 +293,11 @@ local function handle(request_dto)
         local userinfo_response, err
 
         if userinfo_method == "POST" then
-            userinfo_response, err = http_client.post(userinfo_url, {
+            userinfo_response, err = http_client.post(userinfo_url :: string, {
                 headers = userinfo_headers
             })
         else
-            userinfo_response, err = http_client.get(userinfo_url, {
+            userinfo_response, err = http_client.get(userinfo_url :: string, {
                 headers = userinfo_headers
             })
         end

@@ -144,9 +144,7 @@ local function get_database_type()
 end
 
 ---Helper to encode time for database storage - ALWAYS STORES UTC
----@param time_obj userdata|string|nil
----@return string|integer|nil
-local function encode_time_for_db(time_obj)
+local function encode_time_for_db(time_obj: any)
     if not time_obj then
         return nil
     end
@@ -454,7 +452,7 @@ function schedule_repo.update(task_id, updates)
             update_query = update_query:set(field, value)
             has_updates = true
         elseif field ~= "id" then -- Don't allow ID updates
-            update_query = update_query:set(field, value)
+            update_query = update_query:set(field :: string, value)
             has_updates = true
         end
     end

@@ -23,6 +23,9 @@ entries:
     modules:
       - contract
       - json
+      - sql
+    imports:
+      component_reader: userspace.component.persist:component_reader
     
   # userspace.component:component_service
   - name: component_service

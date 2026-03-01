@@ -66,7 +66,7 @@ local function handle(request_dto)
         }
     end
 
-    local client_id, err = env.get(client_id_env)
+    local client_id, err = env.get(client_id_env :: string)
     if err then
         return {
             success = false,
@@ -86,7 +86,7 @@ local function handle(request_dto)
     local client_secret = nil
     local client_secret_env, err = ctx.get("oauth_client_secret_env")
     if client_secret_env and client_secret_env ~= "" then
-        local env_secret, env_err = env.get(client_secret_env)
+        local env_secret, env_err = env.get(client_secret_env :: string)
         if not env_err and env_secret and env_secret ~= "" then
             client_secret = env_secret
         end
@@ -118,7 +118,7 @@ local function handle(request_dto)
     local request_body = table.concat(form_data, "&")
 
     -- Make token refresh request
-    local token_response, err = http_client.post(token_endpoint, {
+    local token_response, err = http_client.post(token_endpoint :: string, {
         headers = {
             ["Content-Type"] = "application/x-www-form-urlencoded",
             ["Accept"] = "application/json"

@@ -15,9 +15,9 @@ local PROCESS_HOST = "app:processes"
 
 -- Local function to construct redirect URI
 local function build_redirect_uri(provider_name)
-    local base_url, err = env.get("APP_BASE_URL")
+    local base_url, err = env.get("PUBLIC_API_URL")
     if err or not base_url or base_url == "" then
-        return nil, "APP_BASE_URL environment variable not set"
+        return nil, "PUBLIC_API_URL environment variable not set"
     end
 
     -- Remove trailing slash if present
@@ -177,7 +177,7 @@ local function handler()
     -- Open OAuth contract instance with provider-specific context from discovery
     local oauth_instance, err = oauth_contract
         :with_context(connector_info.context_values)
-        :open(connector_info.implementation_id)
+        :open(connector_info.implementation_id :: string)
 
     if err then
         res:set_status(STATUS.INTERNAL_ERROR)

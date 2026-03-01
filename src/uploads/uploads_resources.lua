@@ -20,7 +20,7 @@ local resources = {}
 resources.UPLOAD_PROCESS = "upload_pipeline"
 resources.UPLOAD_TOPIC = "process_upload"
 
-function resources.get_db()
+function resources.get_db(): (sql.DB?, string?)
     local id = env.get(ENV.DATABASE) or DEFAULTS.DATABASE
     local db, err = sql.get(id)
     if err then
@@ -54,4 +54,4 @@ function resources.get_s3()
     return s3
 end
 
-return table.freeze(resources)
+return resources

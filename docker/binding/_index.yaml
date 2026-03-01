@@ -1,0 +1,421 @@
+version: "1.0"
+namespace: userspace.docker.binding
+
+entries:
+  # Container bindings
+  - name: containers_create_func
+    kind: function.lua
+    meta:
+      comment: Create a new container
+    source: file://containers_create.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - json
+      - process
+      - env
+    method: handle
+
+  - name: containers_get_func
+    kind: function.lua
+    meta:
+      comment: Get container by ID
+    source: file://containers_get.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_list_func
+    kind: function.lua
+    meta:
+      comment: List containers
+    source: file://containers_list.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_delete_func
+    kind: function.lua
+    meta:
+      comment: Delete a container
+    source: file://containers_delete.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_logs_func
+    kind: function.lua
+    meta:
+      comment: Get container logs
+    source: file://containers_logs.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_stdin_func
+    kind: function.lua
+    meta:
+      comment: Send stdin data to a running container
+    source: file://containers_stdin.lua
+    imports:
+      consts: userspace.docker.lib:consts
+    modules:
+      - json
+      - process
+    method: handle
+
+  - name: containers_compose_func
+    kind: function.lua
+    meta:
+      comment: Create multiple containers as a group
+    source: file://containers_compose.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - json
+      - uuid
+      - process
+      - env
+    method: handle
+
+  - name: containers_restart_func
+    kind: function.lua
+    meta:
+      comment: Restart a container
+    source: file://containers_restart.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_pause_func
+    kind: function.lua
+    meta:
+      comment: Pause a running container
+    source: file://containers_pause.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_unpause_func
+    kind: function.lua
+    meta:
+      comment: Unpause a paused container
+    source: file://containers_unpause.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_stats_func
+    kind: function.lua
+    meta:
+      comment: Get container resource usage statistics
+    source: file://containers_stats.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_top_func
+    kind: function.lua
+    meta:
+      comment: List processes running inside a container
+    source: file://containers_top.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_rename_func
+    kind: function.lua
+    meta:
+      comment: Rename a container
+    source: file://containers_rename.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_prune_func
+    kind: function.lua
+    meta:
+      comment: Remove all stopped containers
+    source: file://containers_prune.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  # Network bindings
+  - name: networks_create_func
+    kind: function.lua
+    meta:
+      comment: Create a Docker network
+    source: file://networks_create.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: networks_list_func
+    kind: function.lua
+    meta:
+      comment: List Docker networks
+    source: file://networks_list.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: networks_remove_func
+    kind: function.lua
+    meta:
+      comment: Remove a Docker network
+    source: file://networks_remove.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: networks_inspect_func
+    kind: function.lua
+    meta:
+      comment: Inspect a Docker network
+    source: file://networks_inspect.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: networks_connect_func
+    kind: function.lua
+    meta:
+      comment: Connect a container to a network
+    source: file://networks_connect.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: networks_disconnect_func
+    kind: function.lua
+    meta:
+      comment: Disconnect a container from a network
+    source: file://networks_disconnect.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: networks_prune_func
+    kind: function.lua
+    meta:
+      comment: Remove all unused networks
+    source: file://networks_prune.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  # Volume bindings
+  - name: volumes_create_func
+    kind: function.lua
+    meta:
+      comment: Create a Docker volume
+    source: file://volumes_create.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: volumes_list_func
+    kind: function.lua
+    meta:
+      comment: List Docker volumes
+    source: file://volumes_list.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: volumes_remove_func
+    kind: function.lua
+    meta:
+      comment: Remove a Docker volume
+    source: file://volumes_remove.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: volumes_inspect_func
+    kind: function.lua
+    meta:
+      comment: Inspect a Docker volume
+    source: file://volumes_inspect.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: volumes_prune_func
+    kind: function.lua
+    meta:
+      comment: Remove all unused volumes
+    source: file://volumes_prune.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  # Image bindings
+  - name: images_list_func
+    kind: function.lua
+    meta:
+      comment: List images from Docker daemon and database
+    source: file://images_list.lua
+    imports:
+      images_repo: userspace.docker.persist:images
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: images_pull_func
+    kind: function.lua
+    meta:
+      comment: Pull an image from a registry
+    source: file://images_pull.lua
+    imports:
+      images_repo: userspace.docker.persist:images
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: images_build_func
+    kind: function.lua
+    meta:
+      comment: Build an image from a Dockerfile
+    source: file://images_build.lua
+    imports:
+      images_repo: userspace.docker.persist:images
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - json
+      - process
+      - env
+    method: handle
+
+  - name: images_build_status_func
+    kind: function.lua
+    meta:
+      comment: Get status of an image build
+    source: file://images_build_status.lua
+    imports:
+      images_repo: userspace.docker.persist:images
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: images_delete_func
+    kind: function.lua
+    meta:
+      comment: Delete an image
+    source: file://images_delete.lua
+    imports:
+      images_repo: userspace.docker.persist:images
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: images_inspect_func
+    kind: function.lua
+    meta:
+      comment: Inspect an image
+    source: file://images_inspect.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: images_prune_func
+    kind: function.lua
+    meta:
+      comment: Remove unused images
+    source: file://images_prune.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  # System bindings
+  - name: system_info_func
+    kind: function.lua
+    meta:
+      comment: Get Docker system information
+    source: file://system_info.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: system_version_func
+    kind: function.lua
+    meta:
+      comment: Get Docker version
+    source: file://system_version.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  - name: system_df_func
+    kind: function.lua
+    meta:
+      comment: Get Docker disk usage
+    source: file://system_df.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+    method: handle
+
+  # Sync binding
+  - name: sync_func
+    kind: function.lua
+    meta:
+      comment: Sync Docker daemon state into database
+    source: file://sync.lua
+    imports:
+      docker_client: userspace.docker:docker_client
+      containers_repo: userspace.docker.persist:containers
+      images_repo: userspace.docker.persist:images
+    modules:
+      - sql
+      - env
+    method: handle

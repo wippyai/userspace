@@ -43,6 +43,24 @@ entries:
       - entry: userspace.uploads.env:storage_s3
         path: .default
 
+  - name: router
+    kind: ns.requirement
+    meta:
+      description: HTTP router for uploads API endpoints
+    targets:
+      - entry: userspace.uploads.api:complete_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api:delete_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api:get_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api:list_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api:presigned_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api:upload_handler.endpoint
+        path: .meta.router
+
   # Dependencies
   - name: dependency.contract
     kind: ns.dependency
@@ -57,6 +75,14 @@ entries:
       description: Migration framework
     component: wippy/migration
     version: ">=0.3.0"
+
+  - name: dependency.test
+    kind: ns.dependency
+    meta:
+      description: Test framework
+      scope: dev
+    component: wippy/test
+    version: "*"
 
   # userspace.uploads:content_provider
   - name: content_provider
@@ -199,6 +225,33 @@ entries:
           - wippy.security:process
     process: pipeline
 
+  # userspace.uploads:upload_tokens
+  - name: upload_tokens
+    kind: library.lua
+    meta:
+      comment: Encrypted token packing for upload completion callbacks
+    source: file://upload_tokens.lua
+    modules:
+      - crypto
+      - base64
+      - json
+      - env
+
+  # userspace.uploads:upload_tokens_test
+  - name: upload_tokens_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: uploads
+      comment: Tests for upload completion token pack/unpack
+    source: file://upload_tokens_test.lua
+    modules:
+      - base64
+    imports:
+      upload_tokens: userspace.uploads:upload_tokens
+      test: wippy.test:test
+    method: run
+
   # userspace.uploads:pipeline_lib
   - name: pipeline_lib
     kind: library.lua
@@ -212,6 +265,7 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
       upload_type: userspace.uploads:upload_type
+      upload_tokens: userspace.uploads:upload_tokens
 
   # userspace.uploads:upload_lib
   - name: upload_lib

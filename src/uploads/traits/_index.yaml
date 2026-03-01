@@ -28,6 +28,7 @@ entries:
     kind: registry.entry
     meta:
       type: agent.trait
+      title: File Manager
       comment: Adds file listing and viewing capabilities for uploaded content with chunked reading
       tags:
         - uploads

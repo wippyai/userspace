@@ -1,0 +1,15 @@
+organization: userspace
+module: webscout
+description: Web research tools for AI agents - search, read pages, and extract links
+license: MPL-2.0
+repository: https://github.com/wippyai/userspace
+homepage: https://wippy.ai
+keywords:
+  - web
+  - search
+  - scraping
+  - research
+  - agent-tools
+exclude_meta:
+  type:
+    - test

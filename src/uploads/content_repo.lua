@@ -116,7 +116,7 @@ function content_repo.get(content_id)
 
     -- Parse metadata JSON if it exists
     if content.metadata and content.metadata ~= "" then
-        local decoded, err = json.decode(content.metadata)
+        local decoded, err = json.decode(tostring(content.metadata))
         if not err then
             content.metadata = decoded
         else
@@ -169,7 +169,7 @@ function content_repo.get_by_upload(upload_id)
 
     -- Parse metadata JSON if it exists
     if content.metadata and content.metadata ~= "" then
-        local decoded, err = json.decode(content.metadata)
+        local decoded, err = json.decode(tostring(content.metadata))
         if not err then
             content.metadata = decoded
         else

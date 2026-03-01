@@ -16,7 +16,7 @@ local function get_db()
     return db
 end
 
-local function hash_password(password)
+local function hash_password(password: string)
     local hashed, err = hash.sha512(password)
     if err then
         return nil, "Failed to hash password: " .. err
@@ -54,7 +54,7 @@ function user_repo.create(user_data)
         end
     end
 
-    local password_hash, err = hash_password(user_data.password)
+    local password_hash, err = hash_password(tostring(user_data.password))
     if err then
         return nil, err
     end
@@ -154,7 +154,7 @@ function user_repo.verify_password(identifier, password)
         return false, err
     end
 
-    local is_valid = crypto.constant_time_compare(user.password_hash, password_hash)
+    local is_valid = crypto.constant_time_compare(tostring(user.password_hash), password_hash)
     if not is_valid then
         return false, consts.ERROR.INVALID_PASSWORD
     end
@@ -231,7 +231,7 @@ function user_repo.update(user_id, update_data)
             return nil, pass_err
         end
 
-        local password_hash, err = hash_password(update_data.password)
+        local password_hash, err = hash_password(tostring(update_data.password))
         if err then
             db:release()
             return nil, err

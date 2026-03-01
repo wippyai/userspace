@@ -1,0 +1,3 @@
+organization: userspace
+module: uploads-test
+description: Test stub for uploads module

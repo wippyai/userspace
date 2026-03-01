@@ -69,7 +69,7 @@ local function calculate_claim_limit(state)
     if available_slots <= 0 then
         return 0 -- Don't claim anything if at capacity
     end
-    return math.min(state.batch_size, available_slots)
+    return math.min(state.batch_size, available_slots :: number)
 end
 
 ---Update concurrency tracking when tasks start
@@ -111,7 +111,7 @@ local function execute_task(task, deps)
         })
 
         -- Create actor from task data
-        local task_actor = security.new_actor(task.actor_id, task.actor_metadata or {})
+        local task_actor = security.new_actor(task.actor_id :: string, task.actor_metadata or {})
         if not task_actor then
             return {
                 task_id = task_id,
@@ -123,7 +123,7 @@ local function execute_task(task, deps)
         end
 
         -- Get the named scope
-        local task_scope, scope_err = security.named_scope(task.actor_scope)
+        local task_scope, scope_err = security.named_scope(task.actor_scope :: string)
         if scope_err then
             return {
                 task_id = task_id,
@@ -145,7 +145,7 @@ local function execute_task(task, deps)
     end
 
     -- Open the implementation with context (and security if provided)
-    local instance, err = contract_with_context:open(task.task_implementation_id, task.task_context)
+    local instance, err = (contract_with_context :: any):open(task.task_implementation_id :: string, task.task_context)
     if err then
         return {
             task_id = task_id,

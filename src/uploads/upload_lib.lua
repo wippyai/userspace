@@ -9,7 +9,7 @@ local resources = require("uploads_resources")
 local upload_lib = {}
 
 -- MIME type mapping table for common file extensions (todo: replace with proper module)
-local MIME_TYPES = {
+local MIME_TYPES: {[string]: string} = {
     -- Text formats
     ["txt"] = "text/plain",
     ["html"] = "text/html",
@@ -135,7 +135,7 @@ local function determine_upload_type(mime_type, filename)
 end
 
 -- Upload a file to the specified storage and create a record
-function upload_lib.upload_file(user_id, file_data, filename, size, mime_type, storage_id, metadata)
+function upload_lib.upload_file(user_id: string, file_data: string | stream.Stream, filename: string, size: number, mime_type: string?, storage_id: string?, metadata)
     -- Generate a unique upload ID
     local upload_uuid = generate_upload_id()
 
@@ -244,11 +244,11 @@ function upload_lib.delete_upload(uuid)
     end
 
     -- Delete the file from storage
-    local storage, err = resources.get_storage(upload.storage_id)
+    local storage, err = resources.get_storage(tostring(upload.storage_id))
     if err then
         print("Warning: Failed to get storage for cleanup: " .. err)
     else
-        pcall(function() storage:remove(upload.storage_path) end)
+        pcall(function() storage:remove(tostring(upload.storage_path)) end)
     end
 
     -- Delete the record

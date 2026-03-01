@@ -1,5 +1,5 @@
 organization: userspace
-module: user
+module: users
 description: User management and security tokens
 license: Apache-2.0
 repository: https://github.com/wippyai/userspace
@@ -12,3 +12,5 @@ keywords:
 exclude_meta:
   type:
     - test
+exclude:
+  - "app:**"

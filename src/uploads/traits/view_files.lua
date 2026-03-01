@@ -19,7 +19,7 @@ local function escape_xml(text)
         :gsub("'", "&#39;")
 end
 
-local function read_raw_file(storage_id, storage_path)
+local function read_raw_file(storage_id: string, storage_path: string)
     local storage = fs.get(storage_id)
     if not storage then
         return nil, "Failed to access storage system: " .. storage_id
@@ -170,7 +170,7 @@ local function handle(args)
                 error = "Failed to access file: " .. err
             })
         else
-            local info, err = instance:get_info()
+            local info: any, err = instance:get_info()
             if err then
                 table.insert(results, {
                     upload_id = upload_id,
@@ -186,7 +186,7 @@ local function handle(args)
                 end
 
                 if is_image then
-                    local raw_content, raw_err = read_raw_file(info.storage_id, info.storage_path)
+                    local raw_content, raw_err = read_raw_file(tostring(info.storage_id), tostring(info.storage_path))
                     if raw_err then
                         table.insert(results, {
                             upload_id = upload_id,
@@ -210,7 +210,7 @@ local function handle(args)
                 else
                     local content_result, content_err = instance:get_content()
                     if content_err or not content_result or not content_result.content then
-                        local raw_content, raw_err = read_raw_file(info.storage_id, info.storage_path)
+                        local raw_content, raw_err = read_raw_file(tostring(info.storage_id), tostring(info.storage_path))
                         if raw_err then
                             table.insert(results, {
                                 upload_id = upload_id,

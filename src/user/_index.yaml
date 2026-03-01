@@ -9,6 +9,43 @@ entries:
       title: Userspace User
       description: User management and security tokens
 
+  - name: env_storage
+    kind: ns.requirement
+    meta:
+      description: Environment variable storage location
+    targets:
+      - entry: userspace.user.env:admin_group_id
+        path: ".storage"
+      - entry: userspace.user.env:admin_init_enabled
+        path: ".storage"
+      - entry: userspace.user.env:database_resource
+        path: ".storage"
+      - entry: userspace.user.env:default_admin_email
+        path: ".storage"
+      - entry: userspace.user.env:default_admin_password
+        path: ".storage"
+      - entry: userspace.user.env:default_group_id
+        path: ".storage"
+      - entry: userspace.user.env:token_expiration
+        path: ".storage"
+    default: "userspace.user.env:envs"
+
+  - name: public_router
+    kind: ns.requirement
+    meta:
+      description: Public API router for unauthenticated endpoints
+    targets:
+      - entry: userspace.user.api:login.endpoint
+        path: .meta.router
+
+  - name: router
+    kind: ns.requirement
+    meta:
+      description: Authenticated API router for user endpoints
+    targets:
+      - entry: userspace.user.api:me.endpoint
+        path: .meta.router
+
   # userspace.user:__dependency.wippy.migration
   - version: '>=v0.0.1'
     name: __dependency.wippy.migration

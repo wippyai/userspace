@@ -315,7 +315,7 @@ local function run(args)
     -- Open OAuth instance
     local oauth_instance, err = oauth_contract
         :with_context(connector_info.context_values)
-        :open(connector_info.implementation_id)
+        :open(connector_info.implementation_id :: string)
     if err then
         send_response({
             success = false,
@@ -350,7 +350,7 @@ local function run(args)
 
     -- Register component
     local component_id, register_err = register_component(
-        connection_data.component_id,
+        connection_data.component_id :: string,
         callback_result.oauth_connection,
         callback_result.user_context,
         provider_name,

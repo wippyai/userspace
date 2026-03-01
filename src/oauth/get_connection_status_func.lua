@@ -14,7 +14,7 @@ local function handle(request_dto)
     end
 
     -- Validate access to component
-    local access_level, access_err = component.validate_access(component_id, component.ACCESS.READ)
+    local access_level, access_err = component.validate_access(component_id :: string, component.ACCESS.READ)
     if not access_level then
         return {
             description = "Error: Access denied",
@@ -41,19 +41,20 @@ local function handle(request_dto)
     -- Token expiration status
     if metadata.expires_at then
         local current_time = time.now():unix()
-        local is_expired = current_time >= metadata.expires_at
+        local expires_at = tonumber(metadata.expires_at) or 0
+        local is_expired = current_time >= expires_at
 
         if is_expired then
             table.insert(status_parts, "Token: EXPIRED")
         else
-            local expires_in_hours = math.floor((metadata.expires_at - current_time) / 3600)
+            local expires_in_hours = math.floor((expires_at - current_time) / 3600)
             if expires_in_hours > 24 then
                 local expires_in_days = math.floor(expires_in_hours / 24)
                 table.insert(status_parts, "Token: Valid for " .. expires_in_days .. " days")
             elseif expires_in_hours > 0 then
                 table.insert(status_parts, "Token: Valid for " .. expires_in_hours .. " hours")
             else
-                local expires_in_minutes = math.floor((metadata.expires_at - current_time) / 60)
+                local expires_in_minutes = math.floor((expires_at - current_time) / 60)
                 table.insert(status_parts, "Token: Valid for " .. expires_in_minutes .. " minutes")
             end
         end

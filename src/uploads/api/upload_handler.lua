@@ -88,32 +88,9 @@ local function handler()
     -- Get the file from the parsed form
     local file_part = form.files.file[1]
 
-    -- Get file details
-    local filename
-    if type(file_part.name) == "function" then
-        filename = file_part:name()
-    elseif type(file_part.filename) == "function" then
-        filename = file_part:filename()
-    else
-        -- Fallback to a property if it exists
-        filename = file_part.filename or file_part.name or "unknown"
-    end
-
-    -- Get content type
-    local mime_type
-    if type(file_part.content_type) == "function" then
-        mime_type = file_part:content_type() or "application/octet-stream"
-    else
-        mime_type = file_part.content_type or "application/octet-stream"
-    end
-
-    -- Get file size
-    local file_size
-    if type(file_part.size) == "function" then
-        file_size = file_part:size()
-    else
-        file_size = file_part.size or 0
-    end
+    local filename = file_part:name() or "unknown"
+    local mime_type = file_part:header("Content-Type") or "application/octet-stream"
+    local file_size = file_part:size() or 0
 
     -- Validate file
     if file_size <= 0 then
@@ -126,15 +103,7 @@ local function handler()
     end
 
     -- Get file stream
-    local stream, err
-    if type(file_part.stream) == "function" then
-        stream, err = file_part:stream()
-    elseif type(file_part.reader) == "function" then
-        stream, err = file_part:reader()
-    else
-        err = "No stream or reader method available on file object"
-    end
-
+    local stream, err = file_part:stream()
     if err then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:write_json({
@@ -147,18 +116,25 @@ local function handler()
 
     -- Parse metadata if provided
     local metadata = {}
-    if form.fields and form.fields.metadata and #form.fields.metadata > 0 then
-        local metadata_str = form.fields.metadata[1]
-        local success, decoded = pcall(json.decode, metadata_str)
-        if success then
-            metadata = decoded
+    if form.values and form.values.metadata then
+        local metadata_str = form.values.metadata[1]
+        if metadata_str then
+            local decoded, decode_err = json.decode(metadata_str)
+            if not decode_err then
+                metadata = decoded
+            end
         end
     end
 
+    -- Extract upload token if provided
+    if form.values and form.values.upload_token then
+        metadata.__upload_token = form.values.upload_token[1]
+    end
+
     -- Determine storage type if specified
-    local storage_type = nil
-    if form.fields and form.fields.storage_type and #form.fields.storage_type > 0 then
-        storage_type = form.fields.storage_type[1]
+    local storage_type: string? = nil
+    if form.values and form.values.storage_type then
+        storage_type = form.values.storage_type[1]
     end
 
     -- Upload the file

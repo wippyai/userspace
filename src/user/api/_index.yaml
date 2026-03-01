@@ -8,7 +8,6 @@ entries:
     meta:
       comment: Userspace User Login API
       description: Authentication endpoint with security groups support
-      router: app:api.public
     source: file://login.lua
     modules:
       - http
@@ -27,7 +26,7 @@ entries:
     meta:
       comment: Userspace User Login Endpoint
       description: POST /userspace/user/login - Authenticate user and return token with security groups
-      router: app:api.public
+      router: public_router
     method: POST
     func: login
     path: /user/token
@@ -38,7 +37,6 @@ entries:
     meta:
       comment: Userspace User Profile API
       description: Current user profile with security groups
-      router: app:api
     source: file://me.lua
     modules:
       - http
@@ -56,7 +54,7 @@ entries:
     meta:
       comment: Userspace User Profile Endpoint
       description: GET /userspace/user/me - Get current user profile with security groups
-      router: app:api
+      router: router
     method: GET
     func: me
     path: /user/me

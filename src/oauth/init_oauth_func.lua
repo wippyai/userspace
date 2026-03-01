@@ -85,7 +85,7 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.MISSING_CLIENT_ID }
     end
 
-    local client_id, err = env.get(client_id_env)
+    local client_id, err = env.get(client_id_env :: string)
     if err then
         return {
             success = false,

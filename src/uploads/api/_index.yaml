@@ -23,7 +23,7 @@ entries:
     kind: http.endpoint
     meta:
       comment: File upload endpoint
-      router: app:api
+      router: router
     method: POST
     func: complete_handler
     path: /uploads/complete
@@ -49,7 +49,7 @@ entries:
     kind: http.endpoint
     meta:
       comment: Delete upload endpoint
-      router: app:api
+      router: router
     method: DELETE
     func: delete_handler
     path: /uploads/{uuid}
@@ -76,7 +76,7 @@ entries:
     kind: http.endpoint
     meta:
       comment: Get file upload endpoint
-      router: app:api
+      router: router
     method: GET
     func: get_handler
     path: /uploads/{uuid}
@@ -103,7 +103,7 @@ entries:
     kind: http.endpoint
     meta:
       comment: List uploads endpoint
-      router: app:api
+      router: router
     method: GET
     func: list_handler
     path: /uploads/list
@@ -129,7 +129,7 @@ entries:
     kind: http.endpoint
     meta:
       comment: File upload endpoint
-      router: app:api
+      router: router
     method: POST
     func: presigned_handler
     path: /uploads/presigned
@@ -155,7 +155,7 @@ entries:
     kind: http.endpoint
     meta:
       comment: File upload endpoint
-      router: app:api
+      router: router
     method: POST
     func: upload_handler
     path: /uploads

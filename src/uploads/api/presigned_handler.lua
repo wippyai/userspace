@@ -101,8 +101,13 @@ local function handler()
     -- Get optional metadata
     local metadata = body.metadata or {}
 
+    -- Pass through upload token into metadata
+    if body.upload_token then
+        metadata.__upload_token = body.upload_token
+    end
+
     -- Generate presigned URL
-    local presigned_data, err = upload_lib.generate_presigned_url(
+    local presigned_data: any, err = upload_lib.generate_presigned_url(
         user_id,
         body.filename,
         body.size,

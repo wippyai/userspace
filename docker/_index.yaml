@@ -1,0 +1,328 @@
+version: "1.0"
+namespace: userspace.docker
+
+entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace Docker
+      description: Docker container and image management via contracts and process messaging
+
+  # Requirements
+  - name: database
+    kind: ns.requirement
+    meta:
+      description: Database resource for docker storage
+    default: app:db
+    targets:
+      - entry: userspace.docker.env:database_resource
+        path: .default
+      - entry: userspace.docker.migrations:01_create_containers
+        path: .meta.target_db
+      - entry: userspace.docker.migrations:02_create_images
+        path: .meta.target_db
+
+  - name: process_host
+    kind: ns.requirement
+    meta:
+      description: Process host for docker services
+    default: app:processes
+    targets:
+      - entry: userspace.docker.service:root.service
+        path: .host
+      - entry: userspace.docker.service:root.service
+        path: .lifecycle.depends_on[1]
+
+  # Dependencies
+  - name: dependency.test
+    kind: ns.dependency
+    component: wippy/test
+    version: ">=0.4.0"
+
+  - name: dependency.migration
+    kind: ns.dependency
+    meta:
+      description: Migration framework
+    component: wippy/migration
+    version: ">=0.3.0"
+
+  # Contracts
+  - name: containers
+    kind: contract.definition
+    meta:
+      description: Docker container management contract
+    methods:
+      - name: create
+        description: Create a new container
+      - name: get
+        description: Get container by ID
+      - name: list
+        description: List containers
+      - name: delete
+        description: Delete a container
+      - name: logs
+        description: Get container logs
+      - name: stdin
+        description: Send stdin data to a running container
+      - name: compose
+        description: Create multiple containers as a group
+      - name: restart
+        description: Restart a container
+      - name: pause
+        description: Pause a running container
+      - name: unpause
+        description: Unpause a paused container
+      - name: stats
+        description: Get container resource usage statistics
+      - name: top
+        description: List processes running inside a container
+      - name: rename
+        description: Rename a container
+      - name: prune
+        description: Remove all stopped containers
+
+  - name: networks
+    kind: contract.definition
+    meta:
+      description: Docker network management contract
+    methods:
+      - name: create
+        description: Create a Docker network
+      - name: list
+        description: List Docker networks
+      - name: remove
+        description: Remove a Docker network
+      - name: inspect
+        description: Inspect a Docker network
+      - name: connect
+        description: Connect a container to a network
+      - name: disconnect
+        description: Disconnect a container from a network
+      - name: prune
+        description: Remove all unused networks
+
+  - name: volumes
+    kind: contract.definition
+    meta:
+      description: Docker volume management contract
+    methods:
+      - name: create
+        description: Create a Docker volume
+      - name: list
+        description: List Docker volumes
+      - name: remove
+        description: Remove a Docker volume
+      - name: inspect
+        description: Inspect a Docker volume
+      - name: prune
+        description: Remove all unused volumes
+
+  - name: images
+    kind: contract.definition
+    meta:
+      description: Docker image management contract
+    methods:
+      - name: list
+        description: List images from Docker daemon and database
+      - name: pull
+        description: Pull an image from a registry
+      - name: build
+        description: Build an image from a Dockerfile
+      - name: build_status
+        description: Get status of an image build
+      - name: delete
+        description: Delete an image
+      - name: inspect
+        description: Inspect an image
+      - name: prune
+        description: Remove unused images
+
+  - name: system
+    kind: contract.definition
+    meta:
+      description: Docker system information contract
+    methods:
+      - name: info
+        description: Get Docker system information
+      - name: version
+        description: Get Docker version
+      - name: df
+        description: Get Docker disk usage
+
+  - name: sync
+    kind: contract.definition
+    meta:
+      description: Sync Docker daemon state into database
+    methods:
+      - name: run
+        description: Sync containers, images, networks, and volumes from Docker
+
+  # Contract bindings
+  - name: containers_binding
+    kind: contract.binding
+    meta:
+      comment: Container management contract implementation
+    contracts:
+      - contract: userspace.docker:containers
+        default: true
+        methods:
+          create: userspace.docker.binding:containers_create_func
+          get: userspace.docker.binding:containers_get_func
+          list: userspace.docker.binding:containers_list_func
+          delete: userspace.docker.binding:containers_delete_func
+          logs: userspace.docker.binding:containers_logs_func
+          stdin: userspace.docker.binding:containers_stdin_func
+          compose: userspace.docker.binding:containers_compose_func
+          restart: userspace.docker.binding:containers_restart_func
+          pause: userspace.docker.binding:containers_pause_func
+          unpause: userspace.docker.binding:containers_unpause_func
+          stats: userspace.docker.binding:containers_stats_func
+          top: userspace.docker.binding:containers_top_func
+          rename: userspace.docker.binding:containers_rename_func
+          prune: userspace.docker.binding:containers_prune_func
+
+  - name: networks_binding
+    kind: contract.binding
+    meta:
+      comment: Network management contract implementation
+    contracts:
+      - contract: userspace.docker:networks
+        default: true
+        methods:
+          create: userspace.docker.binding:networks_create_func
+          list: userspace.docker.binding:networks_list_func
+          remove: userspace.docker.binding:networks_remove_func
+          inspect: userspace.docker.binding:networks_inspect_func
+          connect: userspace.docker.binding:networks_connect_func
+          disconnect: userspace.docker.binding:networks_disconnect_func
+          prune: userspace.docker.binding:networks_prune_func
+
+  - name: volumes_binding
+    kind: contract.binding
+    meta:
+      comment: Volume management contract implementation
+    contracts:
+      - contract: userspace.docker:volumes
+        default: true
+        methods:
+          create: userspace.docker.binding:volumes_create_func
+          list: userspace.docker.binding:volumes_list_func
+          remove: userspace.docker.binding:volumes_remove_func
+          inspect: userspace.docker.binding:volumes_inspect_func
+          prune: userspace.docker.binding:volumes_prune_func
+
+  - name: images_binding
+    kind: contract.binding
+    meta:
+      comment: Image management contract implementation
+    contracts:
+      - contract: userspace.docker:images
+        default: true
+        methods:
+          list: userspace.docker.binding:images_list_func
+          pull: userspace.docker.binding:images_pull_func
+          build: userspace.docker.binding:images_build_func
+          build_status: userspace.docker.binding:images_build_status_func
+          delete: userspace.docker.binding:images_delete_func
+          inspect: userspace.docker.binding:images_inspect_func
+          prune: userspace.docker.binding:images_prune_func
+
+  - name: system_binding
+    kind: contract.binding
+    meta:
+      comment: System information contract implementation
+    contracts:
+      - contract: userspace.docker:system
+        default: true
+        methods:
+          info: userspace.docker.binding:system_info_func
+          version: userspace.docker.binding:system_version_func
+          df: userspace.docker.binding:system_df_func
+
+  - name: sync_binding
+    kind: contract.binding
+    meta:
+      comment: Docker sync contract implementation
+    contracts:
+      - contract: userspace.docker:sync
+        default: true
+        methods:
+          run: userspace.docker.binding:sync_func
+
+  # Docker client library
+  - name: docker_client
+    kind: library.lua
+    source: file://client.lua
+    modules:
+      - http_client
+      - json
+
+  # Tests
+  - name: client_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Docker client parse_logs and protocol tests
+    source: file://client_test.lua
+    method: run_tests
+    imports:
+      docker_client: userspace.docker:docker_client
+      test: wippy.test:test
+
+  - name: registry_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Registry event subscription tests for dynamic container pickup
+    source: file://registry_test.lua
+    method: run_tests
+    imports:
+      test: wippy.test:test
+    modules:
+      - events
+      - channel
+      - time
+
+  - name: e2e_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker-e2e
+      description: Docker client end-to-end tests (requires WIPPY_E2E=1 and Docker)
+    source: file://e2e_test.lua
+    method: run_tests
+    imports:
+      docker_client: userspace.docker:docker_client
+      spec: userspace.docker.lib:spec
+      test: wippy.test:test
+    modules:
+      - env
+      - time
+
+  # Environment
+  - name: os_env
+    kind: env.storage.os
+
+  - name: WIPPY_E2E
+    kind: env.variable
+    variable: WIPPY_E2E
+    storage: userspace.docker:os_env
+
+  # Test infrastructure
+  - name: test_runner
+    kind: process.lua
+    meta:
+      type: test-infra
+      command:
+        name: test
+        short: Run tests
+    source: file://runner.lua
+    method: main
+    modules:
+      - io
+      - registry
+      - funcs
+      - time
