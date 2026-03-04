@@ -1,0 +1,12 @@
+version: "1.0"
+namespace: userspace.docker.env
+
+entries:
+  - name: database_resource
+    kind: env.variable
+    meta:
+      comment: Database resource for docker storage
+      private: true
+    default: app:db
+    storage: userspace.docker:os_env
+    variable: DOCKER_DB_RESOURCE

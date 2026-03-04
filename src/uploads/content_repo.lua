@@ -1,21 +1,10 @@
-local sql = require("sql")
 local json = require("json")
 local time = require("time")
 local uuid = require("uuid")
 
--- Hardcoded database resource name
-local DB_RESOURCE = "app:db"
+local resources = require("uploads_resources")
 
 local content_repo = {}
-
--- Get a database connection
-local function get_db()
-    local db, err = sql.get(DB_RESOURCE)
-    if err then
-        return nil, "Failed to connect to database: " .. err
-    end
-    return db
-end
 
 -- Get current Unix timestamp (seconds since epoch)
 local function current_timestamp()
@@ -50,7 +39,7 @@ function content_repo.create(upload_id, mime_type, content, metadata)
         metadata_json = metadata
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -95,7 +84,7 @@ function content_repo.get(content_id)
         return nil, "Content ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -127,7 +116,7 @@ function content_repo.get(content_id)
 
     -- Parse metadata JSON if it exists
     if content.metadata and content.metadata ~= "" then
-        local decoded, err = json.decode(content.metadata)
+        local decoded, err = json.decode(tostring(content.metadata))
         if not err then
             content.metadata = decoded
         else
@@ -147,7 +136,7 @@ function content_repo.get_by_upload(upload_id)
         return nil, "Upload ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -180,7 +169,7 @@ function content_repo.get_by_upload(upload_id)
 
     -- Parse metadata JSON if it exists
     if content.metadata and content.metadata ~= "" then
-        local decoded, err = json.decode(content.metadata)
+        local decoded, err = json.decode(tostring(content.metadata))
         if not err then
             content.metadata = decoded
         else
@@ -200,7 +189,7 @@ function content_repo.update_content(content_id, new_content, mime_type)
         return nil, "Content ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -255,7 +244,7 @@ function content_repo.update_metadata(content_id, metadata)
         return nil, "Metadata must be a table"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -317,7 +306,7 @@ function content_repo.delete(content_id)
         return nil, "Content ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -349,7 +338,7 @@ function content_repo.delete_by_upload(upload_id)
         return nil, "Upload ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end

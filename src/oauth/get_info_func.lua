@@ -12,7 +12,7 @@ local function handle(request_dto)
     end
 
     -- Validate access to component
-    local access_level, access_err = component.validate_access(component_id, component.ACCESS.READ)
+    local access_level, access_err = component.validate_access(component_id :: string, component.ACCESS.READ)
     if not access_level then
         return {
             error = "Access denied: " .. (access_err or "insufficient permissions")

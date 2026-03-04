@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.component
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace Component
+      description: Component service and registry for user-owned resources
+
   # userspace.component:component
   - name: component
     kind: library.lua
@@ -16,6 +23,9 @@ entries:
     modules:
       - contract
       - json
+      - sql
+    imports:
+      component_reader: userspace.component.persist:component_reader
     
   # userspace.component:component_service
   - name: component_service

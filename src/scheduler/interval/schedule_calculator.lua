@@ -60,15 +60,15 @@ local function parse_cron_field(field_value, min_val, max_val)
         part = part:match("^%s*(.-)%s*$") -- trim whitespace
 
         -- Check for step values (e.g., */5, 1-10/2) using pre-compiled regex
-        local step_match = STEP_REGEX:find_string_submatch(part)
+        local step_match = STEP_REGEX:find_string_submatch(part :: string)
         local step = 1
         if step_match then
-            part = step_match[2]           -- base part
-            step = tonumber(step_match[3]) -- step value
+            part = step_match[2]                    -- base part
+            step = tonumber(step_match[3]) or 1     -- step value
         end
 
         -- Check for ranges (e.g., 1-5) using pre-compiled regex
-        local range_match = RANGE_REGEX:find_string_submatch(part)
+        local range_match = RANGE_REGEX:find_string_submatch(part :: string)
         if range_match then
             local range_start = tonumber(range_match[2])
             local range_end = tonumber(range_match[3])
@@ -131,31 +131,31 @@ local function parse_cron_expression(cron_expr)
     local parsed = {}
 
     -- Parse each field with appropriate ranges
-    local minutes, min_err = parse_cron_field(fields[1], 0, 59)
+    local minutes, min_err = parse_cron_field(fields[1] :: string, 0, 59)
     if min_err then
         return nil, "Invalid minute field: " .. min_err
     end
     parsed.minutes = minutes
 
-    local hours, hour_err = parse_cron_field(fields[2], 0, 23)
+    local hours, hour_err = parse_cron_field(fields[2] :: string, 0, 23)
     if hour_err then
         return nil, "Invalid hour field: " .. hour_err
     end
     parsed.hours = hours
 
-    local days, day_err = parse_cron_field(fields[3], 1, 31)
+    local days, day_err = parse_cron_field(fields[3] :: string, 1, 31)
     if day_err then
         return nil, "Invalid day field: " .. day_err
     end
     parsed.days = days
 
-    local months, month_err = parse_cron_field(fields[4], 1, 12)
+    local months, month_err = parse_cron_field(fields[4] :: string, 1, 12)
     if month_err then
         return nil, "Invalid month field: " .. month_err
     end
     parsed.months = months
 
-    local weekdays, weekday_err = parse_cron_field(fields[5], 0, 7)
+    local weekdays, weekday_err = parse_cron_field(fields[5] :: string, 0, 7)
     if weekday_err then
         return nil, "Invalid weekday field: " .. weekday_err
     end

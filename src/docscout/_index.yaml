@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.docscout
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace Docscout
+      description: Document analysis and field extraction
+
   # userspace.docscout:analyzer
   - name: analyzer
     kind: function.lua

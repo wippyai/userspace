@@ -1,20 +1,9 @@
-local sql = require("sql")
 local json = require("json")
 local time = require("time")
 
--- Hardcoded database resource name
-local DB_RESOURCE = "app:db"
+local resources = require("uploads_resources")
 
 local upload_repo = {}
-
--- Get a database connection
-local function get_db()
-    local db, err = sql.get(DB_RESOURCE)
-    if err then
-        return nil, "Failed to connect to database: " .. err
-    end
-    return db
-end
 
 -- Get current Unix timestamp (seconds since epoch)
 local function current_timestamp()
@@ -68,7 +57,7 @@ function upload_repo.create(uuid, user_id, size, mime_type, storage_id, storage_
         metadata_json = metadata
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -123,7 +112,7 @@ function upload_repo.get(uuid)
         return nil, "Upload ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -156,7 +145,7 @@ function upload_repo.get(uuid)
 
     -- Parse metadata JSON if it exists
     if upload.metadata and upload.metadata ~= "" then
-        local decoded, err = json.decode(upload.metadata)
+        local decoded, err = json.decode(tostring(upload.metadata))
         if not err then
             upload.metadata = decoded
         else
@@ -180,7 +169,7 @@ function upload_repo.update_status(uuid, status, error_details)
         return nil, "Status is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -236,7 +225,7 @@ function upload_repo.update_storage(uuid, storage_id, storage_path)
         return nil, "Storage Path is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -302,7 +291,7 @@ function upload_repo.update_metadata(uuid, metadata)
         metadata_json = metadata
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -347,7 +336,7 @@ function upload_repo.update_type_id(uuid, type_id)
         return nil, "Type ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -388,7 +377,7 @@ function upload_repo.list_by_user(user_id, limit, offset)
         return nil, "User ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -421,7 +410,7 @@ function upload_repo.list_by_user(user_id, limit, offset)
     -- Parse metadata JSON for each upload
     for i, upload in ipairs(uploads) do
         if upload.metadata and upload.metadata ~= "" then
-            local decoded, err = json.decode(upload.metadata)
+            local decoded, err = json.decode(tostring(upload.metadata))
             if not err then
                 upload.metadata = decoded
             else
@@ -442,7 +431,7 @@ function upload_repo.list_by_status(status, limit, offset)
         return nil, "Status is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -475,7 +464,7 @@ function upload_repo.list_by_status(status, limit, offset)
     -- Parse metadata JSON for each upload
     for i, upload in ipairs(uploads) do
         if upload.metadata and upload.metadata ~= "" then
-            local decoded, err = json.decode(upload.metadata)
+            local decoded, err = json.decode(tostring(upload.metadata))
             if not err then
                 upload.metadata = decoded
             else
@@ -496,7 +485,7 @@ function upload_repo.list_by_type(type_id, limit, offset)
         return nil, "Type ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -529,7 +518,7 @@ function upload_repo.list_by_type(type_id, limit, offset)
     -- Parse metadata JSON for each upload
     for i, upload in ipairs(uploads) do
         if upload.metadata and upload.metadata ~= "" then
-            local decoded, err = json.decode(upload.metadata)
+            local decoded, err = json.decode(tostring(upload.metadata))
             if not err then
                 upload.metadata = decoded
             else
@@ -550,7 +539,7 @@ function upload_repo.delete(uuid)
         return nil, "Upload ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -582,7 +571,7 @@ function upload_repo.count_by_user(user_id)
         return nil, "User ID is required"
     end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -613,7 +602,7 @@ function upload_repo.get_pending_uploads(limit, offset)
     if not limit then limit = 20 end
     if not offset then offset = 0 end
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -646,7 +635,7 @@ function upload_repo.get_pending_uploads(limit, offset)
     -- Process metadata like in the original code
     for i, upload in ipairs(uploads) do
         if upload.metadata and upload.metadata ~= "" then
-            local decoded, err = json.decode(upload.metadata)
+            local decoded, err = json.decode(tostring(upload.metadata))
             if not err then
                 upload.metadata = decoded
             else
@@ -718,7 +707,7 @@ end
 function upload_repo.list_with_filters(options)
     options = options or {}
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -741,8 +730,8 @@ function upload_repo.list_with_filters(options)
     if options.filters and options.filters.content_types and #options.filters.content_types > 0 then
         local content_conditions = {}
         for _, content_type in ipairs(options.filters.content_types) do
-            if string.find(content_type, "*") then
-                local pattern = string.gsub(content_type, "%*", "%%")
+            if string.find(tostring(content_type), "*") then
+                local pattern = string.gsub(tostring(content_type), "%*", "%%")
                 query = query:where("mime_type LIKE ?", pattern)
             else
                 table.insert(content_conditions, sql.builder.eq({ mime_type = content_type }))
@@ -793,7 +782,7 @@ function upload_repo.list_with_filters(options)
 
     for i, upload in ipairs(uploads) do
         if upload.metadata and upload.metadata ~= "" then
-            local decoded, parse_err = json.decode(upload.metadata)
+            local decoded, parse_err = json.decode(tostring(upload.metadata))
             if not parse_err then
                 upload.metadata = decoded
             else
@@ -810,7 +799,7 @@ end
 function upload_repo.count_with_filters(options)
     options = options or {}
 
-    local db, err = get_db()
+    local db, err = resources.get_db()
     if err then
         return nil, err
     end
@@ -825,8 +814,8 @@ function upload_repo.count_with_filters(options)
     if options.filters and options.filters.content_types and #options.filters.content_types > 0 then
         local content_conditions = {}
         for _, content_type in ipairs(options.filters.content_types) do
-            if string.find(content_type, "*") then
-                local pattern = string.gsub(content_type, "%*", "%%")
+            if string.find(tostring(content_type), "*") then
+                local pattern = string.gsub(tostring(content_type), "%*", "%%")
                 query = query:where("mime_type LIKE ?", pattern)
             else
                 table.insert(content_conditions, sql.builder.eq({ mime_type = content_type }))

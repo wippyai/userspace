@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.knowledge
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace Knowledge
+      description: Knowledge system interface contracts
+
   # userspace.knowledge:embeddable
   - name: embeddable
     kind: contract.definition

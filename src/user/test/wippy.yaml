@@ -1,0 +1,3 @@
+organization: userspace
+module: users-test
+description: Test stub for users module

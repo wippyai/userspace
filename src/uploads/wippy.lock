@@ -1,0 +1,22 @@
+directories:
+    modules: .wippy
+    src: .
+modules:
+    - name: userspace/contract
+      version: 0.4.1
+      hash: c154e2cc11ca94ddd368307aced96cfbbd411a58e74e46339d50b4a9befc1d65
+    - name: userspace/uploads
+      version: 0.4.8
+      hash: c1d6a296f9f124b1ccafb015669a1b456a754e94272ac22e8b3f617fa7a5abe0
+    - name: wippy/bootloader
+      version: 0.3.12
+      hash: 2b6d8eba7b46ef900024d3a7dbf06bd560fad645b8b2ac6296e2a8bad42f60b9
+    - name: wippy/migration
+      version: 0.3.15
+      hash: b675a9dd0bf83a48ecb696cc27ec7a9173e54c3431da89121d865751e26330d0
+    - name: wippy/terminal
+      version: 0.4.2
+      hash: 34b99aac2eba9c5016fd02c783117fb2b0381ce14696c7b199265458b99a3271
+    - name: wippy/test
+      version: 0.4.12
+      hash: 23ccac1d11dbaf13d05ec0400e19189b435b892a4a18e95e69f49a22f1ceb99b

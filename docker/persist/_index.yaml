@@ -1,0 +1,47 @@
+version: "1.0"
+namespace: userspace.docker.persist
+
+entries:
+  - name: containers
+    kind: library.lua
+    source: file://containers.lua
+    modules:
+      - json
+      - uuid
+
+  - name: images
+    kind: library.lua
+    source: file://images.lua
+    modules:
+      - json
+      - uuid
+
+  - name: images_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Images persistence layer tests
+    source: file://images_test.lua
+    method: run_tests
+    imports:
+      images_repo: userspace.docker.persist:images
+      test: wippy.test:test
+    modules:
+      - sql
+      - env
+
+  - name: containers_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Container persistence layer tests
+    source: file://containers_test.lua
+    method: run_tests
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      test: wippy.test:test
+    modules:
+      - sql
+      - env

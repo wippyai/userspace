@@ -1,0 +1,14 @@
+organization: userspace
+module: scheduler
+description: Task scheduling service with interval and cron support
+license: Apache-2.0
+repository: https://github.com/wippyai/userspace
+homepage: https://wippy.ai
+keywords:
+  - scheduler
+  - tasks
+  - cron
+  - interval
+exclude_meta:
+  type:
+    - test

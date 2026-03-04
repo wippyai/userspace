@@ -1,0 +1,4 @@
+version: "1.0"
+
+override:
+  "wippy.bootloader:env_storage:default": "userspace.docker:os_env"

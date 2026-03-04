@@ -65,7 +65,15 @@ local function handle(request_dto)
         -- Try to get deletable contract
         local deletable_contract, contract_err = contract.get(DELETABLE_CONTRACT)
         if deletable_contract then
-            local instance, open_err = deletable_contract:open(component.impl_id, component.private_context)
+            local ctx = {}
+            if type(component.private_context) == "table" then
+                for k, v in pairs(component.private_context) do
+                    ctx[k] = v
+                end
+            end
+            ctx.component_id = request_dto.component_id
+
+            local instance, open_err = deletable_contract:open(component.impl_id :: string, ctx)
             if instance then
                 -- Component is deletable - delegate cleanup to component
                 -- Component is deletable - delegate cleanup to component

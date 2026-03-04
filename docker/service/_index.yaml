@@ -1,0 +1,115 @@
+version: "1.0"
+namespace: userspace.docker.service
+
+entries:
+  - name: root
+    kind: process.lua
+    source: file://root.lua
+    method: run
+    imports:
+      consts: userspace.docker.lib:consts
+      helpers: userspace.docker.lib:helpers
+      containers_repo: userspace.docker.persist:containers
+    modules:
+      - sql
+      - registry
+      - process
+      - channel
+      - time
+      - json
+      - logger
+      - env
+      - events
+
+  - name: root.service
+    kind: process.service
+    process: root
+    host: app:processes
+    lifecycle:
+      auto_start: true
+      depends_on:
+        - app:processes
+      restart:
+        max_attempts: 3
+
+  - name: worker
+    kind: process.lua
+    source: file://worker.lua
+    method: run
+    imports:
+      consts: userspace.docker.lib:consts
+      helpers: userspace.docker.lib:helpers
+      spec: userspace.docker.lib:spec
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - exec
+      - process
+      - channel
+      - time
+      - json
+      - logger
+
+  - name: monitor
+    kind: process.lua
+    source: file://monitor.lua
+    method: run
+    imports:
+      consts: userspace.docker.lib:consts
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - process
+      - channel
+      - time
+      - logger
+
+  - name: image_builder
+    kind: process.lua
+    source: file://image_builder.lua
+    method: run
+    imports:
+      consts: userspace.docker.lib:consts
+      helpers: userspace.docker.lib:helpers
+      images_repo: userspace.docker.persist:images
+      tar: userspace.docker.lib:tar
+      docker_client: userspace.docker:docker_client
+    modules:
+      - sql
+      - process
+      - channel
+      - time
+      - json
+      - logger
+
+  - name: log_streamer
+    kind: process.lua
+    source: file://log_streamer.lua
+    method: run
+    imports:
+      consts: userspace.docker.lib:consts
+      helpers: userspace.docker.lib:helpers
+      containers_repo: userspace.docker.persist:containers
+    modules:
+      - sql
+      - process
+      - channel
+      - time
+      - json
+
+  - name: build_log_streamer
+    kind: process.lua
+    source: file://build_log_streamer.lua
+    method: run
+    imports:
+      consts: userspace.docker.lib:consts
+      helpers: userspace.docker.lib:helpers
+      images_repo: userspace.docker.persist:images
+    modules:
+      - sql
+      - process
+      - channel
+      - time
+      - json

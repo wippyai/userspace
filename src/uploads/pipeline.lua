@@ -47,7 +47,7 @@ local function run()
     local work_channel = channel.new(state.max_queue_size)    -- Buffered channel for pending work
     local result_channel = channel.new(state.max_queue_size)  -- Results from workers
     local upload_channel = process.listen(CONST.TOPICS.UPLOAD) -- Channel for upload notifications
-    local status_channel = process.listen(CONST.TOPICS.STATUS) -- Channel for status requests
+    local status_channel = process.listen(CONST.TOPICS.STATUS, { message = true })
     local events_channel = process.events()             -- Channel for system events
 
     -- State tracking
@@ -90,13 +90,11 @@ local function run()
     end
 
     -- Handle an upload status request
-    local function handle_status_request(message, from_pid)
-        if not message or not message.upload_id then
-            -- Invalid request
+    local function handle_status_request(message, from_pid: string)
+        if not message or type(message) ~= "table" or not message.upload_id then
             process.send(from_pid, CONST.TOPICS.STATUS_RESPONSE, {
                 success = false,
-                error = "Invalid request: missing upload_id",
-                request_id = message.request_id
+                error = "Invalid request: missing upload_id"
             })
             return
         end
@@ -194,14 +192,15 @@ local function run()
 
         -- Send notifications to all waiting clients
         for _, client_pid in ipairs(waiter_info.client_pids) do
+            local pid = tostring(client_pid)
             if success then
-                process.send(client_pid, CONST.TOPICS.STATUS_RESPONSE, {
+                process.send(pid, CONST.TOPICS.STATUS_RESPONSE, {
                     success = true,
                     status = CONST.STATUS.COMPLETED,
                     upload_id = upload_id
                 })
             else
-                process.send(client_pid, CONST.TOPICS.STATUS_RESPONSE, {
+                process.send(pid, CONST.TOPICS.STATUS_RESPONSE, {
                     success = false,
                     status = CONST.STATUS.FAILED,
                     error = error or "Unknown error",
@@ -396,7 +395,7 @@ local function run()
         -- Notify all waiting clients that the pipeline is shutting down
         for upload_id, waiter_info in pairs(waiting_clients) do
             for _, client_pid in ipairs(waiter_info.client_pids) do
-                process.send(client_pid, CONST.TOPICS.STATUS_RESPONSE, {
+                process.send(tostring(client_pid), CONST.TOPICS.STATUS_RESPONSE, {
                     success = false,
                     status = CONST.STATUS.CANCELED,
                     error = "Upload pipeline shutting down",
@@ -468,8 +467,9 @@ local function run()
                 fetch_next_pending()
             end
         elseif result.channel == status_channel then
-            -- Upload status request
-            handle_status_request(result.value, result.from)
+            -- Upload status request (Message object from process.listen with message=true)
+            local msg = result.value
+            handle_status_request(msg:payload(), msg:from() or "")
         elseif result.channel == events_channel then
             -- System event
             local event = result.value

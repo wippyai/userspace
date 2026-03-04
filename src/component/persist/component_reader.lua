@@ -245,7 +245,7 @@ function methods:_build_query()
 
     -- Add component ID filtering
     if self._component_ids and #self._component_ids > 0 then
-        local id_clause = create_in_clause("c.component_id", self._component_ids)
+        local id_clause = create_in_clause("c.component_id", self._component_ids :: any)
         if id_clause then
             query_builder = query_builder:where(sql.builder.expr(unpack(id_clause)))
         end
@@ -253,7 +253,7 @@ function methods:_build_query()
 
     -- Add implementation ID filtering
     if self._impl_ids and #self._impl_ids > 0 then
-        local impl_clause = create_in_clause("c.impl_id", self._impl_ids)
+        local impl_clause = create_in_clause("c.impl_id", self._impl_ids :: any)
         if impl_clause then
             query_builder = query_builder:where(sql.builder.expr(unpack(impl_clause)))
         end
@@ -275,7 +275,7 @@ function methods:_build_query()
 
     -- Add pagination
     if self._limit then
-        query_builder = query_builder:limit(self._limit)
+        query_builder = query_builder:limit(self._limit :: number)
         if self._offset and self._offset > 0 then
             query_builder = query_builder:offset(self._offset)
         end
@@ -370,7 +370,7 @@ function methods:all()
         for _, component in ipairs(results) do
             table.insert(component_ids, component.component_id)
         end
-        metadata_map = load_metadata(db, component_ids)
+        metadata_map = load_metadata(db, component_ids :: any)
     end
 
     db:release()
@@ -461,14 +461,14 @@ function methods:count()
     end
 
     if self._component_ids and #self._component_ids > 0 then
-        local id_clause = create_in_clause("c.component_id", self._component_ids)
+        local id_clause = create_in_clause("c.component_id", self._component_ids :: any)
         if id_clause then
             query_builder = query_builder:where(sql.builder.expr(unpack(id_clause)))
         end
     end
 
     if self._impl_ids and #self._impl_ids > 0 then
-        local impl_clause = create_in_clause("c.impl_id", self._impl_ids)
+        local impl_clause = create_in_clause("c.impl_id", self._impl_ids :: any)
         if impl_clause then
             query_builder = query_builder:where(sql.builder.expr(unpack(impl_clause)))
         end

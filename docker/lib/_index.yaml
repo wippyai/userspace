@@ -1,0 +1,46 @@
+version: "1.0"
+namespace: userspace.docker.lib
+
+entries:
+  - name: consts
+    kind: library.lua
+    source: file://consts.lua
+
+  - name: spec
+    kind: library.lua
+    source: file://spec.lua
+
+  - name: tar
+    kind: library.lua
+    source: file://tar.lua
+
+  - name: helpers
+    kind: library.lua
+    source: file://helpers.lua
+    modules:
+      - json
+      - process
+
+  - name: spec_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Container config builder tests
+    source: file://spec_test.lua
+    method: run_tests
+    imports:
+      spec: userspace.docker.lib:spec
+      test: wippy.test:test
+
+  - name: tar_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Tar archive builder tests
+    source: file://tar_test.lua
+    method: run_tests
+    imports:
+      tar: userspace.docker.lib:tar
+      test: wippy.test:test

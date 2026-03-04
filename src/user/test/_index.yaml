@@ -1,0 +1,67 @@
+version: "1.0"
+namespace: app
+
+entries:
+  - name: db
+    kind: db.sql.sqlite
+    meta:
+      comment: In-memory database for user tests
+    file: ":memory:"
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  - name: gateway
+    kind: http.service
+    meta:
+      comment: Test HTTP server
+    addr: :19087
+    lifecycle:
+      auto_start: true
+
+  - name: api.public
+    kind: http.router
+    meta:
+      comment: Test public API router
+      server: gateway
+    prefix: /api/public
+
+  - name: api
+    kind: http.router
+    meta:
+      comment: Test authenticated API router
+      server: gateway
+    prefix: /api
+
+  - name: dep.userspace.users
+    kind: ns.dependency
+    meta:
+      description: "Users module configuration for testing"
+    component: "userspace/users"
+    parameters:
+      - name: env_storage
+        value: app:env_storage
+      - name: public_router
+        value: app:api.public
+      - name: router
+        value: app:api
+
+  - name: dep.wippy.bootloader
+    kind: ns.dependency
+    meta:
+      description: "Bootloader configuration for testing"
+    component: "wippy/bootloader"
+    parameters:
+      - name: application_host
+        value: app:processes
+      - name: env_storage
+        value: app:env_storage

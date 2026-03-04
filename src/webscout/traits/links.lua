@@ -55,12 +55,12 @@ local function extract_links(html_content, base_url, absolute_only)
     return links
 end
 
-local function get_base_url(url)
+local function get_base_url(url: string): string?
     local domain_regex, _ = text.regexp.compile("^(https?://[^/]+)")
     if domain_regex then
         local matches = domain_regex:find_string_submatch(url)
         if matches and #matches >= 2 then
-            return matches[2]
+            return tostring(matches[2])
         end
     end
     return nil

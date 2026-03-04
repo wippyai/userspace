@@ -2,22 +2,39 @@ version: "1.0"
 namespace: userspace.webscout
 
 entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Userspace Webscout
+      description: Web research tools for AI agents - search, read pages, and extract links
+
+  - name: env_storage
+    kind: ns.requirement
+    meta:
+      description: Environment variable storage for webscout configuration
+    targets:
+      - entry: userspace.webscout:google_search_api_key
+        path: .storage
+      - entry: userspace.webscout:google_search_engine_id
+        path: .storage
+      - entry: userspace.webscout:user_agent
+        path: .storage
+
   # userspace.webscout:google_search_api_key
   - name: google_search_api_key
     kind: env.variable
     meta:
       comment: Google Custom Search API key for web search functionality
       icon: tabler:search
-    storage: app.env:router
-    
+
   # userspace.webscout:google_search_engine_id
   - name: google_search_engine_id
     kind: env.variable
     meta:
       comment: Google Custom Search Engine ID (cx) for search queries
       icon: tabler:search
-    storage: app.env:router
-    
+
   # userspace.webscout:user_agent
   - name: user_agent
     kind: env.variable
@@ -25,5 +42,3 @@ entries:
       comment: User agent string for web requests
       icon: tabler:browser
     default: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
-    storage: app.env:router
-    

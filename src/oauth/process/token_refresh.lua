@@ -125,7 +125,7 @@ local function handle(request_dto)
 
     local oauth_instance, err = oauth_contract
         :with_context(connector_info.context_values)
-        :open(connector_info.implementation_id)
+        :open(connector_info.implementation_id :: string)
     if err then
         logger:error("Failed to open OAuth implementation", {
             implementation_id = connector_info.implementation_id,

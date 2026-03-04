@@ -109,7 +109,7 @@ local function handler()
         end
     end
 
-    local actor = security.new_actor(user.user_id, actor_metadata)
+    local actor = security.new_actor(tostring(user.user_id), actor_metadata)
 
     local scope_id = config.default_group_id
     local is_admin = false
@@ -126,7 +126,7 @@ local function handler()
         end
     end
 
-    local scope, err = security.named_scope(scope_id)
+    local scope, err = security.named_scope(tostring(scope_id))
     if not scope then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:write_json({

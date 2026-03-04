@@ -1,0 +1,13 @@
+organization: userspace
+module: docscout
+description: Document analysis and field extraction
+license: Apache-2.0
+repository: https://github.com/wippyai/userspace
+homepage: https://wippy.ai
+keywords:
+  - document
+  - analysis
+  - extraction
+exclude_meta:
+  type:
+    - test

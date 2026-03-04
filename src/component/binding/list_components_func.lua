@@ -163,7 +163,7 @@ local function handle(request_dto)
     local total_count = reader:count()
 
     -- Determine if there are more results
-    local has_more = (offset + #components) < total_count
+    local has_more = ((offset or 0) + #components) < total_count
 
     -- Success response
     return {

@@ -17,5 +17,8 @@
 .tmp
 .DS_Store
 
+# Wippy vendor cache
+**/.wippy/
+
 # env file
 .env

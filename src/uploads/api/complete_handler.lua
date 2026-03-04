@@ -89,6 +89,11 @@ local function handler()
     -- Additional metadata to update (optional)
     local metadata_updates = body.metadata or {}
 
+    -- Pass through upload token into metadata
+    if body.upload_token then
+        metadata_updates.__upload_token = body.upload_token
+    end
+
     upload, err = upload_lib.complete_presigned_url(user_id, upload_id, etag, metadata_updates)
 
     if err then

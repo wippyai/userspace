@@ -168,7 +168,7 @@ local function handle(request_dto)
     end
 
     -- Determine if there are more results
-    local has_more = (offset + #schedules) < total_count
+    local has_more = ((offset or 0) + #schedules) < total_count
 
     -- Transform repository data to contract format
     local contract_schedules = {}

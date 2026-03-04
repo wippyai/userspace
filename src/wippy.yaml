@@ -1,0 +1,15 @@
+organization: userspace
+module: userspace
+description: Userspace components for user management and integrations
+license: BSL-1.1
+repository: https://github.com/wippyai/userspace
+homepage: https://wippy.ai
+keywords:
+  - userspace
+  - user
+  - oauth
+  - uploads
+  - integrations
+exclude_meta:
+  type:
+    - test

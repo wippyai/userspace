@@ -1,0 +1,68 @@
+version: "1.0"
+namespace: app
+
+entries:
+  - name: db
+    kind: db.sql.sqlite
+    meta:
+      comment: In-memory database for uploads tests
+    file: ":memory:"
+
+  - name: uploads
+    kind: fs.directory
+    meta:
+      comment: Local file storage for upload tests
+    directory: ./.wippy/test_uploads
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  - name: gateway
+    kind: http.service
+    meta:
+      comment: Test HTTP server
+    addr: :19086
+    lifecycle:
+      auto_start: true
+
+  - name: api
+    kind: http.router
+    meta:
+      comment: Test API router
+      server: gateway
+    prefix: /api
+
+  - name: dep.userspace.uploads
+    kind: ns.dependency
+    meta:
+      description: "Uploads module configuration for testing"
+    component: "userspace/uploads"
+    parameters:
+      - name: database_resource
+        value: app:db
+      - name: storage_id
+        value: app:uploads
+      - name: env_storage
+        value: app:env_storage
+      - name: router
+        value: app:api
+
+  - name: dep.wippy.bootloader
+    kind: ns.dependency
+    meta:
+      description: "Bootloader configuration for testing"
+    component: "wippy/bootloader"
+    parameters:
+      - name: application_host
+        value: app:processes
+      - name: env_storage
+        value: app:env_storage

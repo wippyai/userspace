@@ -181,7 +181,7 @@ function oauth_repo.create_connection(component_id, connection_data)
     end
 
     -- Encrypt access token separately for optimized access
-    local access_token_encrypted, err = encrypt_access_token(connection_data.tokens.access_token, encryption_key)
+    local access_token_encrypted, err = encrypt_access_token(connection_data.tokens.access_token :: string, encryption_key)
     if err then
         return nil, "Failed to encrypt access token: " .. err
     end
@@ -270,7 +270,7 @@ function oauth_repo.get_connection(component_id)
     end
 
     -- Decrypt sensitive data
-    local oauth_data, err = decrypt_oauth_data(connection.oauth_data_encrypted, encryption_key)
+    local oauth_data, err = decrypt_oauth_data(connection.oauth_data_encrypted :: string, encryption_key)
     if err then
         return nil, "Failed to decrypt OAuth data: " .. err
     end
@@ -382,7 +382,7 @@ function oauth_repo.get_access_token(component_id)
         return nil, "No access token available"
     end
 
-    local access_token, err = decrypt_access_token(connection.access_token_encrypted, encryption_key)
+    local access_token, err = decrypt_access_token(connection.access_token_encrypted :: string, encryption_key)
     if err then
         return nil, "Failed to decrypt access token: " .. err
     end
@@ -446,7 +446,7 @@ function oauth_repo.update_tokens(component_id, tokens, expires_at)
     end
 
     -- Decrypt current data
-    local oauth_data, err = decrypt_oauth_data(connection.oauth_data_encrypted, encryption_key)
+    local oauth_data, err = decrypt_oauth_data(connection.oauth_data_encrypted :: string, encryption_key)
     if err then
         db:release()
         return nil, "Failed to decrypt OAuth data: " .. err
@@ -466,7 +466,7 @@ function oauth_repo.update_tokens(component_id, tokens, expires_at)
     end
 
     -- Encrypt the access token separately for optimized access
-    local access_token_encrypted, err = encrypt_access_token(tokens.access_token, encryption_key)
+    local access_token_encrypted, err = encrypt_access_token(tokens.access_token :: string, encryption_key)
     if err then
         db:release()
         return nil, "Failed to encrypt access token: " .. err
@@ -552,7 +552,7 @@ function oauth_repo.update_connection(component_id, connection_data)
     end
 
     -- Decrypt current OAuth data
-    local oauth_data, err = decrypt_oauth_data(connection.oauth_data_encrypted, encryption_key)
+    local oauth_data, err = decrypt_oauth_data(connection.oauth_data_encrypted :: string, encryption_key)
     if err then
         db:release()
         return nil, "Failed to decrypt OAuth data: " .. err
@@ -592,7 +592,7 @@ function oauth_repo.update_connection(component_id, connection_data)
     -- Encrypt access token separately if provided
     local access_token_encrypted = nil
     if connection_data.tokens and connection_data.tokens.access_token then
-        access_token_encrypted, err = encrypt_access_token(connection_data.tokens.access_token, encryption_key)
+        access_token_encrypted, err = encrypt_access_token(connection_data.tokens.access_token :: string, encryption_key)
         if err then
             db:release()
             return nil, "Failed to encrypt access token: " .. err
