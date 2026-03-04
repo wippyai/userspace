@@ -3,6 +3,7 @@ local upload_repo = require("upload_repo")
 local upload_lib = require("upload_lib")
 local pipeline_lib = require("pipeline_lib")
 local logger = require("logger")
+local env = require("env")
 
 -- Create a named logger for this process
 local log = logger:named("uploads")
@@ -16,9 +17,9 @@ local CONST = {
         STATUS_RESPONSE = "upload_status_response"
     },
     CONFIG = {
-        MAX_QUEUE_SIZE = 10000,
-        WORKER_COUNT = 20,
-        INITIAL_BATCH_SIZE = 5000
+        DEFAULT_MAX_QUEUE_SIZE = 10000,
+        DEFAULT_WORKER_COUNT = 20,
+        DEFAULT_INITIAL_BATCH_SIZE = 5000
     },
     STATUS = {
         COMPLETED = "completed",
@@ -33,12 +34,18 @@ local CONST = {
 
 -- Main pipeline function
 local function run()
+    local state = {
+        max_queue_size = tonumber(env.get("UPLOAD_PIPELINE_MAX_QUEUE_SIZE")) or CONST.CONFIG.DEFAULT_MAX_QUEUE_SIZE,
+        worker_count = tonumber(env.get("UPLOAD_PIPELINE_WORKER_COUNT")) or CONST.CONFIG.DEFAULT_WORKER_COUNT,
+        initial_batch_size = tonumber(env.get("UPLOAD_PIPELINE_INITIAL_BATCH_SIZE")) or CONST.CONFIG.DEFAULT_INITIAL_BATCH_SIZE,
+    }
+
     -- Register with a well-known name
     process.registry.register(CONST.PROCESS_NAME)
 
     -- Create channels
-    local work_channel = channel.new(CONST.CONFIG.MAX_QUEUE_SIZE)    -- Buffered channel for pending work
-    local result_channel = channel.new(CONST.CONFIG.MAX_QUEUE_SIZE)  -- Results from workers
+    local work_channel = channel.new(state.max_queue_size)    -- Buffered channel for pending work
+    local result_channel = channel.new(state.max_queue_size)  -- Results from workers
     local upload_channel = process.listen(CONST.TOPICS.UPLOAD) -- Channel for upload notifications
     local status_channel = process.listen(CONST.TOPICS.STATUS) -- Channel for status requests
     local events_channel = process.events()             -- Channel for system events
@@ -213,7 +220,7 @@ local function run()
     end
 
     -- Start worker coroutines
-    for i = 1, CONST.CONFIG.WORKER_COUNT do
+    for i = 1, state.worker_count do
         coroutine.spawn(function()
             worker(i)
         end)
@@ -225,7 +232,7 @@ local function run()
     -- Load pending uploads from database into work channel
     local function initialize_work_queue()
         -- Get pending uploads (both uploaded and queued)
-        local uploads, err = upload_repo.get_pending_uploads(CONST.CONFIG.INITIAL_BATCH_SIZE)
+        local uploads, err = upload_repo.get_pending_uploads(state.initial_batch_size)
         if err then
             log:error("Error fetching pending uploads", {
                 error = err
@@ -266,7 +273,7 @@ local function run()
         end
 
         -- Check if there are more pending uploads
-        local count_query, err = upload_repo.get_pending_uploads(1, CONST.CONFIG.INITIAL_BATCH_SIZE)
+        local count_query, err = upload_repo.get_pending_uploads(1, state.initial_batch_size)
         if not err and count_query and #count_query > 0 then
             -- More uploads pending
             pending_count = #count_query
@@ -418,7 +425,7 @@ local function run()
 
     -- Main event loop
     log:info("Upload pipeline running", {
-        worker_count = CONST.CONFIG.WORKER_COUNT
+        worker_count = state.worker_count
     })
 
     while running do
@@ -498,7 +505,7 @@ local function run()
     -- Return final pipeline state
     return {
         status = "completed",
-        workers = CONST.CONFIG.WORKER_COUNT,
+        workers = state.worker_count,
         pending_count = pending_count
     }
 end

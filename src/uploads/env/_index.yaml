@@ -12,3 +12,36 @@ entries:
     default: app:uploads
     storage: app.env:router
     variable: UPLOAD_STORAGE_ID
+
+  # app.env:upload_pipeline_max_queue_size
+  - name: upload_pipeline_max_queue_size
+    kind: env.variable
+    meta:
+      comment: Maximum queue size for the upload processing pipeline
+      icon: tabler:stack
+      private: true
+    default: "10000"
+    storage: app.env:router
+    variable: UPLOAD_PIPELINE_MAX_QUEUE_SIZE
+
+  # app.env:upload_pipeline_worker_count
+  - name: upload_pipeline_worker_count
+    kind: env.variable
+    meta:
+      comment: Number of concurrent workers in the upload processing pipeline
+      icon: tabler:users
+      private: true
+    default: "20"
+    storage: app.env:router
+    variable: UPLOAD_PIPELINE_WORKER_COUNT
+
+  # app.env:upload_pipeline_initial_batch_size
+  - name: upload_pipeline_initial_batch_size
+    kind: env.variable
+    meta:
+      comment: Initial batch size for loading pending uploads on pipeline startup
+      icon: tabler:package
+      private: true
+    default: "5000"
+    storage: app.env:router
+    variable: UPLOAD_PIPELINE_INITIAL_BATCH_SIZE
