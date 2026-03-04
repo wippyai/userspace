@@ -68,8 +68,38 @@ local function run_tests()
             return node_id, result
         end
 
+        -- Helper to create an embed operation via ops handler
+        local function create_committed_operation(opts)
+            opts = opts or {}
+            local op_id = opts.id or uuid.v7()
+
+            execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                id = op_id,
+                component_id = opts.component_id or test_ctx.kb_id,
+                upload_uuid = opts.upload_uuid or ("upload-" .. uuid.v7()),
+                status = opts.status or "processing"
+            })
+
+            table.insert(test_ctx.created_operations, op_id)
+            return op_id
+        end
+
         -- Helper to clean up all test data
         local function cleanup_test_data()
+            -- Clean up embed operations
+            if test_ctx.created_operations and #test_ctx.created_operations > 0 then
+                local db, err = sql.get("app:db")
+                if not err then
+                    for _, op_id in ipairs(test_ctx.created_operations) do
+                        local delete_op = sql.builder.delete("kb_embed_operations")
+                            :where("id = ?", op_id)
+                        local executor = delete_op:run_with(db)
+                        executor:exec()
+                    end
+                    db:release()
+                end
+            end
+
             if #test_ctx.created_nodes > 0 then
                 execute_op_with_commit(ops.COMMAND_TYPES.DELETE_NODES, {
                     ids = test_ctx.created_nodes
@@ -89,6 +119,7 @@ local function run_tests()
             test_ctx.kb_id = uuid.v7()
             test_ctx.created_nodes = {}
             test_ctx.created_components = {}
+            test_ctx.created_operations = {}
 
             -- Create the KB component
             local component_result = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_COMPONENT, {
@@ -666,6 +697,177 @@ local function run_tests()
                         :offset(-1)
                 end)
                 expect(success).to_be_false()
+            end)
+        end)
+
+        describe("Operations Reader", function()
+            it("should get operation by id", function()
+                local op_id = create_committed_operation()
+
+                local operation = reader.get_operation(op_id)
+
+                expect(operation).not_to_be_nil()
+                expect(operation.id).to_equal(op_id)
+                expect(operation.component_id).to_equal(test_ctx.kb_id)
+                expect(operation.status).to_equal("processing")
+            end)
+
+            it("should return error for non-existent operation", function()
+                local operation, err = reader.get_operation(uuid.v7())
+
+                expect(operation).to_be_nil()
+                expect(err).not_to_be_nil()
+            end)
+
+            it("should error with empty operation id", function()
+                local success = pcall(function()
+                    reader.get_operation("")
+                end)
+                expect(success).to_be_false()
+            end)
+
+            it("should list operations for component", function()
+                create_committed_operation()
+                create_committed_operation()
+                create_committed_operation()
+
+                local results = reader.for_operations(test_ctx.kb_id):all()
+
+                expect(#results).to_equal(3)
+                for _, op in ipairs(results) do
+                    expect(op.component_id).to_equal(test_ctx.kb_id)
+                end
+            end)
+
+            it("should return empty list for component with no operations", function()
+                local results = reader.for_operations(test_ctx.kb_id):all()
+
+                expect(#results).to_equal(0)
+            end)
+
+            it("should filter operations by status", function()
+                local op1 = create_committed_operation({ status = "processing" })
+                local op2 = create_committed_operation({ status = "processing" })
+                local op3 = create_committed_operation()
+
+                -- Update op3 to completed
+                execute_op_with_commit(ops.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS, {
+                    id = op3,
+                    status = "completed",
+                    ops_executed = 10
+                })
+
+                local processing = reader.for_operations(test_ctx.kb_id)
+                    :with_status("processing")
+                    :all()
+
+                expect(#processing).to_equal(2)
+
+                local completed = reader.for_operations(test_ctx.kb_id)
+                    :with_status("completed")
+                    :all()
+
+                expect(#completed).to_equal(1)
+                expect(completed[1].id).to_equal(op3)
+            end)
+
+            it("should support pagination with limit and offset", function()
+                for i = 1, 5 do
+                    create_committed_operation()
+                end
+
+                local first_page = reader.for_operations(test_ctx.kb_id)
+                    :limit(2)
+                    :all()
+
+                expect(#first_page).to_equal(2)
+
+                local second_page = reader.for_operations(test_ctx.kb_id)
+                    :limit(2)
+                    :offset(2)
+                    :all()
+
+                expect(#second_page).to_equal(2)
+                expect(first_page[1].id).not_to_equal(second_page[1].id)
+            end)
+
+            it("should count operations for component", function()
+                create_committed_operation()
+                create_committed_operation()
+
+                local count = reader.for_operations(test_ctx.kb_id):count()
+
+                expect(count).to_equal(2)
+            end)
+
+            it("should count operations with status filter", function()
+                local op1 = create_committed_operation()
+                create_committed_operation()
+
+                execute_op_with_commit(ops.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS, {
+                    id = op1,
+                    status = "completed",
+                    ops_executed = 5
+                })
+
+                local processing_count = reader.for_operations(test_ctx.kb_id)
+                    :with_status("processing")
+                    :count()
+
+                expect(processing_count).to_equal(1)
+
+                local total_count = reader.for_operations(test_ctx.kb_id):count()
+
+                expect(total_count).to_equal(2)
+            end)
+
+            it("should not return operations from other components", function()
+                create_committed_operation({ component_id = test_ctx.kb_id })
+
+                local other_component_id = uuid.v7()
+                create_committed_operation({ component_id = other_component_id })
+
+                local results = reader.for_operations(test_ctx.kb_id):all()
+
+                expect(#results).to_equal(1)
+                expect(results[1].component_id).to_equal(test_ctx.kb_id)
+            end)
+
+            it("should error with empty component_id", function()
+                local success = pcall(function()
+                    reader.for_operations("")
+                end)
+                expect(success).to_be_false()
+            end)
+
+            it("should preserve immutability of operations reader", function()
+                local reader1 = reader.for_operations(test_ctx.kb_id)
+                local reader2 = reader1:with_status("processing")
+                local reader3 = reader2:limit(10)
+
+                expect(reader1._status).to_be_nil()
+                expect(reader1._limit).to_be_nil()
+
+                expect(reader2._status).to_equal("processing")
+                expect(reader2._limit).to_be_nil()
+
+                expect(reader3._status).to_equal("processing")
+                expect(reader3._limit).to_equal(10)
+            end)
+
+            it("should order operations by created_at DESC", function()
+                local op1 = create_committed_operation()
+                time.sleep("1s")
+                local op2 = create_committed_operation()
+                time.sleep("1s")
+                local op3 = create_committed_operation()
+
+                local results = reader.for_operations(test_ctx.kb_id):all()
+
+                expect(#results).to_equal(3)
+                -- Most recent first
+                expect(results[1].id).to_equal(op3)
+                expect(results[3].id).to_equal(op1)
             end)
         end)
 

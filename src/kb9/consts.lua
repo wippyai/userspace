@@ -32,6 +32,10 @@ consts.COMMAND_TYPES = {
     -- Multiple delete operations
     DELETE_NODES = "DELETE_NODES",
 
+    -- Embed operation tracking
+    CREATE_EMBED_OPERATION = "CREATE_EMBED_OPERATION",
+    UPDATE_EMBED_OPERATION_STATUS = "UPDATE_EMBED_OPERATION_STATUS",
+
     -- KB Process Commands (sent to root service, forwarded to KB processes)
     INIT_EMBED = "INIT_EMBED",           -- Initialize/update embed contract
     INIT_QUERY = "INIT_QUERY",           -- Initialize/update query contract
@@ -104,6 +108,13 @@ consts.PATH = {
     SEPARATOR = ".",
     SEGMENT_WIDTH = 8, -- 00000001, 00000002, etc.
     INCREMENT = 100    -- Leave gaps for future insertions (00100, 00200, 00300...)
+}
+
+-- Operation status constants
+consts.OPERATION_STATUS = {
+    PROCESSING = "processing",
+    COMPLETED = "completed",
+    FAILED = "failed"
 }
 
 -- Content type constants

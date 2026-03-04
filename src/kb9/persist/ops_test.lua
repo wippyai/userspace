@@ -195,6 +195,16 @@ local function run_tests()
                 end
             end
 
+            -- Clean up embed operations
+            if #test_ctx.created_operations > 0 then
+                for _, op_id in ipairs(test_ctx.created_operations) do
+                    local delete_op = sql.builder.delete("kb_embed_operations")
+                        :where("id = ?", op_id)
+                    local executor = delete_op:run_with(db)
+                    executor:exec()
+                end
+            end
+
             db:release()
 
             if #test_ctx.created_nodes > 0 then
@@ -217,6 +227,7 @@ local function run_tests()
             test_ctx.created_components = {}
             test_ctx.created_nodes = {}
             test_ctx.created_embeddings = {}
+            test_ctx.created_operations = {}
 
             local component_result = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_COMPONENT, {
                 id = test_ctx.kb_id,
@@ -906,6 +917,134 @@ local function run_tests()
                 expect(err).to_be_nil()
                 expect(result.id).to_equal(node_id)
                 table.insert(test_ctx.created_nodes, node_id)
+            end)
+        end)
+
+        describe("Embed Operation Tracking", function()
+            it("should create embed operation successfully", function()
+                local operation_id = uuid.v7()
+
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                    id = operation_id,
+                    component_id = test_ctx.kb_id,
+                    upload_uuid = "test-upload-" .. uuid.v7(),
+                    status = "processing"
+                })
+
+                expect(err).to_be_nil()
+                expect(result.id).to_equal(operation_id)
+                expect(result.component_id).to_equal(test_ctx.kb_id)
+                expect(result.status).to_equal("processing")
+                table.insert(test_ctx.created_operations, operation_id)
+            end)
+
+            it("should error when creating operation without id", function()
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                    component_id = test_ctx.kb_id,
+                    upload_uuid = "test-upload"
+                })
+
+                expect(result).to_be_nil()
+                expect(err).not_to_be_nil()
+            end)
+
+            it("should error when creating operation without component_id", function()
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                    id = uuid.v7(),
+                    upload_uuid = "test-upload"
+                })
+
+                expect(result).to_be_nil()
+                expect(err).not_to_be_nil()
+            end)
+
+            it("should error when creating operation without upload_uuid", function()
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                    id = uuid.v7(),
+                    component_id = test_ctx.kb_id
+                })
+
+                expect(result).to_be_nil()
+                expect(err).not_to_be_nil()
+            end)
+
+            it("should default status to processing", function()
+                local operation_id = uuid.v7()
+
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                    id = operation_id,
+                    component_id = test_ctx.kb_id,
+                    upload_uuid = "test-upload-" .. uuid.v7()
+                })
+
+                expect(err).to_be_nil()
+                expect(result.status).to_equal("processing")
+                table.insert(test_ctx.created_operations, operation_id)
+            end)
+
+            it("should update operation status to completed", function()
+                local operation_id = uuid.v7()
+
+                local create_result, err = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                    id = operation_id,
+                    component_id = test_ctx.kb_id,
+                    upload_uuid = "test-upload-" .. uuid.v7()
+                })
+                expect(err).to_be_nil()
+                table.insert(test_ctx.created_operations, operation_id)
+
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS, {
+                    id = operation_id,
+                    status = "completed",
+                    ops_executed = 42
+                })
+
+                expect(err).to_be_nil()
+                expect(result.id).to_equal(operation_id)
+                expect(result.status).to_equal("completed")
+            end)
+
+            it("should update operation status to failed with error message", function()
+                local operation_id = uuid.v7()
+
+                local create_result, err = execute_op_with_commit(ops.COMMAND_TYPES.CREATE_EMBED_OPERATION, {
+                    id = operation_id,
+                    component_id = test_ctx.kb_id,
+                    upload_uuid = "test-upload-" .. uuid.v7()
+                })
+                expect(err).to_be_nil()
+                table.insert(test_ctx.created_operations, operation_id)
+
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS, {
+                    id = operation_id,
+                    status = "failed",
+                    ops_executed = 0,
+                    error = "Embedding model unavailable"
+                })
+
+                expect(err).to_be_nil()
+                expect(result.id).to_equal(operation_id)
+                expect(result.status).to_equal("failed")
+            end)
+
+            it("should error when updating non-existent operation", function()
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS, {
+                    id = uuid.v7(),
+                    status = "completed",
+                    ops_executed = 0
+                })
+
+                expect(result).to_be_nil()
+                expect(err).not_to_be_nil()
+            end)
+
+            it("should error when updating without id", function()
+                local result, err = execute_op_with_commit(ops.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS, {
+                    status = "completed"
+                })
+
+                expect(result).to_be_nil()
+                expect(err).not_to_be_nil()
             end)
         end)
 
