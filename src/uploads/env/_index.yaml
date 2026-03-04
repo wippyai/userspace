@@ -2,16 +2,32 @@ version: "1.0"
 namespace: userspace.uploads.env
 
 entries:
-  # userspace.uploads.env:upload_storage_id
-  - name: upload_storage_id
+  # userspace.uploads.env:database_resource
+  - name: database_resource
     kind: env.variable
     meta:
-      comment: Upload storage service ID for file upload handling
+      comment: Database resource for uploads storage
+      icon: tabler:database
+      private: true
+    default: app:db
+
+  # userspace.uploads.env:storage_id
+  - name: storage_id
+    kind: env.variable
+    meta:
+      comment: Storage service ID for file uploads
       icon: tabler:upload
       private: true
     default: app:uploads
-    storage: app.env:router
-    variable: UPLOAD_STORAGE_ID
+
+  # userspace.uploads.env:storage_s3
+  - name: storage_s3
+    kind: env.variable
+    meta:
+      comment: S3 cloud storage service ID for presigned uploads
+      icon: tabler:cloud-upload
+      private: true
+    default: app:uploads.s3
 
   # userspace.uploads:upload_pipeline_max_queue_size
   - name: upload_pipeline_max_queue_size
