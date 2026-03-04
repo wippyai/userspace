@@ -1,8 +1,8 @@
 version: "1.0"
-namespace: app.env
+namespace: userspace.uploads.env
 
 entries:
-  # app.env:upload_storage_id
+  # userspace.uploads.env:upload_storage_id
   - name: upload_storage_id
     kind: env.variable
     meta:
@@ -13,7 +13,7 @@ entries:
     storage: app.env:router
     variable: UPLOAD_STORAGE_ID
 
-  # app.env:upload_pipeline_max_queue_size
+  # userspace.uploads:upload_pipeline_max_queue_size
   - name: upload_pipeline_max_queue_size
     kind: env.variable
     meta:
@@ -24,7 +24,7 @@ entries:
     storage: app.env:router
     variable: UPLOAD_PIPELINE_MAX_QUEUE_SIZE
 
-  # app.env:upload_pipeline_worker_count
+  # userspace.uploads:upload_pipeline_worker_count
   - name: upload_pipeline_worker_count
     kind: env.variable
     meta:
@@ -35,7 +35,7 @@ entries:
     storage: app.env:router
     variable: UPLOAD_PIPELINE_WORKER_COUNT
 
-  # app.env:upload_pipeline_initial_batch_size
+  # userspace.uploads:upload_pipeline_initial_batch_size
   - name: upload_pipeline_initial_batch_size
     kind: env.variable
     meta:
