@@ -915,6 +915,113 @@ handlers[consts.COMMAND_TYPES.DELETE_NODES] = function(tx, kb_id, op_id, command
     }
 end
 
+-- ============================================================================
+-- EMBED OPERATION TRACKING
+-- ============================================================================
+
+handlers[consts.COMMAND_TYPES.CREATE_EMBED_OPERATION] = function(tx, kb_id, op_id, command)
+    local payload = command.payload or {}
+
+    if not payload.id or payload.id == "" then
+        return nil, "Operation ID is required"
+    end
+
+    if not payload.component_id or payload.component_id == "" then
+        return nil, consts.ERROR.INVALID_COMPONENT_ID
+    end
+
+    if not payload.upload_uuid or payload.upload_uuid == "" then
+        return nil, "upload_uuid is required"
+    end
+
+    local db_type, err = get_db_type(tx)
+    if err then
+        return nil, err
+    end
+
+    local now_timestamp
+    if db_type == sql.type.SQLITE then
+        now_timestamp = sql.as.int(now_unix())
+    else
+        now_timestamp = now_utc()
+    end
+
+    local status = payload.status or consts.OPERATION_STATUS.PROCESSING
+
+    local insert_query = sql.builder.insert("kb_embed_operations")
+        :set_map({
+            id = payload.id,
+            component_id = payload.component_id,
+            upload_uuid = payload.upload_uuid,
+            status = status,
+            error = payload.error or sql.as.null(),
+            ops_executed = payload.ops_executed or 0,
+            created_at = now_timestamp,
+            updated_at = now_timestamp
+        })
+
+    local executor = insert_query:run_with(tx)
+    local result, exec_err = executor:exec()
+
+    if exec_err then
+        return nil, "Failed to create embed operation: " .. exec_err
+    end
+
+    return {
+        id = payload.id,
+        component_id = payload.component_id,
+        status = status,
+        op_id = op_id
+    }
+end
+
+handlers[consts.COMMAND_TYPES.UPDATE_EMBED_OPERATION_STATUS] = function(tx, kb_id, op_id, command)
+    local payload = command.payload or {}
+
+    if not payload.id or payload.id == "" then
+        return nil, "Operation ID is required"
+    end
+
+    local db_type, err = get_db_type(tx)
+    if err then
+        return nil, err
+    end
+
+    local now_timestamp
+    if db_type == sql.type.SQLITE then
+        now_timestamp = sql.as.int(now_unix())
+    else
+        now_timestamp = now_utc()
+    end
+
+    local update_query = sql.builder.update("kb_embed_operations")
+        :set("status", payload.status)
+        :set("ops_executed", payload.ops_executed or 0)
+        :set("updated_at", now_timestamp)
+        :where("id = ?", payload.id)
+
+    if payload.error then
+        update_query = update_query:set("error", payload.error)
+    end
+
+    local executor = update_query:run_with(tx)
+    local result, exec_err = executor:exec()
+
+    if exec_err then
+        return nil, "Failed to update embed operation: " .. exec_err
+    end
+
+    if result.rows_affected == 0 then
+        return nil, "Operation not found"
+    end
+
+    return {
+        id = payload.id,
+        status = payload.status,
+        op_id = op_id
+    }
+end
+
 return {
     COMMAND_TYPES = consts.COMMAND_TYPES,
     ERROR = consts.ERROR,

@@ -344,13 +344,6 @@
                     console.log('Knowledge event received, reloading knowledge bases:', message);
                     this.loadMyBases();
                 });
-
-                // General message listener for debugging
-                this.wippyApi.on('@message', ({ message }) => {
-                    if (message.topic && message.topic.startsWith('knowledge')) {
-                        console.log('Knowledge WebSocket event:', message);
-                    }
-                });
             },
 
             async startKnowledgeManagerChat() {
