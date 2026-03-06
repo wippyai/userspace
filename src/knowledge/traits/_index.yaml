@@ -81,6 +81,7 @@ entries:
     kind: registry.entry
     meta:
       type: agent.trait
+      title: Knowledge Base Operations
       comment: Universal knowledge base operations - discovery and querying across knowledge bases
       tags:
         - knowledge
@@ -107,6 +108,7 @@ entries:
     kind: registry.entry
     meta:
       type: agent.trait
+      title: Knowledge Base Query
       comment: KB query access for context-locked agents. Requires kb_id in context - agent tools automatically use it.
       tags:
         - knowledge
@@ -124,6 +126,7 @@ entries:
     kind: registry.entry
     meta:
       type: agent.trait
+      title: Knowledge Base Writer
       comment: KB write access for context-locked agents. Requires kb_id in context - agent tools automatically use it.
       tags:
         - knowledge
