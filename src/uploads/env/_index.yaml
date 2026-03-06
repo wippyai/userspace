@@ -37,7 +37,6 @@ entries:
       icon: tabler:stack
       private: true
     default: "10000"
-    storage: app.env:router
     variable: UPLOAD_PIPELINE_MAX_QUEUE_SIZE
 
   # userspace.uploads:upload_pipeline_worker_count
@@ -48,7 +47,6 @@ entries:
       icon: tabler:users
       private: true
     default: "20"
-    storage: app.env:router
     variable: UPLOAD_PIPELINE_WORKER_COUNT
 
   # userspace.uploads:upload_pipeline_initial_batch_size
@@ -59,5 +57,4 @@ entries:
       icon: tabler:package
       private: true
     default: "5000"
-    storage: app.env:router
     variable: UPLOAD_PIPELINE_INITIAL_BATCH_SIZE

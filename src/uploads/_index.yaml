@@ -329,3 +329,9 @@ entries:
         path: .storage
       - entry: userspace.uploads.env:storage_s3
         path: .storage
+      - entry: userspace.uploads.env:upload_pipeline_max_queue_size
+        path: .storage
+      - entry: userspace.uploads.env:upload_pipeline_worker_count
+        path: .storage
+      - entry: userspace.uploads.env:upload_pipeline_initial_batch_size
+        path: .storage

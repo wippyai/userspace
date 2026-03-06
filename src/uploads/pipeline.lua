@@ -35,9 +35,9 @@ local CONST = {
 -- Main pipeline function
 local function run()
     local state = {
-        max_queue_size = tonumber(env.get("UPLOAD_PIPELINE_MAX_QUEUE_SIZE")) or CONST.CONFIG.DEFAULT_MAX_QUEUE_SIZE,
-        worker_count = tonumber(env.get("UPLOAD_PIPELINE_WORKER_COUNT")) or CONST.CONFIG.DEFAULT_WORKER_COUNT,
-        initial_batch_size = tonumber(env.get("UPLOAD_PIPELINE_INITIAL_BATCH_SIZE")) or CONST.CONFIG.DEFAULT_INITIAL_BATCH_SIZE,
+        max_queue_size = tonumber((env.get("UPLOAD_PIPELINE_MAX_QUEUE_SIZE"))) or CONST.CONFIG.DEFAULT_MAX_QUEUE_SIZE,
+        worker_count = tonumber((env.get("UPLOAD_PIPELINE_WORKER_COUNT"))) or CONST.CONFIG.DEFAULT_WORKER_COUNT,
+        initial_batch_size = tonumber((env.get("UPLOAD_PIPELINE_INITIAL_BATCH_SIZE"))) or CONST.CONFIG.DEFAULT_INITIAL_BATCH_SIZE,
     }
 
     -- Register with a well-known name
