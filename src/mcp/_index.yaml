@@ -44,6 +44,20 @@ entries:
       comment: MCP process execution service (for local MCP)
     default_work_dir: ""
     
+  # userspace.mcp:env_storage
+  - name: env_storage
+    kind: ns.requirement
+    description: Environment variable storage location
+    targets:
+      - entry: userspace.mcp.env:client_name
+        path: .storage
+      - entry: userspace.mcp.env:client_version
+        path: .storage
+      - entry: userspace.mcp.env:executor_id
+        path: .storage
+      - entry: userspace.mcp.env:protocol_version
+        path: .storage
+
   # userspace.mcp:mcp.spec
   - name: mcp.spec
     kind: registry.entry

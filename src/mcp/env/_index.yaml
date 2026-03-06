@@ -8,7 +8,7 @@ entries:
     meta:
       comment: MCP client identification name
     default: wippy-mcp-client
-    storage: app.env:router
+
     variable: MCP_CLIENT_NAME
     
   # userspace.mcp.env:client_version
@@ -18,7 +18,7 @@ entries:
       comment: MCP client version
       private: true
     default: 1.0.0
-    storage: app.env:router
+
     variable: MCP_CLIENT_VERSION
     
   # userspace.mcp.env:executor_id
@@ -28,7 +28,7 @@ entries:
       comment: Default executor ID for MCP process spawning
       private: true
     default: userspace.mcp:executor
-    storage: app.env:router
+
     variable: MCP_EXECUTOR_ID
     
   # userspace.mcp.env:protocol_version
@@ -38,6 +38,6 @@ entries:
       comment: MCP protocol version to use
       private: true
     default: "2024-11-05"
-    storage: app.env:router
+
     variable: MCP_PROTOCOL_VERSION
     
