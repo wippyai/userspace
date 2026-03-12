@@ -17,9 +17,6 @@ local DEFAULTS = table.freeze({
 
 local resources = {}
 
-resources.UPLOAD_PROCESS = "upload_pipeline"
-resources.UPLOAD_TOPIC = "process_upload"
-
 function resources.get_db(): (sql.DB?, string?)
     local id = env.get(ENV.DATABASE) or DEFAULTS.DATABASE
     local db, err = sql.get(id)

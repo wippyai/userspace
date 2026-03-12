@@ -29,32 +29,29 @@ entries:
       private: true
     default: app:uploads.s3
 
-  # userspace.uploads:upload_pipeline_max_queue_size
-  - name: upload_pipeline_max_queue_size
+  # userspace.uploads.env:queue_max_length
+  - name: queue_max_length
     kind: env.variable
     meta:
-      comment: Maximum queue size for the upload processing pipeline
+      comment: Maximum capacity of the upload processing queue
       icon: tabler:stack
       private: true
     default: "10000"
-    variable: UPLOAD_PIPELINE_MAX_QUEUE_SIZE
 
-  # userspace.uploads:upload_pipeline_worker_count
-  - name: upload_pipeline_worker_count
+  # userspace.uploads.env:queue_concurrency
+  - name: queue_concurrency
     kind: env.variable
     meta:
-      comment: Number of concurrent workers in the upload processing pipeline
+      comment: Number of concurrent workers processing uploads
       icon: tabler:users
       private: true
     default: "20"
-    variable: UPLOAD_PIPELINE_WORKER_COUNT
 
-  # userspace.uploads:upload_pipeline_initial_batch_size
-  - name: upload_pipeline_initial_batch_size
+  # userspace.uploads.env:queue_prefetch
+  - name: queue_prefetch
     kind: env.variable
     meta:
-      comment: Initial batch size for loading pending uploads on pipeline startup
+      comment: Message buffer size for the upload consumer
       icon: tabler:package
       private: true
-    default: "5000"
-    variable: UPLOAD_PIPELINE_INITIAL_BATCH_SIZE
+    default: "50"

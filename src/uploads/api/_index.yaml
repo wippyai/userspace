@@ -39,6 +39,7 @@ entries:
       - security
       - json
     imports:
+      upload_lib: userspace.uploads:upload_lib
       upload_repo: userspace.uploads:upload_repo
     method: delete_handler
     pool:

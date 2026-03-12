@@ -1,16 +1,23 @@
 local uuid = require("uuid")
 local json = require("json")
 local time = require("time")
+local queue = require("queue")
+local funcs = require("funcs")
+local security = require("security")
+local logger = require("logger")
 
 local upload_repo = require("upload_repo")
 local upload_type = require("upload_type")
 local resources = require("uploads_resources")
+local content_repo = require("content_repo")
+
+local log = logger:named("upload_lib")
+
+local QUEUE_ID = "userspace.uploads:process_queue"
 
 local upload_lib = {}
 
--- MIME type mapping table for common file extensions (todo: replace with proper module)
 local MIME_TYPES: {[string]: string} = {
-    -- Text formats
     ["txt"] = "text/plain",
     ["html"] = "text/html",
     ["htm"] = "text/html",
@@ -18,8 +25,6 @@ local MIME_TYPES: {[string]: string} = {
     ["csv"] = "text/csv",
     ["xml"] = "application/xml",
     ["md"] = "text/markdown",
-
-    -- Document formats
     ["pdf"] = "application/pdf",
     ["doc"] = "application/msword",
     ["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -31,8 +36,6 @@ local MIME_TYPES: {[string]: string} = {
     ["ods"] = "application/vnd.oasis.opendocument.spreadsheet",
     ["odp"] = "application/vnd.oasis.opendocument.presentation",
     ["rtf"] = "application/rtf",
-
-    -- Image formats
     ["jpg"] = "image/jpeg",
     ["jpeg"] = "image/jpeg",
     ["png"] = "image/png",
@@ -43,16 +46,12 @@ local MIME_TYPES: {[string]: string} = {
     ["tiff"] = "image/tiff",
     ["tif"] = "image/tiff",
     ["ico"] = "image/x-icon",
-
-    -- Audio formats
     ["mp3"] = "audio/mpeg",
     ["wav"] = "audio/wav",
     ["ogg"] = "audio/ogg",
     ["flac"] = "audio/flac",
     ["aac"] = "audio/aac",
     ["m4a"] = "audio/mp4",
-
-    -- Video formats
     ["mp4"] = "video/mp4",
     ["avi"] = "video/x-msvideo",
     ["mov"] = "video/quicktime",
@@ -60,15 +59,11 @@ local MIME_TYPES: {[string]: string} = {
     ["mkv"] = "video/x-matroska",
     ["webm"] = "video/webm",
     ["flv"] = "video/x-flv",
-
-    -- Archive formats
     ["zip"] = "application/zip",
     ["rar"] = "application/x-rar-compressed",
     ["7z"] = "application/x-7z-compressed",
     ["tar"] = "application/x-tar",
     ["gz"] = "application/gzip",
-
-    -- Programming and data formats
     ["js"] = "application/javascript",
     ["json"] = "application/json",
     ["lua"] = "text/x-lua",
@@ -81,104 +76,147 @@ local MIME_TYPES: {[string]: string} = {
     ["rb"] = "text/x-ruby",
     ["php"] = "text/x-php",
     ["sql"] = "application/sql",
-
-    -- Font formats
     ["ttf"] = "font/ttf",
     ["otf"] = "font/otf",
     ["woff"] = "font/woff",
     ["woff2"] = "font/woff2",
-
-    -- Email formats
     ["eml"] = "message/rfc822",
-
-    -- Other formats
     ["exe"] = "application/octet-stream",
     ["bin"] = "application/octet-stream",
     ["dmg"] = "application/x-apple-diskimage",
-    ["iso"] = "application/x-iso9660-image"
+    ["iso"] = "application/x-iso9660-image",
 }
 
--- Generate a unique upload ID
 local function generate_upload_id()
     return uuid.v4()
 end
 
--- Extract file extension from filename
 local function get_file_extension(filename)
     return filename:match("%.([^%.]+)$") or ""
 end
 
--- Get MIME type from file extension
 local function get_mime_type_from_extension(filename)
     local ext = get_file_extension(filename):lower()
-
-    -- Return the MIME type if found in the mapping table
     if ext and MIME_TYPES[ext] then
         return MIME_TYPES[ext]
     end
-
-    -- Default MIME type for unknown extensions
     return "application/octet-stream"
 end
 
--- Determine the upload type from MIME type and extension
 local function determine_upload_type(mime_type, filename)
     local ext = get_file_extension(filename)
-
-    -- Try to find a matching upload type
     local type_entry, err = upload_type.find_by_mime_or_ext(mime_type, ext)
     if not type_entry then
         return nil, "Unsupported file type: " .. (err or "unknown error")
     end
-
     return type_entry.id
 end
 
--- Upload a file to the specified storage and create a record
+local function publish_to_queue(upload_id)
+    local payload = json.encode({ upload_id = upload_id })
+    local _, err = queue.publish(QUEUE_ID, payload)
+    if err then
+        log:error("failed to enqueue upload", { upload_id = upload_id, error = err })
+    end
+end
+
+local function invoke_on_delete(upload)
+    if not upload.type_id or upload.type_id == "" then
+        return
+    end
+
+    local on_delete, err = upload_type.get_on_delete(upload.type_id)
+    if err or not on_delete or #on_delete == 0 then
+        return
+    end
+
+    local actor = security.new_actor(tostring(upload.user_id), {
+        context_id = "delete:" .. tostring(upload.uuid),
+    })
+
+    local executor = funcs.new()
+        :with_context({
+            upload_id = upload.uuid,
+            user_id = upload.user_id,
+            mime_type = upload.mime_type,
+            type_id = upload.type_id,
+        })
+        :with_actor(actor)
+
+    for i, stage in ipairs(on_delete) do
+        local func_id = stage.func
+        if func_id then
+            local ok, result_or_err = pcall(function()
+                return executor:call(tostring(func_id), {
+                    upload_id = upload.uuid,
+                    mime_type = upload.mime_type,
+                    storage_id = upload.storage_id,
+                    storage_path = upload.storage_path,
+                    size = upload.size,
+                    metadata = upload.metadata,
+                    processor_id = func_id,
+                })
+            end)
+
+            if not ok then
+                log:error("on_delete stage failed", {
+                    upload_id = upload.uuid,
+                    stage = i,
+                    func = func_id,
+                    error = tostring(result_or_err),
+                })
+            else
+                local result, call_err = result_or_err, nil
+                if type(result_or_err) == "string" then
+                    call_err = result_or_err
+                end
+                if call_err then
+                    log:error("on_delete stage returned error", {
+                        upload_id = upload.uuid,
+                        stage = i,
+                        func = func_id,
+                        error = call_err,
+                    })
+                end
+            end
+        end
+    end
+end
+
 function upload_lib.upload_file(user_id: string, file_data: string | stream.Stream, filename: string, size: number, mime_type: string?, storage_id: string?, metadata)
-    -- Generate a unique upload ID
     local upload_uuid = generate_upload_id()
 
-    -- Get the appropriate storage
     local storage, err = resources.get_storage(storage_id)
     if err then
         return nil, err
     end
 
-    -- Include file extension in storage path
     local ext = get_file_extension(filename)
     local storage_path = upload_uuid
     if ext and ext ~= "" then
         storage_path = storage_path .. "." .. ext
     end
 
-    local success = false
-
-    -- Initialize metadata or create a new table if it doesn't exist
     metadata = metadata or {}
-
-    -- Add filename to metadata
     metadata.filename = filename
 
-    -- Detect MIME type from extension if not provided or if it's a generic type
     if not mime_type or mime_type == "" or mime_type == "application/octet-stream" then
         mime_type = get_mime_type_from_extension(filename)
     end
 
-    -- Determine upload type
     local type_id, type_err = determine_upload_type(mime_type, filename)
     if not type_id then
         return nil, type_err
     end
 
-    -- Write the file to storage
+    local success
     success, err = storage:writefile(storage_path, file_data)
     if not success then
         return nil, "Failed to write file: " .. err
     end
 
-    -- Create the upload record
-    local upload, err = upload_repo.create(
+    local upload
+    upload, err = upload_repo.create(
         upload_uuid,
         user_id,
         size,
@@ -194,88 +232,60 @@ function upload_lib.upload_file(user_id: string, file_data: string | stream.Stre
         return nil, "Failed to create upload record: " .. err
     end
 
-    -- notify our pipeline about new upload to process
-    process.send(resources.UPLOAD_PROCESS, resources.UPLOAD_TOPIC, { upload_id = upload_uuid })
+    publish_to_queue(upload_uuid)
 
     return upload
 end
 
--- Update the status of an upload
 function upload_lib.update_status(uuid, status, error_details)
     return upload_repo.update_status(uuid, status, error_details)
 end
 
--- Update the metadata of an upload
 function upload_lib.update_metadata(uuid, metadata)
     return upload_repo.update_metadata(uuid, metadata)
 end
 
--- Update the type ID of an upload
 function upload_lib.update_type_id(uuid, type_id)
     return upload_repo.update_type_id(uuid, type_id)
 end
 
--- Get an upload by ID
 function upload_lib.get_upload(uuid)
     return upload_repo.get(uuid)
 end
 
--- List uploads by user ID
 function upload_lib.list_by_user(user_id, limit, offset)
     return upload_repo.list_by_user(user_id, limit, offset)
 end
 
--- List uploads by status
 function upload_lib.list_by_status(status, limit, offset)
     return upload_repo.list_by_status(status, limit, offset)
 end
 
--- List uploads by type
 function upload_lib.list_by_type(type_id, limit, offset)
     return upload_repo.list_by_type(type_id, limit, offset)
 end
 
--- Delete an upload and its file
 function upload_lib.delete_upload(uuid)
-    -- Get the upload record
     local upload, err = upload_repo.get(uuid)
     if err then
         return nil, err
     end
 
-    -- Delete the file from storage
-    local storage, err = resources.get_storage(tostring(upload.storage_id))
-    if err then
-        print("Warning: Failed to get storage for cleanup: " .. err)
+    invoke_on_delete(upload)
+
+    content_repo.delete_by_upload(uuid)
+
+    local storage, storage_err = resources.get_storage(tostring(upload.storage_id))
+    if storage_err then
+        log:error("failed to get storage for cleanup", { upload_id = uuid, error = storage_err })
     else
         pcall(function() storage:remove(tostring(upload.storage_path)) end)
     end
 
-    -- Delete the record
     return upload_repo.delete(uuid)
 end
 
-
-
-
-
-
-
-
--- Add this function to your existing upload_lib.lua file
-
--- Generate a presigned URL for direct upload to S3
--- Parameters:
---   user_id: ID of the user initiating the upload
---   filename: Original filename
---   size: Expected file size in bytes
---   mime_type: MIME type of the file
---   expires_in: Expiration time in seconds (default: 900 seconds = 15 minutes)
---   metadata: Additional metadata to store with the upload record
--- Returns:
---   A table with presigned URL information
 function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, expires_in, metadata)
-    -- Validate parameters
     if not user_id or user_id == "" then
         return nil, "Invalid user ID"
     end
@@ -289,34 +299,31 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
     end
 
     mime_type = mime_type or "application/octet-stream"
-    expires_in = expires_in or 900 -- Default to 15 minutes
+    expires_in = expires_in or 900
     metadata = metadata or {}
 
-    -- Generate a unique upload ID (UUID)
-    local uuid = generate_upload_id()
-    if not uuid then
+    local id = generate_upload_id()
+    if not id then
         return nil, "Failed to generate upload ID"
     end
 
-    -- Generate a safe S3 object key
     local sanitized_filename = filename:gsub("[^%w%.%-_]", "_")
-    local object_key = user_id .. "/" .. uuid .. "/" .. sanitized_filename
+    local object_key = user_id .. "/" .. id .. "/" .. sanitized_filename
 
-    -- Get the S3 storage instance
     local s3, err = resources.get_s3()
     if err then
         return nil, err
     end
 
-    -- Generate presigned PUT URL
-    local presigned_url, err = s3:presigned_put_url(object_key, {
+    local presigned_url
+    presigned_url, err = s3:presigned_put_url(object_key, {
         expires_in = expires_in,
         content_type = mime_type,
         metadata = {
             user_id = user_id,
             original_name = filename,
-            upload_id = uuid
-        }
+            upload_id = id,
+        },
     })
     s3:release()
 
@@ -324,54 +331,48 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
         return nil, "Failed to generate presigned URL: " .. tostring(err)
     end
 
-    -- Add original file name and upload status to metadata
     metadata.filename = filename
     metadata.upload_method = "direct_s3"
 
-    -- Determine upload type
     local type_id, type_err = determine_upload_type(mime_type, filename)
     if not type_id then
         return nil, type_err
     end
 
-    -- Create upload record
-    local record, err = upload_repo.create(
-        uuid,                -- uuid
-        user_id,             -- user_id
-        size,                -- size
-        mime_type,           -- mime_type
+    local _, create_err = upload_repo.create(
+        id,
+        user_id,
+        size,
+        mime_type,
         "uploads.s3",
-        object_key,          -- storage_path (S3 object key)
+        object_key,
         type_id,
-        metadata,            -- metadata
+        metadata,
         "pending"
     )
 
-    if err then
-        return nil, "Failed to create upload record: " .. tostring(err)
+    if create_err then
+        return nil, "Failed to create upload record: " .. tostring(create_err)
     end
 
-    -- Calculate expiration time for client reference
     local now = time.now()
     local duration = time.parse_duration(expires_in .. "s")
     local expires_at = now:add(duration)
 
-    -- Return presigned URL information
     return {
         url = presigned_url,
-        upload_id = uuid,
+        upload_id = id,
         object_key = object_key,
-        expires_at = expires_at:unix()
+        expires_at = expires_at:unix(),
     }
 end
 
 function upload_lib.complete_presigned_url(user_id, upload_id, etag, metadata_updates)
-    -- Verify and complete the upload
     local upload, err = upload_repo.complete_s3_upload(
         user_id,
         upload_id,
         etag,
-        key,
+        nil,
         metadata_updates
     )
 
@@ -379,10 +380,9 @@ function upload_lib.complete_presigned_url(user_id, upload_id, etag, metadata_up
         return nil, "Failed to update upload record: " .. err
     end
 
-    -- notify our pipeline about new upload to process
-    process.send(resources.UPLOAD_PROCESS, resources.UPLOAD_TOPIC, { upload_id = upload_id })
+    publish_to_queue(upload_id)
 
-    return upload, nil
+    return upload
 end
 
 return upload_lib
