@@ -45,6 +45,8 @@ local function handle(input: {
         user = input.user,
         memory_limit = input.memory_limit,
         cpu_quota = input.cpu_quota,
+        auto_remove = input.auto_remove,
+        interactive = input.interactive,
         persist_logs = input.persist_logs ~= nil and input.persist_logs or false,
     })
 

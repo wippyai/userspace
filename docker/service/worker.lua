@@ -249,7 +249,13 @@ local function run_managed(docker, db, c, root_pid)
     })
     notify_status(root_pid, cid, final_status, { exit_code = exit_code })
 
-    docker:remove_container(docker_id, true)
+    local auto_remove = cfg.auto_remove
+    if auto_remove == nil then
+        auto_remove = true
+    end
+    if auto_remove then
+        docker:remove_container(docker_id, true)
+    end
 end
 
 local function claim_and_run(db, docker, exec_images, active, root_pid)
