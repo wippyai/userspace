@@ -634,9 +634,9 @@ function claim_ready_tasks_postgres(worker_id, limit)
         WHERE enabled = true
           AND picked = false
           AND status = 'scheduled'
-          AND (next_run_at IS NULL OR next_run_at <= ?)
+          AND (next_run_at IS NULL OR next_run_at <= $1)
         ORDER BY next_run_at ASC NULLS FIRST
-        LIMIT ?
+        LIMIT $2
         FOR UPDATE SKIP LOCKED
     ]]
 
