@@ -1,6 +1,6 @@
 organization: userspace
 module: docker
-version: 0.4.0
+version: 0.4.2
 description: Docker container management with contract-based API
 license: Apache-2.0
 repository: https://github.com/wippyai/userspace
@@ -11,6 +11,8 @@ keywords:
   - images
   - orchestration
   - process
+exclude:
+  - "app:*"
 exclude_meta:
   type:
     - test
