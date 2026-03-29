@@ -15,8 +15,8 @@ function helpers.extract_payload(msg)
         raw = raw:data()
     end
     if type(raw) == "string" then
-        local ok, decoded = pcall(json.decode, raw)
-        if ok then return decoded end
+        local decoded, err = json.decode(raw)
+        if not err then return decoded end
     end
     return raw
 end

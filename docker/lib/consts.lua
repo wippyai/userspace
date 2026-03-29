@@ -4,6 +4,7 @@ consts.status = {
     PENDING  = "pending",
     CLAIMED  = "claimed",
     RUNNING  = "running",
+    PAUSED   = "paused",
     STOPPED  = "stopped",
     FAILED   = "failed",
     REMOVED  = "removed",
@@ -54,6 +55,11 @@ consts.registry = {
     WORKER        = "docker.worker",
     MONITOR       = "docker.monitor",
     IMAGE_BUILDER = "docker.image_builder",
+}
+
+consts.env = {
+    DATABASE_RESOURCE = "userspace.docker.env:database_resource",
+    PROCESS_HOST      = "userspace.docker.env:process_host",
 }
 
 consts.defaults = {

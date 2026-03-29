@@ -25,6 +25,7 @@ entries:
     source: file://containers_get.lua
     imports:
       containers_repo: userspace.docker.persist:containers
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -37,6 +38,7 @@ entries:
     source: file://containers_list.lua
     imports:
       containers_repo: userspace.docker.persist:containers
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -50,8 +52,11 @@ entries:
     imports:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
+      - json
+      - process
       - env
     method: handle
 
@@ -62,6 +67,7 @@ entries:
     source: file://containers_logs.lua
     imports:
       containers_repo: userspace.docker.persist:containers
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -86,11 +92,70 @@ entries:
     source: file://containers_compose.lua
     imports:
       containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
       consts: userspace.docker.lib:consts
     modules:
       - sql
       - json
       - uuid
+      - process
+      - env
+    method: handle
+
+  - name: containers_exec_func
+    kind: function.lua
+    meta:
+      comment: Execute command in running container
+    source: file://containers_exec.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_wait_func
+    kind: function.lua
+    meta:
+      comment: Wait for container to reach terminal state
+    source: file://containers_wait.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_inspect_func
+    kind: function.lua
+    meta:
+      comment: Inspect container state from Docker daemon
+    source: file://containers_inspect.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_compose_teardown_func
+    kind: function.lua
+    meta:
+      comment: Remove all containers in a compose group and their network
+    source: file://containers_compose_teardown.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - json
       - process
       - env
     method: handle
@@ -103,8 +168,11 @@ entries:
     imports:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
+      - json
+      - process
       - env
     method: handle
 
@@ -116,8 +184,11 @@ entries:
     imports:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
+      - json
+      - process
       - env
     method: handle
 
@@ -129,8 +200,11 @@ entries:
     imports:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
+      - json
+      - process
       - env
     method: handle
 
@@ -142,6 +216,7 @@ entries:
     imports:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -155,6 +230,7 @@ entries:
     imports:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -168,6 +244,7 @@ entries:
     imports:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -301,6 +378,7 @@ entries:
     imports:
       images_repo: userspace.docker.persist:images
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -314,6 +392,7 @@ entries:
     imports:
       images_repo: userspace.docker.persist:images
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -341,6 +420,7 @@ entries:
     source: file://images_build_status.lua
     imports:
       images_repo: userspace.docker.persist:images
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -354,6 +434,7 @@ entries:
     imports:
       images_repo: userspace.docker.persist:images
       docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env
@@ -415,6 +496,7 @@ entries:
       docker_client: userspace.docker:docker_client
       containers_repo: userspace.docker.persist:containers
       images_repo: userspace.docker.persist:images
+      consts: userspace.docker.lib:consts
     modules:
       - sql
       - env

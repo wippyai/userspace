@@ -1,6 +1,7 @@
 local sql = require("sql")
 local json = require("json")
 local time = require("time")
+local env = require("env")
 local consts = require("consts")
 local images_repo = require("images_repo")
 local helpers = require("helpers")
@@ -12,7 +13,7 @@ end
 
 local function run(config: {build_id: string, db_id: string?})
     local build_id = config.build_id
-    local db_id = config.db_id or "app:docker_db"
+    local db_id = config.db_id or env.get(consts.env.DATABASE_RESOURCE)
 
     local join_ch = process.listen("ws.join", { message = true })
     local leave_ch = process.listen("ws.leave", { message = true })

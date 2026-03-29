@@ -1,5 +1,6 @@
 local json = require("json")
 local uuid = require("uuid")
+local consts = require("consts")
 
 local images = {}
 
@@ -20,7 +21,7 @@ function images.create(db, spec: {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ]], {
         id, spec.docker_id, spec.name, spec.tag or "latest",
-        spec.source, spec.status or "available", spec.size, now,
+        spec.source, spec.status or consts.image_status.AVAILABLE, spec.size, now,
     })
 
     if err then
@@ -179,7 +180,7 @@ function images.update_build(db, id: string, status: string, fields: {
     local sets = { "status = ?" }
     local params = { status }
 
-    if status == "completed" or status == "failed" then
+    if status == consts.build_status.COMPLETED or status == consts.build_status.FAILED then
         table.insert(sets, "completed_at = ?")
         table.insert(params, os.time())
     end

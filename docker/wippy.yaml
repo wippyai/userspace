@@ -1,6 +1,6 @@
 organization: userspace
 module: docker
-version: 0.3.1
+version: 0.4.0
 description: Docker container management with contract-based API
 license: Apache-2.0
 repository: https://github.com/wippyai/userspace

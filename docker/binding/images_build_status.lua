@@ -2,8 +2,9 @@ local sql = require("sql")
 local env = require("env")
 local images_repo = require("images_repo")
 
+local consts = require("consts")
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 

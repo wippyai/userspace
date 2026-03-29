@@ -490,6 +490,186 @@ local function define_tests()
                 docker:remove_container(container_id, true)
             end)
         end)
+
+        describe("exec", function()
+            it("executes command in running container", function()
+                local config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "sleep 30" },
+                    AttachStdout = true,
+                    AttachStderr = true,
+                }
+
+                local created, create_err = docker:create_container(config)
+                test.is_nil(create_err, "exec test container created")
+                local container_id = created.Id
+
+                docker:start_container(container_id)
+                time.sleep("500ms")
+
+                local result, exec_err = docker:exec_container(container_id, "echo exec_output_test")
+                test.is_nil(exec_err, "exec succeeded")
+                test.not_nil(result, "exec result returned")
+                test.eq(result.exit_code, 0, "exit code 0")
+                test.contains(result.stdout, "exec_output_test", "stdout contains expected text")
+                test.eq(result.stderr, "", "stderr is empty")
+
+                local result2, _ = docker:exec_container(container_id, "exit 42")
+                test.not_nil(result2, "exec with non-zero exit returned")
+                test.eq(result2.exit_code, 42, "exit code 42")
+
+                local result3, _ = docker:exec_container(container_id, "echo out && echo err >&2")
+                test.not_nil(result3, "exec with both streams returned")
+                test.contains(result3.stdout, "out", "stdout captured")
+                test.contains(result3.stderr, "err", "stderr captured")
+
+                docker:stop_container(container_id, 1)
+                docker:remove_container(container_id, true)
+            end)
+        end)
+
+        describe("wait", function()
+            it("waits for container to finish and returns exit code", function()
+                local config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "sleep 1 && exit 7" },
+                    AttachStdout = true,
+                    AttachStderr = true,
+                }
+
+                local created, create_err = docker:create_container(config)
+                test.is_nil(create_err, "wait test container created")
+                local container_id = created.Id
+
+                docker:start_container(container_id)
+
+                local result, wait_err = docker:wait_container(container_id)
+                test.is_nil(wait_err, "wait succeeded")
+                test.not_nil(result, "wait result returned")
+                test.eq(result.StatusCode, 7, "exit code 7")
+
+                docker:remove_container(container_id, true)
+            end)
+        end)
+
+        describe("inspect", function()
+            it("returns container state and network info", function()
+                local net_name = "wippy-inspect-net-" .. os.time()
+                docker:create_network(net_name)
+
+                local config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "sleep 30" },
+                    AttachStdout = true,
+                    HostConfig = { NetworkMode = net_name },
+                }
+
+                local created, create_err = docker:create_container(config)
+                test.is_nil(create_err, "inspect test container created")
+                local container_id = created.Id
+
+                docker:start_container(container_id)
+                time.sleep("500ms")
+
+                local info, inspect_err = docker:inspect_container(container_id)
+                test.is_nil(inspect_err, "inspect succeeded")
+                test.not_nil(info, "info returned")
+                test.is_true(info.State.Running, "container running")
+                test.not_nil(info.NetworkSettings, "network settings present")
+                test.not_nil(info.NetworkSettings.Networks[net_name], "container on expected network")
+
+                local ip = info.NetworkSettings.Networks[net_name].IPAddress
+                test.not_nil(ip, "container has IP address")
+
+                docker:stop_container(container_id, 1)
+                docker:remove_container(container_id, true)
+                docker:remove_network(net_name)
+            end)
+        end)
+
+        describe("healthcheck", function()
+            it("reports health status via inspect", function()
+                local spec = require("spec")
+                local container_config = spec.build_container_config({
+                    image = "alpine:latest",
+                    command = "sleep 30",
+                    healthcheck = {
+                        test = { "CMD-SHELL", "true" },
+                        interval = 1,
+                        timeout = 1,
+                        retries = 3,
+                        start_period = 0,
+                    },
+                })
+
+                local created, create_err = docker:create_container(container_config)
+                test.is_nil(create_err, "healthcheck container created")
+                local container_id = created.Id
+
+                docker:start_container(container_id)
+
+                local healthy = false
+                for _ = 1, 20 do
+                    time.sleep("500ms")
+                    local info = docker:inspect_container(container_id)
+                    if info and info.State and info.State.Health then
+                        if info.State.Health.Status == "healthy" then
+                            healthy = true
+                            break
+                        end
+                    end
+                end
+
+                test.is_true(healthy, "container became healthy")
+
+                docker:stop_container(container_id, 1)
+                docker:remove_container(container_id, true)
+            end)
+        end)
+
+        describe("compose with auto-network", function()
+            it("creates containers on isolated network that can communicate", function()
+                local net_name = "wippy-compose-net-" .. os.time()
+
+                -- Create two containers: a server and a client
+                local server_config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "sleep 30" },
+                    AttachStdout = true,
+                    HostConfig = { NetworkMode = net_name },
+                }
+
+                docker:create_network(net_name)
+
+                local server, s_err = docker:create_container(server_config, { name = "wippy-compose-srv-" .. os.time() })
+                test.is_nil(s_err, "server created")
+                docker:start_container(server.Id)
+
+                -- Connect with alias so DNS resolves
+                docker:connect_network(net_name, server.Id, { "test-server" })
+                time.sleep("500ms")
+
+                -- Client pings server by alias
+                local client_config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "ping -c 1 -W 3 test-server" },
+                    AttachStdout = true,
+                    HostConfig = { NetworkMode = net_name },
+                }
+
+                local client, c_err = docker:create_container(client_config)
+                test.is_nil(c_err, "client created")
+                docker:start_container(client.Id)
+
+                local wait_result = docker:wait_container(client.Id)
+                test.eq(wait_result.StatusCode, 0, "client pinged server by alias")
+
+                docker:stop_container(server.Id, 1)
+                docker:remove_container(server.Id, true)
+                docker:remove_container(client.Id, true)
+                docker:remove_network(net_name)
+            end)
+        end)
     end)
 end
 

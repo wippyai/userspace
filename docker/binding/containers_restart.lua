@@ -1,10 +1,12 @@
 local docker_client = require("docker_client")
+local json = require("json")
 local sql = require("sql")
 local env = require("env")
 local containers_repo = require("containers_repo")
+local consts = require("consts")
 
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 
@@ -36,8 +38,16 @@ local function handle(input: {id: string, timeout: number?})
         return { success = false, error = tostring(err) }
     end
 
-    containers_repo.update_status(db, input.id, "running", {})
+    containers_repo.update_status(db, input.id, consts.status.RUNNING, {})
     db:release()
+
+    local root_pid = process.registry.lookup(consts.registry.ROOT)
+    if root_pid then
+        process.send(root_pid, consts.topic.CONTAINER_STATUS, json.encode({
+            container_id = input.id,
+            status = consts.status.RUNNING,
+        }))
+    end
 
     return { success = true }
 end

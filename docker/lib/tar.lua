@@ -17,6 +17,9 @@ local function pad_to_512(data)
 end
 
 local function build_header(name, size)
+    if #name > 99 then
+        name = name:sub(1, 99)
+    end
     local header = name .. string.rep("\0", 100 - #name)  -- name: 100 bytes
     header = header .. "0000644\0"                         -- mode: 8 bytes
     header = header .. "0000000\0"                         -- uid: 8 bytes

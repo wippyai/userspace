@@ -5,23 +5,37 @@ local consts = require("consts")
 local containers_repo = require("containers_repo")
 
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 
 local function handle(input: {
+    id: string?,
     image: string,
     command: string?,
     name: string?,
     env: {[string]: string}?,
-    volumes: table?,
+    volumes: {host: string, container: string, mode: string?}[]?,
     ports: {host: number, container: number, protocol: string?}[]?,
     network: string?,
     work_dir: string?,
     user: string?,
     memory_limit: number?,
     cpu_quota: number?,
+    labels: {[string]: string}?,
+    group_id: string?,
+    auto_remove: boolean?,
+    interactive: boolean?,
+    restart_policy: string?,
+    max_restarts: number?,
+    health_check: {test: {string}?, interval: number?, timeout: number?, retries: number?}?,
+    extra_hosts: {string}?,
+    cap_add: {string}?,
+    dns: {string}?,
+    callback_pid: string?,
+    callback_topic: string?,
     persist_logs: boolean?,
+    created_by: string?,
     stream: table?,
 })
     if not input.image or input.image == "" then
@@ -34,6 +48,7 @@ local function handle(input: {
     end
 
     local id, create_err = containers_repo.create(db, {
+        id = input.id,
         image = input.image,
         command = input.command,
         name = input.name,
@@ -45,9 +60,20 @@ local function handle(input: {
         user = input.user,
         memory_limit = input.memory_limit,
         cpu_quota = input.cpu_quota,
+        labels = input.labels,
+        group_id = input.group_id,
         auto_remove = input.auto_remove,
         interactive = input.interactive,
-        persist_logs = input.persist_logs ~= nil and input.persist_logs or false,
+        restart_policy = input.restart_policy,
+        max_restarts = input.max_restarts,
+        health_check = input.health_check,
+        extra_hosts = input.extra_hosts,
+        cap_add = input.cap_add,
+        dns = input.dns,
+        callback_pid = input.callback_pid,
+        callback_topic = input.callback_topic,
+        persist_logs = (input.persist_logs ~= nil and input.persist_logs or false) :: boolean,
+        created_by = input.created_by,
     })
 
     db:release()
@@ -68,7 +94,7 @@ local function handle(input: {
         end
     end
 
-    return { success = true, id = id, status = "pending" }
+    return { success = true, id = id, status = consts.status.PENDING }
 end
 
 return { handle = handle }

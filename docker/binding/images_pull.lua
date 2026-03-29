@@ -1,10 +1,11 @@
 local sql = require("sql")
 local env = require("env")
+local consts = require("consts")
 local images_repo = require("images_repo")
 local docker_client = require("docker_client")
 
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 
@@ -44,7 +45,7 @@ local function handle(input: {image: string, tag: string?})
     local id: string?
     if existing then
         id = tostring(existing.id)
-        images_repo.update_status(db, id, "available", {
+        images_repo.update_status(db, id, consts.image_status.AVAILABLE, {
             docker_id = docker_id,
             size = size,
         })
@@ -54,7 +55,7 @@ local function handle(input: {image: string, tag: string?})
             name = image_name,
             tag = image_tag,
             source = "pulled",
-            status = "available",
+            status = consts.image_status.AVAILABLE,
             docker_id = docker_id,
             size = size,
         })
@@ -71,7 +72,7 @@ local function handle(input: {image: string, tag: string?})
         id = id,
         name = image_name,
         tag = image_tag,
-        status = "available",
+        status = consts.image_status.AVAILABLE,
     }
 end
 

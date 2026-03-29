@@ -1,10 +1,11 @@
 local sql = require("sql")
 local env = require("env")
+local consts = require("consts")
 local images_repo = require("images_repo")
 local docker_client = require("docker_client")
 
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 
@@ -50,7 +51,7 @@ local function handle(input: table?)
                         created = img.Created,
                         managed = m ~= nil,
                         source = m and m.source or nil,
-                        status = m and m.status or "available",
+                        status = m and m.status or consts.image_status.AVAILABLE,
                     })
                     if m then
                         managed_by_tag[tag] = nil
@@ -62,7 +63,7 @@ local function handle(input: table?)
 
     for _, m in pairs(managed_by_tag) do
         local st = m.status
-        if st == "building" or st == "pulling" then
+        if st == consts.image_status.BUILDING or st == consts.image_status.PULLING then
             table.insert(result, {
                 id = m.id,
                 docker_id = m.docker_id,

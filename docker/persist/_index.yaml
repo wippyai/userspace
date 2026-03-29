@@ -12,6 +12,8 @@ entries:
   - name: images
     kind: library.lua
     source: file://images.lua
+    imports:
+      consts: userspace.docker.lib:consts
     modules:
       - json
       - uuid

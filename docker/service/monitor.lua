@@ -15,10 +15,6 @@ function monitor.run(config: {
     log_ttl: number?,
 })
     local log = logger:named("docker.monitor")
-    local db, db_err = sql.get(config.db_id)
-    if db_err then
-        return nil, "failed to get database: " .. tostring(db_err)
-    end
 
     local docker, docker_err = docker_client.new(config.socket_path)
     if docker_err then
@@ -42,46 +38,47 @@ function monitor.run(config: {
                 break
             end
         else
-            local old = containers_repo.list(db, {
-                status = consts.status.STOPPED,
-                limit = 100,
-            })
-            for _, c in ipairs(old or {}) do
-                if c.stopped_at and (os.time() - c.stopped_at) > log_ttl then
-                    if docker then
-                        if c.docker_id and c.docker_id ~= "" then
-                            local _, rm_err = (docker :: {[string]: any}):remove_container(tostring(c.docker_id), true)
-                            if rm_err then
-                                log:warn("failed to remove container", { docker_id = c.docker_id, error = tostring(rm_err) })
-                            end
+            local db, db_err = sql.get(config.db_id)
+            if db_err then
+                log:warn("monitor tick: db unavailable", { error = tostring(db_err) })
+            else
+                -- Clean stopped containers past TTL
+                local old = containers_repo.list(db, {
+                    status = consts.status.STOPPED,
+                    limit = 100,
+                })
+                for _, c in ipairs(old or {}) do
+                    if c.stopped_at and (os.time() - c.stopped_at) > log_ttl then
+                        if docker and c.docker_id and c.docker_id ~= "" then
+                            (docker :: {[string]: any}):remove_container(tostring(c.docker_id), true)
                         end
+                        containers_repo.delete(db, tostring(c.id))
                     end
-                    containers_repo.delete(db, tostring(c.id))
                 end
-            end
 
-            local failed = containers_repo.list(db, {
-                status = consts.status.FAILED,
-                limit = 100,
-            })
-            for _, c in ipairs(failed or {}) do
-                if c.stopped_at and (os.time() - c.stopped_at) > log_ttl then
-                    if docker then
-                        if c.docker_id and c.docker_id ~= "" then
-                            local _, rm_err = (docker :: {[string]: any}):remove_container(tostring(c.docker_id), true)
-                            if rm_err then
-                                log:warn("failed to remove container", { docker_id = c.docker_id, error = tostring(rm_err) })
+                -- Clean failed and removed containers past TTL
+                for _, status in ipairs({ consts.status.FAILED, consts.status.REMOVED }) do
+                    local stale = containers_repo.list(db, {
+                        status = status,
+                        limit = 100,
+                    })
+                    for _, c in ipairs(stale or {}) do
+                        local age = c.stopped_at and (os.time() - c.stopped_at) or (c.created_at and (os.time() - c.created_at) or 0)
+                        if age > log_ttl then
+                            if docker and c.docker_id and c.docker_id ~= "" then
+                                (docker :: {[string]: any}):remove_container(tostring(c.docker_id), true)
                             end
+                            containers_repo.delete(db, tostring(c.id))
                         end
                     end
-                    containers_repo.delete(db, tostring(c.id))
                 end
+
+                db:release()
             end
         end
     end
 
     ticker:stop()
-    db:release()
     return { status = "monitor_shutdown" }
 end
 

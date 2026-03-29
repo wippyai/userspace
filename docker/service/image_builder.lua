@@ -9,21 +9,35 @@ local helpers = require("helpers")
 
 local logger = require("logger")
 
+local BUILD_TIMEOUT = "600s"
+
 local function notify_root(root_pid, topic, payload)
     if root_pid then
         helpers.send_json(root_pid, topic, payload)
     end
 end
 
-local function run_build(db, docker, build, root_pid, log)
+local function run_build(db_id, docker, build, root_pid, log)
     local build_id = tostring(build.id)
     local image_id = tostring(build.image_id)
+
+    local db, db_err = sql.get(db_id)
+    if db_err then
+        notify_root(root_pid, consts.topic.IMAGE_BUILD_STATUS, {
+            build_id = build_id,
+            image_id = image_id,
+            status = consts.build_status.FAILED,
+            error = "db unavailable",
+        })
+        return
+    end
 
     local image = images_repo.get(db, image_id)
     if not image then
         images_repo.update_build(db, build_id, consts.build_status.FAILED, {
             error = "image record not found",
         })
+        db:release()
         notify_root(root_pid, consts.topic.IMAGE_BUILD_STATUS, {
             build_id = build_id,
             image_id = image_id,
@@ -47,7 +61,24 @@ local function run_build(db, docker, build, root_pid, log)
         { name = "Dockerfile", content = tostring(build.dockerfile) },
     })
 
+    -- Release DB before blocking Docker build
+    db:release()
+
     local lines, build_err = docker:build_image(tar_data, image_name, image_tag)
+
+    -- Reacquire DB for result storage
+    local db2, db2_err = sql.get(db_id)
+    if db2_err then
+        notify_root(root_pid, consts.topic.IMAGE_BUILD_STATUS, {
+            build_id = build_id,
+            image_id = image_id,
+            status = consts.build_status.FAILED,
+            error = "db unavailable after build",
+        })
+        return
+    end
+    db = db2
+
     if build_err then
         images_repo.update_status(db, image_id, consts.image_status.FAILED, {
             error = tostring(build_err),
@@ -55,6 +86,7 @@ local function run_build(db, docker, build, root_pid, log)
         images_repo.update_build(db, build_id, consts.build_status.FAILED, {
             error = tostring(build_err),
         })
+        db:release()
         notify_root(root_pid, consts.topic.IMAGE_BUILD_STATUS, {
             build_id = build_id,
             image_id = image_id,
@@ -103,6 +135,7 @@ local function run_build(db, docker, build, root_pid, log)
             build_log = full_log,
             error = error_msg,
         })
+        db:release()
         notify_root(root_pid, consts.topic.IMAGE_BUILD_STATUS, {
             build_id = build_id,
             image_id = image_id,
@@ -114,20 +147,22 @@ local function run_build(db, docker, build, root_pid, log)
 
     local full_tag = image_name .. ":" .. image_tag
     local info, inspect_err = docker:inspect_image(full_tag)
-    local docker_id = ""
+    local docker_image_id = ""
     local size = 0
     if info and not inspect_err then
-        docker_id = tostring(info.Id or "")
+        docker_image_id = tostring(info.Id or "")
         size = tonumber(info.Size) or 0
     end
 
     images_repo.update_status(db, image_id, consts.image_status.AVAILABLE, {
-        docker_id = docker_id,
+        docker_id = docker_image_id,
         size = size,
     })
     images_repo.update_build(db, build_id, consts.build_status.COMPLETED, {
         build_log = full_log,
     })
+
+    db:release()
 
     notify_root(root_pid, consts.topic.IMAGE_BUILD_STATUS, {
         build_id = build_id,
@@ -183,7 +218,7 @@ function image_builder.run(config: {db_id: string, socket_path: string?})
                         local build = images_repo.get_build(db, build_id)
                         if build then
                             coroutine.spawn(function()
-                                run_build(db, docker, build, root_pid, log)
+                                run_build(config.db_id, docker, build, root_pid, log)
                             end)
                         end
                     end

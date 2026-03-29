@@ -29,8 +29,8 @@ local function parse_response(body: any)
         return body
     end
     if type(body) == "string" then
-        local ok, parsed = pcall(json.decode, body)
-        if ok and parsed ~= nil then
+        local parsed, err = json.decode(body)
+        if not err and parsed ~= nil then
             return parsed
         end
     end
@@ -173,8 +173,8 @@ local function parse_stream_lines(raw: any)
             if line:sub(-1) == "\r" then
                 line = line:sub(1, -2)
             end
-            local ok, parsed = pcall(json.decode, line)
-            if ok and parsed then
+            local parsed, parse_err = json.decode(line)
+            if not parse_err and parsed then
                 table.insert(lines, parsed)
             end
         end
@@ -186,24 +186,38 @@ end
 
 local docker = {}
 
+local cached_socket: string? = nil
+
 function docker.new(socket_path: string?)
     local sock: string
     if not socket_path then
-        local found: string? = nil
-        for _, path in ipairs(DOCKER_SOCKETS) do
-            local response, err = http_client.get("http://docker/_ping", {
-                unix_socket = path,
-                timeout = "5s",
-            })
-            if not err and response.status_code == 200 then
-                found = path
-                break
+        if cached_socket then
+            local _, ping_err = make_request(cached_socket, "GET", "/_ping", { timeout = "2s" })
+            if not ping_err then
+                sock = cached_socket
+            else
+                cached_socket = nil
+                sock = ""
             end
         end
-        if not found then
-            return nil, "no Docker socket found"
+        if not sock or sock == "" then
+            local found: string? = nil
+            for _, path in ipairs(DOCKER_SOCKETS) do
+                local response, err = http_client.get("http://docker/_ping", {
+                    unix_socket = path,
+                    timeout = "5s",
+                })
+                if not err and response.status_code == 200 then
+                    found = path
+                    break
+                end
+            end
+            if not found then
+                return nil, "no Docker socket found"
+            end
+            sock = found
+            cached_socket = found
         end
-        sock = found
     else
         local _, err = make_request(socket_path, "GET", "/_ping", { timeout = "5s" })
         if err then
@@ -623,6 +637,71 @@ function docker.new(socket_path: string?)
             return nil, req_err
         end
         return result.body, nil
+    end
+
+    function client:exec_container(id: string, command: string, options: {
+        env: {string}?,
+        work_dir: string?,
+        user: string?,
+        timeout: string?,
+    }?): ({stdout: string, stderr: string, exit_code: number}?, string?)
+        local opts = options or {}
+
+        local cmd = { "sh", "-c", command }
+
+        local exec_config: {[string]: any} = {
+            AttachStdout = true,
+            AttachStderr = true,
+            Cmd = cmd,
+        }
+        if opts.env then exec_config.Env = opts.env end
+        if opts.work_dir then exec_config.WorkingDir = opts.work_dir end
+        if opts.user then exec_config.User = opts.user end
+
+        local create_result, create_err = make_request(sock, "POST", "/containers/" .. id .. "/exec", {
+            body = exec_config,
+        })
+        if create_err or not create_result then
+            return nil, create_err or "exec create failed"
+        end
+
+        local exec_id = create_result.body and create_result.body.Id
+        if not exec_id then
+            return nil, "no exec ID returned"
+        end
+
+        local start_result, start_err = make_request(sock, "POST", "/exec/" .. exec_id .. "/start", {
+            body = { Detach = false, Tty = false },
+            timeout = opts.timeout or "300s",
+        })
+        if start_err or not start_result then
+            return nil, start_err or "exec start failed"
+        end
+
+        local stdout_parts: {string} = {}
+        local stderr_parts: {string} = {}
+        if start_result.raw_body then
+            local lines = parse_logs(tostring(start_result.raw_body))
+            for _, entry in ipairs(lines) do
+                if entry.stream == "stderr" then
+                    table.insert(stderr_parts, entry.line)
+                else
+                    table.insert(stdout_parts, entry.line)
+                end
+            end
+        end
+
+        local inspect_result, inspect_err = make_request(sock, "GET", "/exec/" .. exec_id .. "/json")
+        local exit_code = -1
+        if not inspect_err and inspect_result and inspect_result.body then
+            exit_code = tonumber(inspect_result.body.ExitCode) or -1
+        end
+
+        return {
+            stdout = table.concat(stdout_parts, "\n"),
+            stderr = table.concat(stderr_parts, "\n"),
+            exit_code = exit_code,
+        }, nil
     end
 
     -- Image operations

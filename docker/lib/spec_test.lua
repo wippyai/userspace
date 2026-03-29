@@ -240,6 +240,170 @@ local function define_tests()
                 })
                 test.is_nil(result.HostConfig.NetworkMode, "no NetworkMode without network")
             end)
+
+            it("sets Labels on config", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    labels = { group = "test-group", env = "staging" },
+                })
+                test.not_nil(result.Labels)
+                test.eq(result.Labels.group, "test-group")
+                test.eq(result.Labels.env, "staging")
+            end)
+
+            it("uses custom extra_hosts", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    extra_hosts = { "db:10.0.0.5", "cache:10.0.0.6" },
+                })
+                test.eq(#result.HostConfig.ExtraHosts, 2)
+                test.eq(result.HostConfig.ExtraHosts[1], "db:10.0.0.5")
+                test.eq(result.HostConfig.ExtraHosts[2], "cache:10.0.0.6")
+            end)
+
+            it("defaults extra_hosts to host.docker.internal", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                })
+                test.eq(#result.HostConfig.ExtraHosts, 1)
+                test.eq(result.HostConfig.ExtraHosts[1], "host.docker.internal:host-gateway")
+            end)
+
+            it("sets RestartPolicy", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    restart_policy = { name = "on-failure", max_retry = 5 },
+                })
+                test.not_nil(result.HostConfig.RestartPolicy)
+                test.eq(result.HostConfig.RestartPolicy.Name, "on-failure")
+                test.eq(result.HostConfig.RestartPolicy.MaximumRetryCount, 5)
+            end)
+
+            it("sets Healthcheck with intervals in nanoseconds", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    healthcheck = {
+                        test = { "CMD", "curl", "-f", "http://localhost/" },
+                        interval = 5,
+                        timeout = 3,
+                        retries = 3,
+                        start_period = 10,
+                    },
+                })
+                test.not_nil(result.Healthcheck)
+                test.eq(result.Healthcheck.Test[1], "CMD")
+                test.eq(result.Healthcheck.Test[2], "curl")
+                test.eq(result.Healthcheck.Interval, 5e9)
+                test.eq(result.Healthcheck.Timeout, 3e9)
+                test.eq(result.Healthcheck.Retries, 3)
+                test.eq(result.Healthcheck.StartPeriod, 10e9)
+            end)
+
+            it("sets CapAdd", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    cap_add = { "SYS_PTRACE", "NET_ADMIN" },
+                })
+                test.not_nil(result.HostConfig.CapAdd)
+                test.eq(#result.HostConfig.CapAdd, 2)
+                test.eq(result.HostConfig.CapAdd[1], "SYS_PTRACE")
+            end)
+
+            it("sets Dns", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    dns = { "8.8.8.8", "8.8.4.4" },
+                })
+                test.not_nil(result.HostConfig.Dns)
+                test.eq(#result.HostConfig.Dns, 2)
+                test.eq(result.HostConfig.Dns[1], "8.8.8.8")
+            end)
+
+            it("omits Labels when not specified", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                })
+                test.is_nil(result.Labels)
+            end)
+
+            it("omits Healthcheck when not specified", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                })
+                test.is_nil(result.Healthcheck)
+            end)
+
+            it("omits RestartPolicy when not specified", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                })
+                test.is_nil(result.HostConfig.RestartPolicy)
+            end)
+
+            it("omits CapAdd when not specified", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                })
+                test.is_nil(result.HostConfig.CapAdd)
+            end)
+
+            it("omits Dns when not specified", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                })
+                test.is_nil(result.HostConfig.Dns)
+            end)
+
+            it("sets RestartPolicy with default max_retry", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    restart_policy = { name = "always" },
+                })
+                test.eq(result.HostConfig.RestartPolicy.Name, "always")
+                test.eq(result.HostConfig.RestartPolicy.MaximumRetryCount, 0)
+            end)
+
+            it("combines all HostConfig fields", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    memory_limit = 536870912,
+                    cpu_quota = 0.5,
+                    network = "my-net",
+                    dns = { "1.1.1.1" },
+                    cap_add = { "NET_ADMIN" },
+                    restart_policy = { name = "on-failure", max_retry = 2 },
+                    extra_hosts = { "api:10.0.0.1" },
+                })
+                test.eq(result.HostConfig.Memory, 536870912)
+                test.eq(result.HostConfig.NanoCPUs, 500000000)
+                test.eq(result.HostConfig.NetworkMode, "my-net")
+                test.eq(result.HostConfig.Dns[1], "1.1.1.1")
+                test.eq(result.HostConfig.CapAdd[1], "NET_ADMIN")
+                test.eq(result.HostConfig.RestartPolicy.Name, "on-failure")
+                test.eq(result.HostConfig.RestartPolicy.MaximumRetryCount, 2)
+                test.eq(result.HostConfig.ExtraHosts[1], "api:10.0.0.1")
+            end)
+
+            it("sets Healthcheck with only test field", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    healthcheck = { test = { "CMD-SHELL", "exit 0" } },
+                })
+                test.not_nil(result.Healthcheck)
+                test.eq(result.Healthcheck.Test[1], "CMD-SHELL")
+                test.is_nil(result.Healthcheck.Interval)
+                test.is_nil(result.Healthcheck.Timeout)
+            end)
+
+            it("combines Labels and Healthcheck on config", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    labels = { app = "test" },
+                    healthcheck = { test = { "CMD", "true" }, interval = 2 },
+                })
+                test.eq(result.Labels.app, "test")
+                test.eq(result.Healthcheck.Interval, 2e9)
+            end)
         end)
 
         describe("validate", function()

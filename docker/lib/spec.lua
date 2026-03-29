@@ -12,7 +12,13 @@ function spec.build_container_config(c: {
     memory_limit: number?,
     cpu_quota: number?,
     interactive: boolean?,
-})
+    labels: {[string]: string}?,
+    extra_hosts: {string}?,
+    restart_policy: {name: string, max_retry: number?}?,
+    healthcheck: {test: {string}, interval: number?, timeout: number?, retries: number?, start_period: number?}?,
+    cap_add: {string}?,
+    dns: {string}?,
+}): {[string]: any}
     local env_array = nil
     if c.env then
         env_array = {}
@@ -33,10 +39,16 @@ function spec.build_container_config(c: {
         end
     end
 
-    local host_config = {
+    local host_config: {[string]: any} = {
         AutoRemove = false,
-        ExtraHosts = { "host.docker.internal:host-gateway" },
     }
+
+    -- Extra hosts: default includes host.docker.internal, caller can override
+    if c.extra_hosts then
+        host_config.ExtraHosts = c.extra_hosts
+    else
+        host_config.ExtraHosts = { "host.docker.internal:host-gateway" }
+    end
 
     if binds and #binds > 0 then
         host_config.Binds = binds
@@ -66,12 +78,27 @@ function spec.build_container_config(c: {
         host_config.NanoCPUs = math.floor(c.cpu_quota * 1e9)
     end
 
+    if c.restart_policy then
+        host_config.RestartPolicy = {
+            Name = c.restart_policy.name,
+            MaximumRetryCount = c.restart_policy.max_retry or 0,
+        }
+    end
+
+    if c.cap_add then
+        host_config.CapAdd = c.cap_add
+    end
+
+    if c.dns then
+        host_config.Dns = c.dns
+    end
+
     local cmd = nil
     if c.command then
         cmd = { "sh", "-c", c.command }
     end
 
-    local config = {
+    local config: {[string]: any} = {
         Image = c.image,
         Cmd = cmd,
         Env = env_array,
@@ -84,6 +111,29 @@ function spec.build_container_config(c: {
         Tty = false,
         HostConfig = host_config,
     }
+
+    if c.labels then
+        config.Labels = c.labels
+    end
+
+    if c.healthcheck and c.healthcheck.test then
+        local hc: {[string]: any} = {
+            Test = c.healthcheck.test,
+        }
+        if c.healthcheck.interval then
+            hc.Interval = math.floor(c.healthcheck.interval * 1e9)
+        end
+        if c.healthcheck.timeout then
+            hc.Timeout = math.floor(c.healthcheck.timeout * 1e9)
+        end
+        if c.healthcheck.retries then
+            hc.Retries = c.healthcheck.retries
+        end
+        if c.healthcheck.start_period then
+            hc.StartPeriod = math.floor(c.healthcheck.start_period * 1e9)
+        end
+        config.Healthcheck = hc
+    end
 
     return config
 end

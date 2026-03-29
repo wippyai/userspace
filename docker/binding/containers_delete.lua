@@ -1,10 +1,12 @@
 local sql = require("sql")
+local json = require("json")
 local env = require("env")
 local containers_repo = require("containers_repo")
 local docker_client = require("docker_client")
+local consts = require("consts")
 
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 
@@ -45,6 +47,15 @@ local function handle(input: {id: string})
 
     containers_repo.delete(db, input.id)
     db:release()
+
+    -- Notify subscribers about removal
+    local root_pid = process.registry.lookup(consts.registry.ROOT)
+    if root_pid then
+        process.send(root_pid, consts.topic.CONTAINER_STATUS, json.encode({
+            container_id = input.id,
+            status = consts.status.REMOVED,
+        }))
+    end
 
     local result: {[string]: any} = { success = true }
     if #warnings > 0 then
