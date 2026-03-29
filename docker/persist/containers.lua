@@ -4,17 +4,14 @@ local uuid = require("uuid")
 local containers = {}
 
 local function safe_json_decode(raw: string): table?
-    if not raw then
+    if not raw or raw == "" then
         return nil
     end
-    if raw == "" then
+    local result, err = json.decode(tostring(raw))
+    if err or type(result) ~= "table" then
         return nil
     end
-    local ok, result = pcall(json.decode, tostring(raw))
-    if ok and type(result) == "table" then
-        return result :: table
-    end
-    return nil
+    return result :: table
 end
 
 function containers.create(db, spec: {
@@ -23,7 +20,7 @@ function containers.create(db, spec: {
     image: string,
     command: string?,
     env: {[string]: string}?,
-    volumes: table?,
+    volumes: {host: string, container: string, mode: string?}[]?,
     ports: {host: number, container: number, protocol: string?}[]?,
     network: string?,
     work_dir: string?,
@@ -34,8 +31,12 @@ function containers.create(db, spec: {
     interactive: boolean?,
     restart_policy: string?,
     max_restarts: number?,
-    health_check: table?,
-    labels: table?,
+    health_check: {test: {string}?, interval: number?, timeout: number?, retries: number?}?,
+    extra_hosts: {string}?,
+    cap_add: {string}?,
+    dns: {string}?,
+    group_id: string?,
+    labels: {[string]: string}?,
     callback_pid: string?,
     callback_topic: string?,
     persist_logs: boolean?,
@@ -62,15 +63,18 @@ function containers.create(db, spec: {
         restart_policy = spec.restart_policy,
         max_restarts   = spec.max_restarts,
         health_check   = spec.health_check,
+        extra_hosts    = spec.extra_hosts,
+        cap_add        = spec.cap_add,
+        dns            = spec.dns,
     })
 
     local _, exec_err = db:execute([[
-        INSERT INTO containers (id, name, image, command, config, status, labels,
+        INSERT INTO containers (id, name, image, command, config, status, group_id, labels,
             callback_pid, callback_topic, persist_logs, created_by, created_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
     ]], {
         id, spec.name, spec.image, spec.command, config_json,
-        labels_json, spec.callback_pid, spec.callback_topic,
+        spec.group_id, labels_json, spec.callback_pid, spec.callback_topic,
         spec.persist_logs ~= false and 1 or 0, spec.created_by, now
     })
 
@@ -102,8 +106,9 @@ end
 function containers.list(db, filter: {
     status: string?,
     status_not: string?,
+    group_id: string?,
     limit: number?,
-}?)
+}?): {table}
     local f = filter or {}
     local where = {}
     local params = {}
@@ -116,6 +121,11 @@ function containers.list(db, filter: {
     if f.status_not then
         table.insert(where, "status != ?")
         table.insert(params, f.status_not)
+    end
+
+    if f.group_id then
+        table.insert(where, "group_id = ?")
+        table.insert(params, f.group_id)
     end
 
     local query = "SELECT * FROM containers"
@@ -133,6 +143,7 @@ function containers.list(db, filter: {
     if query_err or not rows then
         return {}
     end
+
     for _, row in ipairs(rows) do
         if row.labels and row.labels ~= "" then
             row.labels = safe_json_decode(tostring(row.labels))
@@ -141,22 +152,26 @@ function containers.list(db, filter: {
             row.config = safe_json_decode(tostring(row.config))
         end
     end
-    return rows
+    return rows :: {table}
 end
 
-function containers.list_pending(db)
+function containers.list_pending(db): {table}
     local rows, query_err = db:query(
         "SELECT * FROM containers WHERE status = 'pending' ORDER BY created_at ASC"
     )
     if query_err or not rows then
         return {}
     end
-    for _, row in ipairs(rows) do
+    local result: {table} = rows :: {table}
+    for _, row in ipairs(result) do
+        if row.labels and row.labels ~= "" then
+            row.labels = safe_json_decode(tostring(row.labels))
+        end
         if row.config and row.config ~= "" then
             row.config = safe_json_decode(tostring(row.config))
         end
     end
-    return rows
+    return result
 end
 
 function containers.claim(db, id: string): boolean
@@ -181,7 +196,7 @@ function containers.update_status(db, id: string, status: string, fields: {
     local sets = { "status = ?" }
     local params = { status }
 
-    if f.docker_id then
+    if f.docker_id ~= nil then
         table.insert(sets, "docker_id = ?")
         table.insert(params, f.docker_id)
     end
@@ -189,15 +204,19 @@ function containers.update_status(db, id: string, status: string, fields: {
         table.insert(sets, "exit_code = ?")
         table.insert(params, f.exit_code)
     end
-    if f.error then
-        table.insert(sets, "error = ?")
-        table.insert(params, f.error)
+    if f.error ~= nil then
+        if f.error == "" then
+            table.insert(sets, "error = NULL")
+        else
+            table.insert(sets, "error = ?")
+            table.insert(params, f.error)
+        end
     end
-    if f.started_at then
+    if f.started_at ~= nil then
         table.insert(sets, "started_at = ?")
         table.insert(params, f.started_at)
     end
-    if f.stopped_at then
+    if f.stopped_at ~= nil then
         table.insert(sets, "stopped_at = ?")
         table.insert(params, f.stopped_at)
     end
@@ -225,15 +244,49 @@ function containers.append_log(db, container_id: string, stream: string, line: s
     return nil
 end
 
-function containers.get_logs(db, container_id: string): any
-    local rows, err = db:query(
-        "SELECT stream, line FROM container_logs WHERE container_id = ? ORDER BY id ASC",
-        { container_id }
+function containers.get_logs(db, container_id: string, limit: number?): ({table}, string?)
+    local query = "SELECT stream, line, ts FROM container_logs WHERE container_id = ? ORDER BY id ASC"
+    local params: {any} = { container_id }
+    if limit then
+        query = query .. " LIMIT ?"
+        table.insert(params, limit)
+    end
+    local rows, err = db:query(query, params)
+    if err then
+        return {}, "failed to get logs: " .. tostring(err)
+    end
+    return (rows or {}) :: {table}, nil
+end
+
+function containers.list_by_group(db, group_id: string): {table}
+    local rows, query_err = db:query(
+        "SELECT * FROM containers WHERE group_id = ? ORDER BY created_at DESC",
+        { group_id }
     )
-    if err or not rows then
+    if query_err or not rows then
         return {}
     end
-    return rows :: table
+    for _, row in ipairs(rows) do
+        if row.labels and row.labels ~= "" then
+            row.labels = safe_json_decode(tostring(row.labels))
+        end
+        if row.config and row.config ~= "" then
+            row.config = safe_json_decode(tostring(row.config))
+        end
+    end
+    return rows :: {table}
+end
+
+function containers.delete_by_group(db, group_id: string): (number, string?)
+    local rows = containers.list_by_group(db, group_id)
+    local count = 0
+    for _, row in ipairs(rows) do
+        local err = containers.delete(db, tostring(row.id))
+        if not err then
+            count = count + 1
+        end
+    end
+    return count, nil
 end
 
 function containers.update_name(db, id: string, name: string): string?
@@ -245,6 +298,7 @@ function containers.update_name(db, id: string, name: string): string?
 end
 
 function containers.delete(db, id: string): string?
+    db:execute("DELETE FROM container_logs WHERE container_id = ?", { id })
     local _, exec_err = db:execute("DELETE FROM containers WHERE id = ?", { id })
     if exec_err then
         return "failed to delete container: " .. tostring(exec_err)

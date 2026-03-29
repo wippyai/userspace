@@ -1,0 +1,3 @@
+organization: userspace
+module: docker-test
+description: Test stub for docker module

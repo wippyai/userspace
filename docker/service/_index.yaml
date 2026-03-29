@@ -94,6 +94,7 @@ entries:
       containers_repo: userspace.docker.persist:containers
     modules:
       - sql
+      - env
       - process
       - channel
       - time
@@ -109,6 +110,7 @@ entries:
       images_repo: userspace.docker.persist:images
     modules:
       - sql
+      - env
       - process
       - channel
       - time

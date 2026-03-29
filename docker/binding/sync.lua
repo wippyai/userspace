@@ -1,20 +1,21 @@
 local docker_client = require("docker_client")
 local sql = require("sql")
 local env = require("env")
+local consts = require("consts")
 local containers_repo = require("containers_repo")
 local images_repo = require("images_repo")
 
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 
 local function map_state(state: string): string
-    if state == "running" then return "running"
-    elseif state == "exited" or state == "dead" then return "stopped"
-    elseif state == "created" or state == "restarting" then return "pending"
-    elseif state == "paused" then return "running"
-    else return "stopped"
+    if state == "running" then return consts.status.RUNNING
+    elseif state == "exited" or state == "dead" then return consts.status.STOPPED
+    elseif state == "created" or state == "restarting" then return consts.status.PENDING
+    elseif state == "paused" then return consts.status.PAUSED
+    else return consts.status.STOPPED
     end
 end
 
@@ -39,7 +40,7 @@ local function handle(input: table?)
     -- sync containers
     local docker_containers, c_err = docker:list_containers()
     if not c_err and docker_containers then
-        local existing = containers_repo.list(db, { limit = 10000 })
+        local existing = containers_repo.list(db)
         local by_docker_id = {}
         for _, c in ipairs(existing) do
             if c.docker_id and c.docker_id ~= "" then
@@ -106,7 +107,7 @@ local function handle(input: table?)
                     if img_name then
                         local existing_img = managed_by_tag[tag]
                         if existing_img then
-                            images_repo.update_status(db, tostring(existing_img.id), "available", {
+                            images_repo.update_status(db, tostring(existing_img.id), consts.image_status.AVAILABLE, {
                                 docker_id = tostring(img.Id or ""),
                                 size = tonumber(img.Size) or 0,
                             })
@@ -116,7 +117,7 @@ local function handle(input: table?)
                                 name = tostring(img_name),
                                 tag = tostring(ver),
                                 source = "synced",
-                                status = "available",
+                                status = consts.image_status.AVAILABLE,
                                 docker_id = tostring(img.Id or ""),
                                 size = tonumber(img.Size) or 0,
                             })

@@ -20,27 +20,30 @@ local function create_from_entry(db, entry: {id: string, data: table?})
     if existing then
         return false
     end
-    containers_repo.create(db, {
+    local _, create_err = containers_repo.create(db, {
         id = entry.id,
         image = image,
         command = command,
         name = data.name and tostring(data.name) or nil,
-        interactive = data.interactive or false,
+        interactive = (data.interactive or false) :: boolean,
         env = data.env :: {[string]: string}?,
-        volumes = data.volumes :: table?,
+        volumes = data.volumes :: {host: string, container: string, mode: string?}[]?,
         ports = data.ports :: {host: number, container: number, protocol: string?}[]?,
         network = data.network and tostring(data.network) or nil,
         work_dir = data.work_dir and tostring(data.work_dir) or nil,
-        labels = data.labels :: table?,
+        labels = data.labels :: {[string]: string}?,
         persist_logs = false,
     })
-    return true
+    return not create_err
 end
 
 local function run()
     local log = logger:named("docker.root")
 
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
+    if not db_id or db_id == "" then
+        return nil, "database resource not configured: " .. consts.env.DATABASE_RESOURCE
+    end
 
     local db, err = sql.get(db_id)
     if err then
@@ -64,7 +67,10 @@ local function run()
 
     process.registry.register(consts.registry.ROOT)
 
-    local host_id = env.get("userspace.docker.process_host") or "app:processes"
+    local host_id = env.get(consts.env.PROCESS_HOST)
+    if not host_id or host_id == "" then
+        return nil, "process host not configured: " .. consts.env.PROCESS_HOST
+    end
     local worker_count = consts.defaults.WORKER_COUNT
 
     local worker_config = {
@@ -257,7 +263,7 @@ local function run()
                         end
 
                         -- send done event for terminal statuses
-                        if payload.status == consts.status.STOPPED or payload.status == consts.status.FAILED then
+                        if payload.status == consts.status.STOPPED or payload.status == consts.status.FAILED or payload.status == consts.status.REMOVED then
                             local done_encoded = json.encode({ type = "done" })
                             for sub_pid, _ in pairs(subs) do
                                 process.send(tostring(sub_pid), consts.topic.CONTAINER_STATUS, done_encoded)
@@ -336,7 +342,7 @@ local function run()
                             process.send(tostring(sub_pid), consts.topic.IMAGE_BUILD_STATUS, encoded)
                         end
 
-                        if payload.status == "completed" or payload.status == "failed" then
+                        if payload.status == consts.build_status.COMPLETED or payload.status == consts.build_status.FAILED then
                             local done_encoded = json.encode({ type = "done" })
                             for sub_pid, _ in pairs(subs) do
                                 process.send(tostring(sub_pid), consts.topic.IMAGE_BUILD_STATUS, done_encoded)

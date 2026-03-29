@@ -22,6 +22,10 @@ entries:
         path: .meta.target_db
       - entry: userspace.docker.migrations:02_create_images
         path: .meta.target_db
+      - entry: userspace.docker.migrations:03_add_group_id
+        path: .meta.target_db
+      - entry: userspace.docker.service:root.service
+        path: .lifecycle.depends_on[0]
 
   - name: process_host
     kind: ns.requirement
@@ -33,6 +37,8 @@ entries:
         path: .host
       - entry: userspace.docker.service:root.service
         path: .lifecycle.depends_on[1]
+      - entry: userspace.docker.env:process_host
+        path: .default
 
   # Dependencies
   - name: dependency.test
@@ -79,6 +85,14 @@ entries:
         description: List processes running inside a container
       - name: rename
         description: Rename a container
+      - name: exec
+        description: Execute a command inside a running container
+      - name: wait
+        description: Block until a container stops and return exit code
+      - name: inspect
+        description: Get detailed container state from Docker daemon
+      - name: compose_teardown
+        description: Remove all containers in a compose group and their network
       - name: prune
         description: Remove all stopped containers
 
@@ -174,6 +188,10 @@ entries:
           logs: userspace.docker.binding:containers_logs_func
           stdin: userspace.docker.binding:containers_stdin_func
           compose: userspace.docker.binding:containers_compose_func
+          exec: userspace.docker.binding:containers_exec_func
+          wait: userspace.docker.binding:containers_wait_func
+          inspect: userspace.docker.binding:containers_inspect_func
+          compose_teardown: userspace.docker.binding:containers_compose_teardown_func
           restart: userspace.docker.binding:containers_restart_func
           pause: userspace.docker.binding:containers_pause_func
           unpause: userspace.docker.binding:containers_unpause_func

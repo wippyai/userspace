@@ -33,3 +33,19 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  - name: 03_add_group_id
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - docker
+        - containers
+        - database
+      description: Add group_id column to containers for compose group tracking
+      target_db: app:db
+      timestamp: "2026-03-29T10:00:00Z"
+    source: file://03_add_group_id.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

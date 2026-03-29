@@ -1,9 +1,10 @@
 local sql = require("sql")
 local env = require("env")
+local consts = require("consts")
 local containers_repo = require("containers_repo")
 
 local function get_db()
-    local db_id = env.get("userspace.docker.env:database_resource") or "app:db"
+    local db_id = env.get(consts.env.DATABASE_RESOURCE)
     return sql.get(db_id)
 end
 
@@ -22,7 +23,7 @@ local function handle(input: {status: string?, limit: number?}?)
     if params.status and params.status ~= "" then
         filter.status = params.status
     else
-        filter.status_not = "removed"
+        filter.status_not = consts.status.REMOVED
     end
 
     local rows = containers_repo.list(db, filter)

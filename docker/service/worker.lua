@@ -16,8 +16,12 @@ local function notify_root(root_pid, topic, payload)
     end
 end
 
-local function notify_log(db, root_pid, cid, stream, line)
-    containers_repo.append_log(db, cid, stream, line)
+local function notify_log(db_id, root_pid, cid, stream, line)
+    local db = sql.get(db_id)
+    if db then
+        containers_repo.append_log(db, cid, stream, line)
+        db:release()
+    end
     notify_root(root_pid, consts.topic.CONTAINER_LOG, {
         container_id = cid,
         stream = stream,
@@ -33,14 +37,23 @@ local function notify_status(root_pid, cid, status, extra)
     notify_root(root_pid, consts.topic.CONTAINER_STATUS, payload)
 end
 
-local function run_interactive(executor, db, c, active, root_pid)
+local function run_interactive(executor, db_id, c, active, root_pid)
     local cid: string = tostring(c.id)
+
+    local db, db_err = sql.get(db_id)
+    if db_err then
+        notify_status(root_pid, cid, consts.status.FAILED, { error = "db unavailable" })
+        if active then active[cid] = nil end
+        return
+    end
+
     local proc, proc_err = executor:exec(tostring(c.command))
     if proc_err then
         containers_repo.update_status(db, cid, consts.status.FAILED, {
             error = tostring(proc_err),
             stopped_at = os.time(),
         })
+        db:release()
         notify_status(root_pid, cid, consts.status.FAILED, { error = tostring(proc_err) })
         if active then active[cid] = nil end
         return
@@ -52,6 +65,7 @@ local function run_interactive(executor, db, c, active, root_pid)
             error = tostring(start_err),
             stopped_at = os.time(),
         })
+        db:release()
         notify_status(root_pid, cid, consts.status.FAILED, { error = tostring(start_err) })
         if active then active[cid] = nil end
         return
@@ -61,8 +75,11 @@ local function run_interactive(executor, db, c, active, root_pid)
         active[cid] = { proc = proc }
     end
 
-    coroutine.spawn(function()
-        local reader = proc:stderr_stream()
+    -- Release DB before blocking IO — log writes use their own connections
+    db:release()
+
+    local function stream_lines(reader_fn, stream_name)
+        local reader = reader_fn()
         if not reader then return end
         local remainder = ""
         while true do
@@ -70,51 +87,45 @@ local function run_interactive(executor, db, c, active, root_pid)
             if not chunk then break end
             local text = remainder .. chunk
             remainder = ""
+            local lines = {}
             local pos = 1
             while pos <= #text do
                 local nl = text:find("\n", pos, true)
                 if nl then
-                    local line = text:sub(pos, nl - 1)
-                    notify_log(db, root_pid, cid, "stderr", line)
+                    table.insert(lines, text:sub(pos, nl - 1))
                     pos = nl + 1
                 else
                     remainder = text:sub(pos)
                     break
                 end
             end
-        end
-        if remainder ~= "" then
-            notify_log(db, root_pid, cid, "stderr", remainder)
-        end
-        reader:close()
-    end)
-
-    local reader = proc:stdout_stream()
-    if reader then
-        local remainder = ""
-        while true do
-            local chunk = reader:read()
-            if not chunk then break end
-            local text = remainder .. chunk
-            remainder = ""
-            local pos = 1
-            while pos <= #text do
-                local nl = text:find("\n", pos, true)
-                if nl then
-                    local line = text:sub(pos, nl - 1)
-                    notify_log(db, root_pid, cid, "stdout", line)
-                    pos = nl + 1
-                else
-                    remainder = text:sub(pos)
-                    break
+            if #lines > 0 then
+                local chunk_db = sql.get(db_id)
+                for _, line in ipairs(lines) do
+                    local text = tostring(line)
+                    if chunk_db then
+                        containers_repo.append_log(chunk_db, cid, stream_name, text)
+                    end
+                    notify_root(root_pid, consts.topic.CONTAINER_LOG, {
+                        container_id = cid,
+                        stream = stream_name,
+                        line = text,
+                    })
                 end
+                if chunk_db then chunk_db:release() end
             end
         end
         if remainder ~= "" then
-            notify_log(db, root_pid, cid, "stdout", remainder)
+            notify_log(db_id, root_pid, cid, stream_name, remainder)
         end
         reader:close()
     end
+
+    coroutine.spawn(function()
+        stream_lines(function() return proc:stderr_stream() end, "stderr")
+    end)
+
+    stream_lines(function() return proc:stdout_stream() end, "stdout")
 
     local exit_code, wait_err = proc:wait()
     local final_status = consts.status.STOPPED
@@ -125,17 +136,29 @@ local function run_interactive(executor, db, c, active, root_pid)
     end
 
     local final_exit: number = tonumber(exit_code) or -1
-    containers_repo.update_status(db, cid, final_status, {
-        exit_code = final_exit,
-        error = wait_err and tostring(wait_err) or nil,
-        stopped_at = os.time(),
-    })
+
+    local final_db = sql.get(db_id)
+    if final_db then
+        containers_repo.update_status(final_db, cid, final_status, {
+            exit_code = final_exit,
+            error = wait_err and tostring(wait_err) or nil,
+            stopped_at = os.time(),
+        })
+        final_db:release()
+    end
 
     notify_status(root_pid, cid, final_status, { exit_code = final_exit })
 end
 
-local function run_managed(docker, db, c, root_pid)
+local function run_managed(docker, db_id, c, root_pid)
     local cid: string = tostring(c.id)
+
+    local db, db_err = sql.get(db_id)
+    if db_err then
+        notify_status(root_pid, cid, consts.status.FAILED, { error = "db unavailable" })
+        return
+    end
+
     local cfg = c.config or c
     local container_config = spec.build_container_config({
         image = tostring(cfg.image or c.image),
@@ -149,6 +172,15 @@ local function run_managed(docker, db, c, root_pid)
         memory_limit = tonumber(cfg.memory_limit),
         cpu_quota = tonumber(cfg.cpu_quota),
         interactive = cfg.interactive and true or false,
+        labels = type(c.labels) == "table" and (c.labels :: {[string]: string}) or nil,
+        extra_hosts = cfg.extra_hosts :: {string}?,
+        restart_policy = cfg.restart_policy and {
+            name = tostring(cfg.restart_policy),
+            max_retry = tonumber(cfg.max_restarts),
+        } or nil,
+        healthcheck = cfg.health_check :: {test: {string}, interval: number?, timeout: number?, retries: number?, start_period: number?}?,
+        cap_add = cfg.cap_add :: {string}?,
+        dns = cfg.dns :: {string}?,
     })
 
     local create_params = {}
@@ -162,6 +194,7 @@ local function run_managed(docker, db, c, root_pid)
             error = "create: " .. tostring(create_err),
             stopped_at = os.time(),
         })
+        db:release()
         notify_status(root_pid, cid, consts.status.FAILED, { error = "create: " .. tostring(create_err) })
         return
     end
@@ -179,21 +212,27 @@ local function run_managed(docker, db, c, root_pid)
             error = "start: " .. tostring(start_err),
             stopped_at = os.time(),
         })
+        db:release()
         notify_status(root_pid, cid, consts.status.FAILED, { error = "start: " .. tostring(start_err) })
         docker:remove_container(docker_id, true)
         return
     end
 
+    -- Release DB before blocking poll loop — reacquire after
+    db:release()
+
     local log_since = os.time() - 1
     local lines_seen = 0
     local exit_code: number = -1
     local final_status = consts.status.STOPPED
+    local error_msg: string? = nil
     local max_polls = 3600
 
-    for _ = 1, max_polls do
+    for poll = 1, max_polls do
         local info, inspect_err = docker:inspect_container(docker_id)
         if inspect_err then
             final_status = consts.status.FAILED
+            error_msg = "inspect failed: " .. tostring(inspect_err)
             break
         end
 
@@ -211,31 +250,60 @@ local function run_managed(docker, db, c, root_pid)
         local raw_logs = docker:get_logs(docker_id, { since = log_since })
         if raw_logs then
             local lines = docker_client.parse_logs(tostring(raw_logs))
-            for i = lines_seen + 1, #lines do
-                local entry = lines[i]
-                local stream = entry.stream or "stdout"
-                notify_log(db, root_pid, cid, stream, tostring(entry.line))
+            local new_count = #lines - lines_seen
+            if new_count > 0 then
+                local log_db = sql.get(db_id)
+                for i = lines_seen + 1, #lines do
+                    local entry = lines[i]
+                    local stream = entry.stream or "stdout"
+                    local line_text = tostring(entry.line)
+                    if log_db then
+                        containers_repo.append_log(log_db, cid, stream, line_text)
+                    end
+                    notify_root(root_pid, consts.topic.CONTAINER_LOG, {
+                        container_id = cid,
+                        stream = stream,
+                        line = line_text,
+                    })
+                end
+                if log_db then log_db:release() end
+                lines_seen = #lines
             end
-            lines_seen = #lines
         end
 
         if stopped then
             break
         end
 
+        if poll == max_polls then
+            final_status = consts.status.FAILED
+            error_msg = "container polling timeout after " .. max_polls .. " attempts"
+        end
+
         time.sleep("500ms")
     end
 
+    -- Drain remaining logs
     for _ = 1, 5 do
         local raw_logs = docker:get_logs(docker_id, { since = log_since })
         if raw_logs then
             local lines = docker_client.parse_logs(tostring(raw_logs))
             if #lines > lines_seen then
+                local drain_db = sql.get(db_id)
                 for i = lines_seen + 1, #lines do
                     local entry = lines[i]
                     local stream = entry.stream or "stdout"
-                    notify_log(db, root_pid, cid, stream, tostring(entry.line))
+                    local line_text = tostring(entry.line)
+                    if drain_db then
+                        containers_repo.append_log(drain_db, cid, stream, line_text)
+                    end
+                    notify_root(root_pid, consts.topic.CONTAINER_LOG, {
+                        container_id = cid,
+                        stream = stream,
+                        line = line_text,
+                    })
                 end
+                if drain_db then drain_db:release() end
                 lines_seen = #lines
                 break
             end
@@ -243,16 +311,26 @@ local function run_managed(docker, db, c, root_pid)
         time.sleep("100ms")
     end
 
-    containers_repo.update_status(db, cid, final_status, {
+    local update_fields: {[string]: any} = {
         exit_code = exit_code,
         stopped_at = os.time(),
-    })
-    notify_status(root_pid, cid, final_status, { exit_code = exit_code })
+    }
+    if error_msg then
+        update_fields.error = error_msg
+    end
+
+    local final_db = sql.get(db_id)
+    if final_db then
+        containers_repo.update_status(final_db, cid, final_status, update_fields)
+        final_db:release()
+    end
+
+    notify_status(root_pid, cid, final_status, { exit_code = exit_code, error = error_msg })
 
     docker:remove_container(docker_id, true)
 end
 
-local function claim_and_run(db, docker, exec_images, active, root_pid)
+local function claim_and_run(db, docker, db_id, exec_images, active, root_pid)
     local pending = containers_repo.list_pending(db)
     if not pending then return end
 
@@ -279,17 +357,25 @@ local function claim_and_run(db, docker, exec_images, active, root_pid)
                         coroutine.spawn(function()
                             local executor, exec_err = exec.get(tostring(exec_id))
                             if exec_err then
-                                containers_repo.update_status(db, cid, consts.status.FAILED, {
-                                    error = tostring(exec_err),
-                                    stopped_at = os.time(),
-                                })
+                                local edb = sql.get(db_id)
+                                if edb then
+                                    containers_repo.update_status(edb, cid, consts.status.FAILED, {
+                                        error = tostring(exec_err),
+                                        stopped_at = os.time(),
+                                    })
+                                    edb:release()
+                                end
                                 notify_status(root_pid, cid, consts.status.FAILED)
                             else
-                                containers_repo.update_status(db, cid, consts.status.RUNNING, {
-                                    started_at = os.time(),
-                                })
+                                local edb = sql.get(db_id)
+                                if edb then
+                                    containers_repo.update_status(edb, cid, consts.status.RUNNING, {
+                                        started_at = os.time(),
+                                    })
+                                    edb:release()
+                                end
                                 notify_status(root_pid, cid, consts.status.RUNNING)
-                                run_interactive(executor, db, c, active, root_pid)
+                                run_interactive(executor, db_id, c, active, root_pid)
                                 executor:release()
                             end
                             active[cid] = nil
@@ -297,7 +383,7 @@ local function claim_and_run(db, docker, exec_images, active, root_pid)
                     end
                 else
                     coroutine.spawn(function()
-                        run_managed(docker, db, c, root_pid)
+                        run_managed(docker, db_id, c, root_pid)
                         active[cid] = nil
                     end)
                 end
@@ -333,7 +419,7 @@ function worker.run(config: {
     local inbox = process.inbox()
     local active: {[string]: {proc: any?}} = {}
 
-    claim_and_run(db, docker, exec_images, active, root_pid)
+    claim_and_run(db, docker, config.db_id, exec_images, active, root_pid)
 
     while true do
         local result = channel.select({
@@ -350,7 +436,7 @@ function worker.run(config: {
             local msg = result.value
             local topic = msg:topic()
             if topic == consts.topic.CONTAINER_NEW then
-                claim_and_run(db, docker, exec_images, active, root_pid)
+                claim_and_run(db, docker, config.db_id, exec_images, active, root_pid)
             elseif topic == consts.topic.STDIN then
                 local payload = helpers.extract_payload(msg)
                 if payload and payload.container_id and payload.data then
@@ -361,7 +447,7 @@ function worker.run(config: {
                 end
             end
         else
-            claim_and_run(db, docker, exec_images, active, root_pid)
+            claim_and_run(db, docker, config.db_id, exec_images, active, root_pid)
         end
     end
 

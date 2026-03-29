@@ -1,0 +1,43 @@
+version: "1.0"
+namespace: app
+
+entries:
+  - name: db
+    kind: db.sql.sqlite
+    meta:
+      comment: In-memory database for docker tests
+    file: ":memory:"
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  - name: dep.userspace.docker
+    kind: ns.dependency
+    meta:
+      description: Docker module configuration for testing
+    component: userspace/docker
+    parameters:
+      - name: database
+        value: app:db
+      - name: process_host
+        value: app:processes
+
+  - name: dep.wippy.bootloader
+    kind: ns.dependency
+    meta:
+      description: Bootloader configuration for testing
+    component: wippy/bootloader
+    parameters:
+      - name: application_host
+        value: app:processes
+      - name: env_storage
+        value: app:env_storage
