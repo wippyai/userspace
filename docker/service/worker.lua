@@ -167,6 +167,7 @@ local function run_managed(docker, db_id, c, root_pid)
         volumes = cfg.volumes :: {host: string, container: string, mode: string?}[]?,
         ports = cfg.ports :: {host: number, container: number, protocol: string?}[]?,
         network = cfg.network and tostring(cfg.network) or nil,
+        hostname = cfg.hostname and tostring(cfg.hostname) or nil,
         work_dir = cfg.work_dir and tostring(cfg.work_dir) or nil,
         user = cfg.user and tostring(cfg.user) or nil,
         memory_limit = tonumber(cfg.memory_limit),

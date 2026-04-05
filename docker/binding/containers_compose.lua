@@ -82,6 +82,7 @@ local function handle(input: {
             volumes = def.volumes :: {host: string, container: string, mode: string?}[]?,
             ports = def.ports :: {host: number, container: number, protocol: string?}[]?,
             network = network,
+            hostname = raw_name,
             work_dir = def.work_dir and tostring(def.work_dir) or nil,
             user = def.user and tostring(def.user) or nil,
             memory_limit = def.memory_limit and tonumber(def.memory_limit) or nil,

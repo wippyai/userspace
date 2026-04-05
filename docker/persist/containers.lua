@@ -33,6 +33,7 @@ function containers.create(db, spec: {
     max_restarts: number?,
     health_check: {test: {string}?, interval: number?, timeout: number?, retries: number?}?,
     extra_hosts: {string}?,
+    hostname: string?,
     cap_add: {string}?,
     dns: {string}?,
     group_id: string?,
@@ -64,6 +65,7 @@ function containers.create(db, spec: {
         max_restarts   = spec.max_restarts,
         health_check   = spec.health_check,
         extra_hosts    = spec.extra_hosts,
+        hostname       = spec.hostname,
         cap_add        = spec.cap_add,
         dns            = spec.dns,
     })
