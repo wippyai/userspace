@@ -33,6 +33,8 @@ function user_repo.create(user_data)
         return nil, consts.ERROR.MISSING_REQUIRED_FIELD .. "email"
     end
 
+    user_data.email = user_data.email:lower()
+
     if not user_data.password or user_data.password == "" then
         return nil, consts.ERROR.MISSING_REQUIRED_FIELD .. "password"
     end
@@ -117,6 +119,8 @@ function user_repo.get(identifier)
         return nil, consts.ERROR.MISSING_REQUIRED_FIELD .. "identifier"
     end
 
+    local normalized = type(identifier) == "string" and identifier:lower() or identifier
+
     local db, err = get_db()
     if err then
         return nil, err
@@ -124,7 +128,7 @@ function user_repo.get(identifier)
 
     local query = sql.builder.select("user_id", "email", "full_name", "password_hash", "status", "created_at", "updated_at")
         :from("app_users")
-        :where("user_id = ? OR email = ?", identifier, identifier)
+        :where("user_id = ? OR email = ?", normalized, normalized)
         :limit(1)
 
     local executor = query:run_with(db)

@@ -196,6 +196,8 @@ function user_groups_repo.get_user_with_groups(identifier)
         return nil, consts.ERROR.MISSING_REQUIRED_FIELD .. "identifier"
     end
 
+    local normalized = type(identifier) == "string" and identifier:lower() or identifier
+
     local db, err = get_db()
     if err then
         return nil, err
@@ -203,7 +205,7 @@ function user_groups_repo.get_user_with_groups(identifier)
 
     local user_query = sql.builder.select("user_id", "email", "full_name", "password_hash", "status", "created_at", "updated_at")
         :from("app_users")
-        :where("user_id = ? OR email = ?", identifier, identifier)
+        :where("user_id = ? OR email = ?", normalized, normalized)
         :limit(1)
 
     local user_executor = user_query:run_with(db)
