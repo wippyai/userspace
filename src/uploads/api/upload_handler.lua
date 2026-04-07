@@ -117,7 +117,8 @@ local function handler()
     -- Parse metadata if provided
     local metadata = {}
     if form.values and form.values.metadata then
-        local metadata_str = form.values.metadata[1]
+        local raw = form.values.metadata
+        local metadata_str = type(raw) == "table" and raw[1] or raw
         if metadata_str then
             local decoded, decode_err = json.decode(metadata_str)
             if not decode_err then
@@ -128,13 +129,15 @@ local function handler()
 
     -- Extract upload token if provided
     if form.values and form.values.upload_token then
-        metadata.__upload_token = form.values.upload_token[1]
+        local raw = form.values.upload_token
+        metadata.__upload_token = type(raw) == "table" and raw[1] or raw
     end
 
     -- Determine storage type if specified
     local storage_type: string? = nil
     if form.values and form.values.storage_type then
-        storage_type = form.values.storage_type[1]
+        local raw = form.values.storage_type
+        storage_type = type(raw) == "table" and raw[1] or raw
     end
 
     -- Upload the file
