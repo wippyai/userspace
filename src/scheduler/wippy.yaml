@@ -9,6 +9,8 @@ keywords:
   - tasks
   - cron
   - interval
+exclude:
+  - userspace.scheduler.views:*
 exclude_meta:
   type:
     - test
