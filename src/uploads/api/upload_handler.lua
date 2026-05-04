@@ -4,6 +4,23 @@ local json = require("json")
 
 local upload_lib = require("upload_lib")
 
+local function form_value(values, key): string?
+    if type(values) ~= "table" then
+        return nil
+    end
+
+    local raw = values[key]
+    if type(raw) == "string" then
+        return raw
+    end
+
+    if type(raw) == "table" and type(raw[1]) == "string" then
+        return raw[1]
+    end
+
+    return nil
+end
+
 -- Upload file handler
 local function handler()
     local req, err = http.request()
@@ -116,26 +133,22 @@ local function handler()
 
     -- Parse metadata if provided
     local metadata = {}
-    if form.values and form.values.metadata then
-        local metadata_str = form.values.metadata[1]
-        if metadata_str then
-            local decoded, decode_err = json.decode(metadata_str)
-            if not decode_err then
-                metadata = decoded
-            end
+    local metadata_str = form_value(form.values, "metadata")
+    if metadata_str then
+        local decoded, decode_err = json.decode(metadata_str)
+        if not decode_err and type(decoded) == "table" then
+            metadata = decoded
         end
     end
 
     -- Extract upload token if provided
-    if form.values and form.values.upload_token then
-        metadata.__upload_token = form.values.upload_token[1]
+    local upload_token = form_value(form.values, "upload_token")
+    if upload_token then
+        metadata.__upload_token = upload_token
     end
 
     -- Determine storage type if specified
-    local storage_type: string? = nil
-    if form.values and form.values.storage_type then
-        storage_type = form.values.storage_type[1]
-    end
+    local storage_type: string? = form_value(form.values, "storage_type")
 
     -- Upload the file
     local upload, err = upload_lib.upload_file(

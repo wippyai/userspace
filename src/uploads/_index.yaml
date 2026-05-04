@@ -122,6 +122,19 @@ entries:
     imports:
       uploads_resources: userspace.uploads:uploads_resources
 
+  - name: content_repo_test
+    kind: function.lua
+    meta:
+      type: test
+      comment: Regression tests for metadata merge behavior in content_repo.
+    source: file://content_repo_test.lua
+    imports:
+      content_repo: userspace.uploads:content_repo
+      test: wippy.test:test
+    method: run_tests
+    pool:
+      size: 1
+
   # userspace.uploads:count_resources_func
   - name: count_resources_func
     kind: function.lua

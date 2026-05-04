@@ -6,6 +6,25 @@ local resources = require("uploads_resources")
 
 local content_repo = {}
 
+local function merge_metadata_json(raw_metadata, metadata)
+    local current_metadata = {}
+    if raw_metadata and raw_metadata ~= "" then
+        local decoded, decode_err = json.decode(tostring(raw_metadata))
+        if decode_err then
+            return nil, "Failed to decode current metadata: " .. decode_err
+        end
+        if type(decoded) == "table" then
+            current_metadata = decoded
+        end
+    end
+
+    for k, v in pairs(metadata) do
+        current_metadata[k] = v
+    end
+
+    return current_metadata
+end
+
 -- Get current Unix timestamp (seconds since epoch)
 local function current_timestamp()
     return time.now():unix()
@@ -249,18 +268,26 @@ function content_repo.update_metadata(content_id, metadata)
         return nil, err
     end
 
-    -- First get existing metadata
-    local current, err = content_repo.get(content_id)
+    local select_query = sql.builder.select("metadata")
+        :from("upload_content")
+        :where("content_id = ?", content_id)
+        :limit(1)
+
+    local select_executor = select_query:run_with(db)
+    local rows, err = select_executor:query()
     if err then
         db:release()
         return nil, "Failed to get current metadata: " .. err
     end
+    if #rows == 0 then
+        db:release()
+        return nil, "Failed to get current metadata: not found"
+    end
 
-    local current_metadata = current.metadata or {}
-
-    -- Merge new metadata with existing
-    for k, v in pairs(metadata) do
-        current_metadata[k] = v
+    local current_metadata, merge_err = merge_metadata_json(rows[1].metadata, metadata)
+    if merge_err then
+        db:release()
+        return nil, merge_err
     end
 
     -- Convert merged metadata to JSON
@@ -299,6 +326,10 @@ function content_repo.update_metadata(content_id, metadata)
         updated = true
     }
 end
+
+content_repo._test = {
+    merge_metadata_json = merge_metadata_json,
+}
 
 -- Delete content
 function content_repo.delete(content_id)
