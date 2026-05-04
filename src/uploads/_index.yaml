@@ -38,7 +38,7 @@ entries:
     kind: ns.requirement
     meta:
       description: S3 cloud storage service ID for presigned uploads
-    default: app:uploads.s3
+    default: app.uploads:s3
     targets:
       - entry: userspace.uploads.env:storage_s3
         path: .default
@@ -400,7 +400,8 @@ entries:
   - name: env_storage
     kind: ns.requirement
     meta:
-    description: Environment variable storage location
+      description: Environment variable storage location
+    default: app.env:store
     targets:
       - entry: userspace.uploads.env:database_resource
         path: .storage

@@ -10,6 +10,8 @@ entries:
       icon: tabler:database
       private: true
     default: app:db
+    storage: app.env:store
+    variable: USERSPACE_UPLOADS_DATABASE_RESOURCE
 
   # userspace.uploads.env:storage_id
   - name: storage_id
@@ -19,6 +21,8 @@ entries:
       icon: tabler:upload
       private: true
     default: app:uploads
+    storage: app.env:store
+    variable: USERSPACE_UPLOADS_STORAGE_ID
 
   # userspace.uploads.env:storage_s3
   - name: storage_s3
@@ -27,7 +31,9 @@ entries:
       comment: S3 cloud storage service ID for presigned uploads
       icon: tabler:cloud-upload
       private: true
-    default: app:uploads.s3
+    default: app.uploads:s3
+    storage: app.env:store
+    variable: USERSPACE_UPLOADS_STORAGE_S3
 
   # userspace.uploads.env:queue_max_length
   - name: queue_max_length
@@ -37,6 +43,8 @@ entries:
       icon: tabler:stack
       private: true
     default: "10000"
+    storage: app.env:store
+    variable: USERSPACE_UPLOADS_QUEUE_MAX_LENGTH
 
   # userspace.uploads.env:queue_concurrency
   - name: queue_concurrency
@@ -46,6 +54,8 @@ entries:
       icon: tabler:users
       private: true
     default: "20"
+    storage: app.env:store
+    variable: USERSPACE_UPLOADS_QUEUE_CONCURRENCY
 
   # userspace.uploads.env:queue_prefetch
   - name: queue_prefetch
@@ -55,3 +65,5 @@ entries:
       icon: tabler:package
       private: true
     default: "50"
+    storage: app.env:store
+    variable: USERSPACE_UPLOADS_QUEUE_PREFETCH

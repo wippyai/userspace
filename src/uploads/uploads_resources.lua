@@ -12,7 +12,7 @@ local ENV = table.freeze({
 local DEFAULTS = table.freeze({
     DATABASE = "app:db",
     STORAGE = "app:uploads",
-    STORAGE_S3 = "app:uploads.s3",
+    STORAGE_S3 = "app.uploads:s3",
 })
 
 local resources = {}
