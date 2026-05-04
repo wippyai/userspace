@@ -30,6 +30,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Create Entry
       tags:
         - drafling
@@ -83,6 +87,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Delete Entry
       tags:
         - drafling
@@ -184,6 +192,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Entry
       tags:
         - drafling
@@ -252,6 +264,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Project
       tags:
         - drafling
@@ -292,6 +308,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: View Project Content
       tags:
         - drafling
@@ -318,6 +338,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: View Project Structure
       tags:
         - drafling

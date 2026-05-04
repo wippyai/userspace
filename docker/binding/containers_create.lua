@@ -9,7 +9,7 @@ local function get_db()
     return sql.get(db_id)
 end
 
-local function handle(input: {
+type ContainerInput = {
     image: string,
     command: string?,
     name: string?,
@@ -21,10 +21,19 @@ local function handle(input: {
     user: string?,
     memory_limit: number?,
     cpu_quota: number?,
+    auto_remove: boolean?,
+    interactive: boolean?,
     persist_logs: boolean?,
     stream: table?,
-})
-    if not input.image or input.image == "" then
+}
+
+local function handle(input)
+    local data, verr = ContainerInput:is(input)
+    if not data then
+        return { success = false, error = "invalid input" }
+    end
+
+    if not data.image or data.image == "" then
         return { success = false, error = "image is required" }
     end
 
@@ -34,20 +43,20 @@ local function handle(input: {
     end
 
     local id, create_err = containers_repo.create(db, {
-        image = input.image,
-        command = input.command,
-        name = input.name,
-        env = input.env,
-        volumes = input.volumes,
-        ports = input.ports,
-        network = input.network,
-        work_dir = input.work_dir,
-        user = input.user,
-        memory_limit = input.memory_limit,
-        cpu_quota = input.cpu_quota,
-        auto_remove = input.auto_remove,
-        interactive = input.interactive,
-        persist_logs = input.persist_logs ~= nil and input.persist_logs or false,
+        image = data.image,
+        command = data.command,
+        name = data.name,
+        env = data.env,
+        volumes = data.volumes,
+        ports = data.ports,
+        network = data.network,
+        work_dir = data.work_dir,
+        user = data.user,
+        memory_limit = data.memory_limit,
+        cpu_quota = data.cpu_quota,
+        auto_remove = data.auto_remove,
+        interactive = data.interactive,
+        persist_logs = data.persist_logs ~= nil and data.persist_logs or false,
     })
 
     db:release()
@@ -60,10 +69,10 @@ local function handle(input: {
     if root_pid then
         process.send(root_pid, consts.topic.CONTAINER_NEW, "")
 
-        if input.stream and input.stream.reply_to then
+        if data.stream and data.stream.reply_to then
             process.send(root_pid, consts.topic.SUBSCRIBE, json.encode({
                 container_id = id,
-                pid = tostring(input.stream.reply_to),
+                pid = tostring(data.stream.reply_to),
             }))
         end
     end

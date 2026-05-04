@@ -17,6 +17,18 @@ local APP_DB = "app:db"
 ---@field _offset integer|nil
 ---@field _order_by string
 ---@field _order_direction string
+---@field with_user fun(self: ComponentReaderInstance, user_id: string): ComponentReaderInstance
+---@field with_components fun(self: ComponentReaderInstance, ...: string|string[]): ComponentReaderInstance
+---@field with_impl_ids fun(self: ComponentReaderInstance, ...: string|string[]): ComponentReaderInstance
+---@field with_meta fun(self: ComponentReaderInstance, meta_filters: table<string, string>): ComponentReaderInstance
+---@field with_access_mask fun(self: ComponentReaderInstance, access_mask: integer): ComponentReaderInstance
+---@field include fun(self: ComponentReaderInstance, options: IncludeOptions): ComponentReaderInstance
+---@field paginate fun(self: ComponentReaderInstance, limit: integer, offset: integer|nil): ComponentReaderInstance
+---@field order_by fun(self: ComponentReaderInstance, field: string, direction: string|nil): ComponentReaderInstance
+---@field all fun(self: ComponentReaderInstance): ComponentResult[]
+---@field one fun(self: ComponentReaderInstance): ComponentResult|nil
+---@field count fun(self: ComponentReaderInstance): integer
+---@field exists fun(self: ComponentReaderInstance): boolean
 
 ---@class ComponentResult
 ---@field component_id string

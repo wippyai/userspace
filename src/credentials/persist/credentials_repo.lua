@@ -281,13 +281,13 @@ function credentials_repo.get_credentials(component_id)
     end
 
     -- Decrypt credentials
-    local credentials, err = decrypt_credentials(record.credentials_data, encryption_key)
+    local credentials, err = decrypt_credentials(tostring(record.credentials_data or ""), encryption_key)
     if err then
         return nil, "Failed to decrypt credentials: " .. err
     end
 
     -- Decode metadata
-    local metadata = decode_metadata(record.metadata)
+    local metadata = decode_metadata(tostring(record.metadata or ""))
 
     return {
         component_id = component_id,
@@ -339,7 +339,7 @@ function credentials_repo.get_connection_metadata(component_id)
     local record = results[1]
 
     -- Decode metadata
-    local metadata = decode_metadata(record.metadata)
+    local metadata = decode_metadata(tostring(record.metadata or ""))
 
     return {
         component_id = record.component_id,

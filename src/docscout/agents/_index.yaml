@@ -7,6 +7,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Add Extraction Field
       tags:
         - docscout
@@ -106,6 +110,10 @@ entries:
     meta:
       name: Create Extraction Group
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Create Extraction Group
       comment: "Creates a new DocScout extraction group registry entry.  \nSupports both keyed-field tables and array-style field definitions.  \nNormalizes inputs, validates required parameters, and applies defaults.\n"
       tags:
@@ -236,6 +244,10 @@ entries:
     meta:
       name: Extract Document
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Extract Document Using Entry
       tags:
         - extraction
@@ -257,6 +269,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List Extraction Groups
       tags:
         - docscout
@@ -294,6 +310,10 @@ entries:
     meta:
       name: list_files
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List File Uploads
       tags:
         - uploads
@@ -336,6 +356,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List Available Models
       comment: Lists available LLM models for use in document extraction configurations
       tags:
@@ -378,6 +402,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Read Extraction Groups
       tags:
         - docscout
@@ -411,6 +439,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Remove Extraction Field
       tags:
         - docscout
@@ -455,6 +487,10 @@ entries:
     meta:
       name: scout_document
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Search Document Content
       tags:
         - uploads
@@ -503,6 +539,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Extracting Config
       tags:
         - docscout
@@ -551,6 +591,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Extraction Fields
       tags:
         - docscout
@@ -637,6 +681,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Extraction Group Metadata
       tags:
         - docscout
@@ -687,6 +735,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Scouting Config
       tags:
         - docscout

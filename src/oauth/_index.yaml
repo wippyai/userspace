@@ -9,6 +9,87 @@ entries:
       title: Userspace OAuth
       description: OAuth 2.0 connection management with PKCE support
 
+  # ns.requirements (deployment overrides)
+  # Each requirement points OAuth deployment resources at the
+  # entries that need them. Defaults match the standard Wippy single-app
+  # layout; override via ns.dependency parameters in the deployer's
+  # deps/_index.yaml.
+
+  - name: api_router
+    kind: ns.requirement
+    meta:
+      description: Authenticated HTTP router for OAuth management endpoints
+    default: app:api
+    targets:
+      - entry: userspace.oauth.api:discover_providers.endpoint
+        path: .meta.router
+      - entry: userspace.oauth.api:get_connection_details.endpoint
+        path: .meta.router
+      - entry: userspace.oauth.api:get_provider_info.endpoint
+        path: .meta.router
+      - entry: userspace.oauth.api:init_connection.endpoint
+        path: .meta.router
+      - entry: userspace.oauth.api:update_connection.endpoint
+        path: .meta.router
+
+  - name: public_router
+    kind: ns.requirement
+    meta:
+      description: Public HTTP router for OAuth callback (no auth)
+    default: app:api.public
+    targets:
+      - entry: userspace.oauth.api.public:oauth_callback_handler.endpoint
+        path: .meta.router
+      - entry: userspace.oauth.api.public:oauth_callback_page.endpoint
+        path: .meta.router
+
+  - name: database_resource
+    kind: ns.requirement
+    meta:
+      description: Database resource for oauth_connections table
+    default: app:db
+    targets:
+      - entry: userspace.oauth.migrations:01_create_oauth_connections_table
+        path: .meta.target_db
+
+  - name: default_host
+    kind: ns.requirement
+    meta:
+      description: Default host for OAuth processes (negotiator, token refresh)
+    default: app:processes
+    targets:
+      - entry: userspace.oauth.process:token_refresh
+        path: .meta.default_host
+
+  # Dependencies
+  - name: dependency.scheduler
+    kind: ns.dependency
+    meta:
+      description: Scheduler contracts and service used for OAuth token refresh jobs
+    component: userspace/scheduler
+    version: ">=0.4.10"
+
+  - name: dependency.contract
+    kind: ns.dependency
+    meta:
+      description: Base userspace component contracts implemented by OAuth connections
+    component: userspace/contract
+    version: ">=0.4.0"
+
+  - name: dependency.component
+    kind: ns.dependency
+    meta:
+      description: Component registry integration for OAuth connection resources
+    component: userspace/component
+    version: ">=0.4.6"
+
+  - name: dependency.migration
+    kind: ns.dependency
+    meta:
+      description: Migration framework for oauth_connections schema
+    component: wippy/migration
+    version: ">=0.3.0"
+
   # userspace.oauth:base_connector
   - name: base_connector
     kind: contract.binding

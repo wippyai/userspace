@@ -3,6 +3,7 @@ local text = require("text")
 local client = require("client")
 
 local function extract_links(html_content, base_url, absolute_only)
+    html_content = tostring(html_content or "")
     local links = {}
     local seen = {}
 

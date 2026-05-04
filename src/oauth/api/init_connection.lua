@@ -135,30 +135,40 @@ local function handler()
         return
     end
 
-    -- Get provider information for validation and display
+    -- Get provider information for validation and display.
+    -- The discovery contract returns {success=false, error=...} for unknown
+    -- providers (no Lua-level err), so we have to inspect the result.
     local provider_info, err = discovery_instance:get_provider_info({
         oauth_provider = provider_name
     })
 
-    if err then
+    if err or not provider_info or not provider_info.success then
+        local detail = err or (provider_info and provider_info.error) or "unknown error"
         res:set_status(STATUS.NOT_FOUND)
         res:write_json({
             success = false,
-            error = "Provider not found: " .. err
+            error = "Provider not found: " .. detail
         })
         return
     end
 
-    -- Get connector contract details (implementation and context)
+    -- Get connector contract details (implementation and context).
+    -- Same defensive handling: a non-OAuth provider name yields a result
+    -- with success=false instead of a Lua error.
     local connector_info, err = discovery_instance:get_connector_contract({
         oauth_provider = provider_name
     })
 
-    if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
+    if err or not connector_info or not connector_info.success
+        or type(connector_info.context_values) ~= "table"
+        or not connector_info.implementation_id then
+        local detail = err
+            or (connector_info and connector_info.error)
+            or "connector contract incomplete"
+        res:set_status(STATUS.NOT_FOUND)
         res:write_json({
             success = false,
-            error = "Failed to get connector contract: " .. err
+            error = "OAuth connector not available for provider '" .. provider_name .. "': " .. detail
         })
         return
     end

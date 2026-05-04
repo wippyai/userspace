@@ -7,6 +7,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Embed File
       tags:
         - tool
@@ -141,6 +145,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List KB Creators
       tags:
         - tool
@@ -166,6 +174,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Start KB Creation
       tags:
         - tool
@@ -198,6 +210,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Redirect to KB Specialist
       tags:
         - tool

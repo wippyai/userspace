@@ -2,6 +2,17 @@ version: "1.0"
 namespace: userspace.oauth.views
 
 entries:
+  # ─── Self-hosted template set ─────────────────────────────────────────
+  # OAuth views are rendered via wippy.views' jet engine. The template
+  # set is owned by this module so deployments don't have to provide a
+  # shim in their own namespace.
+  - name: templates
+    kind: template.set
+    meta:
+      description: OAuth view template set
+    engine:
+      development_mode: true
+
   # userspace.oauth.views:create_oauth_connection
   - name: create_oauth_connection
     kind: template.jet
@@ -14,8 +25,8 @@ entries:
       content_type: text/html
       secure: true
     source: file://create_oauth_connection.jet
-    set: app.views.common:templates
-    
+    set: userspace.oauth.views:templates
+
   # userspace.oauth.views:manage_oauth_connection
   - name: manage_oauth_connection
     kind: template.jet
@@ -28,8 +39,8 @@ entries:
       content_type: text/html
       secure: true
     source: file://manage_oauth_connection.jet
-    set: app.views.common:templates
-    
+    set: userspace.oauth.views:templates
+
   # userspace.oauth.views:oauth_callback
   - name: oauth_callback
     kind: template.jet
@@ -42,5 +53,4 @@ entries:
       content_type: text/html
       secure: false
     source: file://oauth_callback.jet
-    set: app.views.common:templates
-    
+    set: userspace.oauth.views:templates

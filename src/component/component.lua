@@ -411,7 +411,7 @@ local function open_private(component_id, target_contract_id)
     local context = component_data.private_context or {}
     context.component_id = component_id
 
-    return open_contract_instance(component_data.impl_id, context, target_contract_id)
+    return open_contract_instance(component_data.impl_id :: string, context, target_contract_id)
 end
 
 -- Component module

@@ -2,6 +2,13 @@ version: "1.0"
 namespace: userspace.knowledge.views
 
 entries:
+  - name: templates
+    kind: template.set
+    meta:
+      description: Knowledge view template set
+    engine:
+      development_mode: true
+
   # userspace.knowledge.views:dashboard
   - name: dashboard
     kind: template.jet
@@ -16,5 +23,4 @@ entries:
       announced: true
       secure: true
     source: file://dashboard.jet
-    set: app.views.common:templates
-    
+    set: userspace.knowledge.views:templates

@@ -7,6 +7,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List Connection Drivers
       tags:
         - connections
@@ -39,6 +43,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Connection Info
       tags:
         - connections
@@ -76,6 +84,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List Connections
       tags:
         - connections

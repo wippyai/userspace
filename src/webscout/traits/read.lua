@@ -3,6 +3,7 @@ local html = require("html")
 local client = require("client")
 
 local function clean_content(html_content)
+    html_content = tostring(html_content or "")
     local policy, err = html.sanitize.strict_policy()
     if err then
         return html_content
@@ -23,9 +24,14 @@ local function handle(args)
     if max_size > 100000 then max_size = 100000 end
     if max_size < 1000 then max_size = 1000 end
 
-    local options = {
-        headers = args.headers
-    }
+    local options = nil
+    if type(args.headers) == "table" then
+        local headers: {[string]: string} = {}
+        for k, v in pairs(args.headers) do
+            headers[tostring(k)] = tostring(v)
+        end
+        options = { headers = headers }
+    end
 
     local response, err = client.get(args.url, options)
     if err then
@@ -37,7 +43,7 @@ local function handle(args)
     end
 
     local content_type = response.headers["content-type"] or response.headers["Content-Type"] or ""
-    local content = response.body
+    local content = tostring(response.body or "")
 
     if content_type:find("text/html") then
         content = clean_content(content)

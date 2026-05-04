@@ -131,7 +131,13 @@ local function handle(params)
     -- Get component status (available for both OAuth and credentials)
     local comp_contract, err = contract.get(COMPONENT_CONTRACT)
     if comp_contract then
-        local status_instance, err = comp_contract:open(component.impl_id, {component_id = component_id})
+        local impl_id = component.impl_id
+        if type(impl_id) ~= "string" or impl_id == "" then
+            response.status_error = "Component implementation ID is missing"
+            return response
+        end
+
+        local status_instance, err = comp_contract:open(impl_id, {component_id = component_id})
         if status_instance then
             local status_result, err = status_instance:get_status({})
             if status_result then

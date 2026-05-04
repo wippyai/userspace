@@ -17,7 +17,7 @@ local function verify_access(name)
 end
 
 local function create_client(name)
-    if not name then
+    if type(name) ~= "string" or name == "" then
         return nil, "Name is required"
     end
 
@@ -57,7 +57,7 @@ local function send_and_wait(client, request_data, timeout_ms)
         reply_to_topic = request_data.reply_to_topic
     })
 
-    local send_ok = process.send(client.service_name, mcp_consts.TOPICS.REQUEST, request_data)
+    local send_ok = process.send(tostring(client.service_name), mcp_consts.TOPICS.REQUEST, request_data)
     if not send_ok then
         client.log:error("Failed to send request", {
             service_name = client.service_name,

@@ -20,6 +20,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Extract All Links
       tags:
         - tool
@@ -59,6 +63,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Read Web Page
       tags:
         - tool
@@ -104,6 +112,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Google Search
       tags:
         - tool

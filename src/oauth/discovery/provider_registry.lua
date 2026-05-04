@@ -79,7 +79,15 @@ local function find_provider_entry(provider_id, oauth_provider)
         end
 
         if entries and #entries > 0 then
-            entry = entries[1] -- Take first match
+            for _, e in ipairs(entries) do
+                if e.data and e.data.available_scopes then
+                    entry = e
+                    break
+                end
+            end
+            if not entry then
+                entry = entries[1]
+            end
         end
     end
 
@@ -100,9 +108,10 @@ end
 function provider_registry.scan_available_providers(filters)
     filters = filters or {}
 
-    -- Find all registry entries that have meta.oauth_provider field
+    -- Find all contract.binding entries; filter for oauth_provider in the loop.
+    -- Wildcard "exists" matchers don't work with registry.find, so enumerate and filter.
     local provider_entries, err = registry.find({
-        ["*meta.oauth_provider"] = "*"
+        [".kind"] = "contract.binding"
     })
 
     if err then
@@ -115,8 +124,22 @@ function provider_registry.scan_available_providers(filters)
 
     local providers = {}
     local all_classes = {}
+    local seen_providers = {}
 
+    -- Deduplicate by oauth_provider, prefer entries with scope data
+    local deduped = {}
     for _, entry in ipairs(provider_entries) do
+        if entry.meta and entry.meta.oauth_provider then
+            local key = entry.meta.oauth_provider
+            local has_scopes = entry.data and entry.data.available_scopes
+            if not seen_providers[key] or has_scopes then
+                seen_providers[key] = true
+                deduped[key] = entry
+            end
+        end
+    end
+
+    for _, entry in pairs(deduped) do
         local namespace, name = parse_registry_id(entry.id)
         if namespace and name and entry.meta then
             local provider_name = entry.meta.name or name
@@ -131,7 +154,6 @@ function provider_registry.scan_available_providers(filters)
 
             local classes = normalize_classes(entry.meta.class)
 
-            -- Collect all classes for filtering
             for _, class in ipairs(classes) do
                 local found = false
                 for _, existing_class in ipairs(all_classes) do
@@ -145,10 +167,7 @@ function provider_registry.scan_available_providers(filters)
                 end
             end
 
-            -- Apply filters - only class filtering
             local include = true
-
-            -- Filter by classes
             if filters.classes and #filters.classes > 0 then
                 if not arrays_intersect(filters.classes, classes) then
                     include = false
@@ -170,7 +189,6 @@ function provider_registry.scan_available_providers(filters)
                     provider_info.icon = icon
                 end
 
-                -- Add UI bindings if available
                 if entry.meta.component then
                     if entry.meta.component.create_ui_id then
                         provider_info.create_ui_id = entry.meta.component.create_ui_id
@@ -180,7 +198,6 @@ function provider_registry.scan_available_providers(filters)
                     end
                 end
 
-                -- Extract scopes from entry.data
                 provider_info.default_scopes = (entry.data and entry.data.default_scopes) or {}
                 provider_info.available_scopes = (entry.data and entry.data.available_scopes) or {}
 

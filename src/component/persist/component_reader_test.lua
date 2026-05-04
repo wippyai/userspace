@@ -82,7 +82,7 @@ local function define_tests()
             end)
 
             it("should be immutable", function()
-                local reader1 = component_reader.new()
+                local reader1 = component_reader.new() :: any
                 local reader2 = reader1:with_user("test-user")
 
                 expect(reader1).not_to_equal(reader2)
@@ -265,7 +265,7 @@ local function define_tests()
 
         describe("edge cases", function()
             it("should handle empty results", function()
-                local reader = component_reader.new()
+                local reader = (component_reader.new() :: any)
                     :with_user("non-existent-user")
 
                 expect(reader:all()).to_be_type("table")

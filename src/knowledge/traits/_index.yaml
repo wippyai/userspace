@@ -7,6 +7,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Discover Knowledge Bases
       tags:
         - tool
@@ -39,6 +43,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Embed Content
       comment: Embeds content into knowledge base using kb_id from context
       tags:
@@ -143,6 +151,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Query Knowledge Base
       comment: Queries knowledge base using kb_id from context
       tags:
@@ -183,6 +195,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Query Knowledge Base
       tags:
         - tool

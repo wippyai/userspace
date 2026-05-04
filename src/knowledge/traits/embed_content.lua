@@ -21,7 +21,7 @@ local function handle(args)
         }
     end
 
-    local instance, err = component.open(kb_id, component.ACCESS.WRITE, "userspace.knowledge:embeddable")
+    local instance, err = component.open(kb_id :: string, component.ACCESS.WRITE, "userspace.knowledge:embeddable")
     if err then
         return {
             success = false,

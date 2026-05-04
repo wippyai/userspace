@@ -23,7 +23,7 @@ local function handle(args)
 
     local limit = args.limit or 10
 
-    local instance, err = component.open(kb_id, component.ACCESS.READ, "userspace.knowledge:queryable")
+    local instance, err = component.open(kb_id :: string, component.ACCESS.READ, "userspace.knowledge:queryable")
     if err then
         return {
             success = false,

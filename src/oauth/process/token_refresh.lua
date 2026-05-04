@@ -8,6 +8,21 @@ local logger = require("logger"):named("userspace.oauth.process.token_refresh")
 local OAUTH_CONNECTOR_CONTRACT = "userspace.oauth:connector"
 local PROVIDER_DISCOVERY_CONTRACT = "userspace.oauth.discovery:provider_discovery"
 
+-- Backoff schedule for transient refresh failures (seconds). Each entry is
+-- the delay before the next attempt. Total wall time bounded by
+-- timeout_seconds (default 300) and well within typical token lifetimes.
+local TRANSIENT_BACKOFF_S = { 5, 15, 45 }
+
+local function is_transient(refresh_result)
+    if refresh_result.transient ~= nil then
+        return refresh_result.transient
+    end
+    -- Backwards-compatible classification for older oauth implementations
+    -- that only return response_received: a missing response is transient,
+    -- everything else is treated as final.
+    return not refresh_result.response_received
+end
+
 local function handle(request_dto)
     local schedule_id = request_dto.schedule_id or "unknown"
     local args = request_dto.args or {}
@@ -138,41 +153,75 @@ local function handle(request_dto)
         }
     end
 
-    -- Perform token refresh
-    local refresh_result, err = oauth_instance:refresh_token({
-        refresh_token = connection_data.tokens.refresh_token
-    })
+    -- Perform token refresh, with inline backoff for transient failures.
+    -- Final failures (invalid_grant, invalid_client, etc.) return immediately.
+    local refresh_result, err
+    local attempts = 1 + #TRANSIENT_BACKOFF_S
+    for attempt = 1, attempts do
+        refresh_result, err = oauth_instance:refresh_token({
+            refresh_token = connection_data.tokens.refresh_token
+        })
+
+        if err then
+            -- Contract call failures (e.g. process supervisor errors) are
+            -- inherently transient. Keep retrying until we exhaust the budget.
+            logger:warn("Token refresh contract call failed", {
+                component_id = component_id,
+                provider = provider_name,
+                attempt = attempt,
+                error = err
+            })
+        elseif refresh_result.success then
+            break  -- success, exit loop
+        elseif not is_transient(refresh_result) then
+            break  -- final failure, no point retrying
+        else
+            logger:warn("Token refresh transient failure", {
+                component_id = component_id,
+                provider = provider_name,
+                attempt = attempt,
+                error = refresh_result.error,
+                status_code = refresh_result.status_code,
+                provider_error = refresh_result.provider_error
+            })
+        end
+
+        local delay = TRANSIENT_BACKOFF_S[attempt]
+        if delay then
+            time.sleep(delay .. "s")
+        end
+    end
 
     if err then
-        logger:error("Token refresh call failed", {
-            component_id = component_id,
-            provider = provider_name,
-            error = err
-        })
         return {
             success = false,
-            error = "Token refresh call failed: " .. err,
-            retriable = true  -- Contract call failures are generally retriable
+            error = "Token refresh call failed after retries: " .. err,
+            retriable = true
         }
     end
 
     if not refresh_result.success then
         local error_msg = refresh_result.error or "Unknown error"
-        -- Use response_received to determine if we should retry
-        local is_retriable = not refresh_result.response_received
+        local transient = is_transient(refresh_result)
 
         logger:error("Token refresh failed", {
             component_id = component_id,
             provider = provider_name,
             error = error_msg,
-            response_received = refresh_result.response_received,
-            is_retriable = is_retriable
+            status_code = refresh_result.status_code,
+            provider_error = refresh_result.provider_error,
+            transient = transient
         })
 
+        -- For final (non-transient) failures we tell the scheduler not to
+        -- retry — the schedule will be disabled and the user must re-authorize.
+        -- For transient failures we already exhausted our inline budget; let
+        -- the scheduler retry on the next ticker so we keep trying through a
+        -- prolonged outage without disabling the connection.
         return {
             success = false,
             error = "Token refresh failed: " .. error_msg,
-            retriable = is_retriable
+            retriable = transient
         }
     end
 

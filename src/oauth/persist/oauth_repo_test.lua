@@ -267,6 +267,9 @@ local function define_tests()
 
                 expect(err).to_be_nil()
                 expect(metadata).not_to_be_nil()
+                if not metadata then
+                    error("expected connection metadata")
+                end
 
                 -- Check public fields are present
                 expect(metadata.component_id).to_equal(test_data.component_id)
@@ -619,6 +622,9 @@ local function define_tests()
                 -- Query database directly to verify encryption
                 local db, err = sql.get("app:db")
                 expect(err).to_be_nil()
+                if not db then
+                    error("expected database connection")
+                end
 
                 local query = sql.builder.select("oauth_data_encrypted", "access_token_encrypted")
                     :from("oauth_connections")
@@ -730,6 +736,9 @@ local function define_tests()
                 end
 
                 expect(test_connection).not_to_be_nil()
+                if not test_connection then
+                    error("expected google test connection")
+                end
                 expect(test_connection.provider).to_equal("google")
                 expect(test_connection.connection_name).to_equal("Test Google Connection")
                 expect(test_connection.schedule_id).to_equal(test_data.schedule_id)
@@ -788,6 +797,9 @@ local function define_tests()
                 end
 
                 expect(test_connection).not_to_be_nil()
+                if not test_connection then
+                    error("expected scheduled test connection")
+                end
                 expect(test_connection.schedule_id).to_equal(test_data.schedule_id)
                 expect(test_connection.provider).to_equal("google")
 
@@ -833,6 +845,10 @@ local function define_tests()
                 -- Verify connection was disabled
                 local metadata, err = oauth_repo.get_connection_metadata(test_data.component_id)
                 expect(err).to_be_nil()
+                expect(metadata).not_to_be_nil()
+                if not metadata then
+                    error("expected disabled connection metadata")
+                end
                 expect(metadata.connection_state).to_equal("disabled")
             end)
 
@@ -887,6 +903,9 @@ local function define_tests()
                 -- Query the database directly to verify data is encrypted
                 local db, err = sql.get("app:db")
                 expect(err).to_be_nil()
+                if not db then
+                    error("expected database connection")
+                end
 
                 local query = sql.builder.select("oauth_data_encrypted")
                     :from("oauth_connections")

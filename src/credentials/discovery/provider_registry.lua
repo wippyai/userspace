@@ -124,8 +124,11 @@ end
 function provider_registry.scan_available_providers(filters)
     filters = filters or {}
 
+    -- Find all contract.binding entries; filter for credential_provider in the
+    -- loop. Wildcard "exists" matchers don't work with registry.find (the *
+    -- operator is substring-contains), so enumerate and filter.
     local provider_entries, err = registry.find({
-        ["*meta.credential_provider"] = "*"
+        [".kind"] = "contract.binding"
     })
 
     if err then
@@ -142,7 +145,7 @@ function provider_registry.scan_available_providers(filters)
 
     for _, entry in ipairs(provider_entries) do
         local namespace, name = parse_registry_id(entry.id)
-        if namespace and name and entry.meta then
+        if namespace and name and entry.meta and entry.meta.credential_provider then
             local provider_name = entry.meta.name or name
             local title = entry.meta.title or provider_name
             local description = entry.meta.comment or entry.meta.description or ""

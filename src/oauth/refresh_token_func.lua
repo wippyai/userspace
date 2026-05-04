@@ -131,37 +131,51 @@ local function handle(request_dto)
         return {
             success = false,
             error = VALIDATION_ERRORS.TOKEN_REFRESH_FAILED .. ": " .. err,
-            response_received = false  -- Network error - no response received
+            response_received = false,
+            transient = true  -- network error, refresh_token may still be valid
         }
     end
 
-    -- We received an HTTP response (even if it's an error status)
     local response_received = true
+    local status_code = token_response.status_code
 
-    if token_response.status_code >= 400 then
+    if status_code >= 400 then
+        -- 5xx (server error) and 429 (rate limit) are transient. The
+        -- refresh_token has not been rejected; the provider just couldn't
+        -- answer right now. 4xx other than 429 are final — invalid_grant,
+        -- invalid_client, unauthorized — retrying will not change the answer.
+        local transient = status_code >= 500 or status_code == 429
+
         logger:debug("Token refresh failed", {
-            status_code = token_response.status_code,
-            response_body = token_response.body
+            status_code = status_code,
+            response_body = token_response.body,
+            transient = transient
         })
         return {
             success = false,
             error = VALIDATION_ERRORS.TOKEN_REFRESH_FAILED ..
-                ": HTTP " .. token_response.status_code .. " - " .. (token_response.body or "No response body"),
-            response_received = response_received
+                ": HTTP " .. status_code .. " - " .. (token_response.body or "No response body"),
+            response_received = response_received,
+            status_code = status_code,
+            transient = transient
         }
     end
 
     -- Parse token response
-    local token_data, err = json.decode(token_response.body)
+    local token_data, err = json.decode(token_response.body :: string)
     if err then
         logger:debug("Failed to parse token refresh response", {
             error = err,
             response_body = token_response.body
         })
+        -- 200-with-unparseable-body usually means an intermediary (CDN, proxy)
+        -- intercepted the response, not that the refresh_token is bad.
         return {
             success = false,
             error = "Failed to parse token response: " .. err,
-            response_received = response_received
+            response_received = response_received,
+            status_code = status_code,
+            transient = true
         }
     end
 
@@ -171,17 +185,29 @@ local function handle(request_dto)
                 error = token_data.error,
                 error_description = token_data.error_description
             })
+            -- Provider explicitly rejected the refresh_token. invalid_grant /
+            -- invalid_client / unauthorized_client mean the credential is dead;
+            -- the user must re-authorize. server_error / temporarily_unavailable
+            -- may resolve on retry.
+            local provider_error = token_data.error
+            local transient = provider_error == "server_error"
+                or provider_error == "temporarily_unavailable"
             return {
                 success = false,
                 error = "OAuth provider error: " ..
-                    token_data.error .. " - " .. (token_data.error_description or "No description"),
-                response_received = response_received
+                    provider_error .. " - " .. (token_data.error_description or "No description"),
+                response_received = response_received,
+                status_code = status_code,
+                transient = transient,
+                provider_error = provider_error
             }
         end
         return {
             success = false,
             error = "No access token in refresh response",
-            response_received = response_received
+            response_received = response_received,
+            status_code = status_code,
+            transient = false
         }
     end
 

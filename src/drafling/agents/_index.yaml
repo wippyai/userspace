@@ -7,6 +7,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Create Project
       comment: Create a new project from a template
       input_schema: |
@@ -44,6 +48,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Create Template
       comment: Create a new drafling template with structured validation
       input_schema: |
@@ -231,6 +239,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List Projects
       comment: List user's drafling projects with filtering options
       input_schema: |
@@ -269,6 +281,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: List Templates
       comment: List available project templates
       input_schema: |
@@ -394,6 +410,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Query Project
       comment: Query a specific project using its dedicated agent
       input_schema: |
@@ -436,6 +456,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Redirect to Project Agent
       comment: Switch user to project-specific agent with context
       input_schema: |
@@ -601,6 +625,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Project
       comment: Update an existing project's details
       input_schema: |
@@ -641,6 +669,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: Update Template
       comment: Update an existing drafling template
       input_schema: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"template_id\": {\n      \"type\": \"string\",\n      \"description\": \"Template ID to update (will add app.drafling.{topic}: prefix if no namespace provided)\"\n    },\n    \"topic\": {\n      \"type\": \"string\", \n      \"description\": \"Topic/domain for namespace (e.g., 'web_research', 'business_intel') - used if template_id has no namespace\"\n    },\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"Update template name\"\n    },\n    \"description\": {\n      \"type\": \"string\",\n      \"description\": \"Update template description\"\n    },\n    \"icon\": {\n      \"type\": \"string\",\n      \"description\": \"Update template icon (tabler icon name)\"\n    },\n    \"tags\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Update template tags\"\n    },\n    \"agent_id\": {\n      \"type\": \"string\",\n      \"description\": \"Update associated agent ID\"\n    },\n    \"add_categories\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"name\": {\"type\": \"string\", \"pattern\": \"^[a-z0-9_]+$\"},\n          \"display_name\": {\"type\": \"string\"},\n          \"icon\": {\"type\": \"string\"},\n          \"entry_types\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}\n        },\n        \"required\": [\"name\", \"display_name\", \"entry_types\"]\n      },\n      \"description\": \"Categories to add\"\n    },\n    \"remove_categories\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Category names to remove\"\n    },\n    \"set_categories\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"name\": {\"type\": \"string\", \"pattern\": \"^[a-z0-9_]+$\"},\n          \"display_name\": {\"type\": \"string\"},\n          \"icon\": {\"type\": \"string\"},\n          \"entry_types\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}\n        },\n        \"required\": [\"name\", \"display_name\", \"entry_types\"]\n      },\n      \"description\": \"Replace all categories\"\n    },\n    \"add_entry_types\": {\n      \"type\": \"object\",\n      \"patternProperties\": {\n        \"^[a-z0-9_]+$\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"display_name\": {\"type\": \"string\"},\n            \"icon\": {\"type\": \"string\"},\n            \"content_type\": {\"type\": \"string\"},\n            \"color\": {\"type\": \"string\"},\n            \"default_status\": {\"type\": \"string\"},\n            \"statuses\": {\"type\": \"array\"}\n          },\n          \"required\": [\"display_name\"]\n        }\n      },\n      \"description\": \"Entry types to add\"\n    },\n    \"remove_entry_types\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"},\n      \"description\": \"Entry type names to remove\"\n    },\n    \"set_entry_types\": {\n      \"type\": \"object\",\n      \"patternProperties\": {\n        \"^[a-z0-9_]+$\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"display_name\": {\"type\": \"string\"},\n            \"icon\": {\"type\": \"string\"},\n            \"content_type\": {\"type\": \"string\"},\n            \"color\": {\"type\": \"string\"},\n            \"default_status\": {\"type\": \"string\"},\n            \"statuses\": {\"type\": \"array\"}\n          },\n          \"required\": [\"display_name\"]\n        }\n      },\n      \"description\": \"Replace all entry types\"\n    }\n  },\n  \"required\": [\"template_id\"]\n}\n"

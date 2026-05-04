@@ -17,16 +17,19 @@ local function run(args)
         error(mcp_consts.ERRORS.MISSING_NAME)
     end
 
-    local log = logger:named("mcp." .. args.name)
+    local executable = tostring(args.executable)
+    local name = tostring(args.name)
+
+    local log = logger:named("mcp." .. name)
     log:info("Starting MCP exec server", {
-        executable = args.executable,
-        name = args.name,
+        executable = executable,
+        name = name,
         args = args.args,
         work_dir = args.work_dir
     })
 
     -- Register with process registry
-    local registry_name = mcp_consts.REGISTRY.PREFIX .. args.name
+    local registry_name = mcp_consts.REGISTRY.PREFIX .. name
     local register_success = process.registry.register(registry_name)
     if not register_success then
         log:error("Failed to register process", { name = registry_name })
@@ -51,7 +54,7 @@ local function run(args)
     end
 
     -- Construct command
-    local command = args.executable
+    local command = executable
     if args.args and #args.args > 0 then
         for _, arg in ipairs(args.args) do
             if string.find(arg, " ") then
@@ -93,7 +96,7 @@ local function run(args)
             if line and line ~= "" then
                 log:debug("Stdout line", { line = line })
 
-                local response, parse_err = json.decode(line)
+                local response, parse_err = json.decode(tostring(line))
                 if response then
                     log:debug("Parsed JSON response", {
                         id = response.id,
@@ -218,7 +221,7 @@ local function run(args)
                 return nil, "Response timeout"
             end
 
-            local response = result.value
+            local response = result.value :: any
             if response.error then
                 return nil, response.error
             end
@@ -292,6 +295,7 @@ local function run(args)
             end
 
             local tool_response, read_err = wait_for_response(tool_id, mcp_consts.DEFAULTS.TOOL_CALL_TIMEOUT_MS)
+            tool_response = tool_response :: any
             if not tool_response then
                 return { error = "Tool call failed: " .. (read_err or "unknown error") }
             end
@@ -325,6 +329,7 @@ local function run(args)
         end
 
         local init_response, read_err = wait_for_response(init_id, 10000)
+        init_response = init_response :: any
         if not init_response then
             return false, "Initialize failed: " .. (read_err or "unknown error")
         end
@@ -346,6 +351,7 @@ local function run(args)
         end
 
         local tools_response, tools_read_err = wait_for_response(tools_id, 10000)
+        tools_response = tools_response :: any
         if not tools_response then
             return false, "Tools list failed: " .. (tools_read_err or "unknown error")
         end
@@ -412,19 +418,20 @@ local function run(args)
 
                 local response = handle_client_request(request)
 
-                if request.id and request.reply_to_topic and from_pid then
+                local reply_to_topic = request.reply_to_topic
+                if request.id and type(reply_to_topic) == "string" and from_pid then
                     log:debug("Sending response", {
                         from_pid = from_pid,
-                        reply_to_topic = request.reply_to_topic,
+                        reply_to_topic = reply_to_topic,
                         request_id = request.id
                     })
 
-                    local send_success = process.send(from_pid, request.reply_to_topic, response)
+                    local send_success = process.send(from_pid, reply_to_topic, response)
 
                     if not send_success then
                         log:error("Failed to send response", {
                             from_pid = from_pid,
-                            reply_to_topic = request.reply_to_topic,
+                            reply_to_topic = reply_to_topic,
                             request_id = request.id
                         })
                     end
@@ -440,7 +447,7 @@ local function run(args)
         elseif result.channel == stderr_lines then
             local stderr_line = result.value
             if not initialized then
-                initialization_error = (initialization_error or "") .. " | stderr: " .. stderr_line
+                initialization_error = (initialization_error or "") .. " | stderr: " .. tostring(stderr_line)
             end
 
         elseif result.channel == process_exit then

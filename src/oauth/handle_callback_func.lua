@@ -172,7 +172,7 @@ local function handle(request_dto)
     end
 
     -- Parse token response
-    local token_data, err = json.decode(token_response.body)
+    local token_data, err = json.decode(token_response.body :: string)
     if err then
         logger:debug("Failed to parse token response", {
             error = err,
@@ -318,7 +318,7 @@ local function handle(request_dto)
             userinfo_response.status_code .. ": " .. (userinfo_response.body or "")
         else
             -- Parse user info response
-            local userinfo_data, err = json.decode(userinfo_response.body)
+            local userinfo_data, err = json.decode(userinfo_response.body :: string)
             if err then
                 logger:debug("Failed to parse user info response", { error = err })
                 oauth_connection.userinfo_error = "Failed to parse user info: " .. err

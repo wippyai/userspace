@@ -26,10 +26,11 @@ local function filter_sensitive_credentials(credentials, sensitive_fields)
     -- Include all non-sensitive fields
     for field_name, field_value in pairs(credentials) do
         local is_sensitive = false
+        local field_key = tostring(field_name)
 
         -- Check if field is explicitly marked as sensitive
         for _, sensitive_field in ipairs(sensitive_fields) do
-            if field_name == sensitive_field then
+            if field_key == sensitive_field then
                 is_sensitive = true
                 break
             end
@@ -37,7 +38,7 @@ local function filter_sensitive_credentials(credentials, sensitive_fields)
 
         -- Also check for common sensitive patterns in field names (case-insensitive)
         if not is_sensitive then
-            local lower_field = string.lower(field_name)
+            local lower_field = string.lower(field_key)
             if string.find(lower_field, "password") or
                string.find(lower_field, "secret") or
                string.find(lower_field, "token") or
@@ -48,7 +49,7 @@ local function filter_sensitive_credentials(credentials, sensitive_fields)
 
         -- Include non-sensitive fields (including nested objects like server_info)
         if not is_sensitive then
-            filtered_credentials[field_name] = field_value
+            filtered_credentials[field_key] = field_value
         end
     end
 
@@ -193,7 +194,10 @@ local function handler()
     end
 
     -- Filter out sensitive credentials based on provider UI config
-    local sensitive_fields = provider_info.ui_config and provider_info.ui_config.sensitive_fields or {}
+    local sensitive_fields = provider_info.ui_config and provider_info.ui_config.sensitive_fields or nil
+    if type(sensitive_fields) ~= "table" then
+        sensitive_fields = nil
+    end
     local filtered_credentials = filter_sensitive_credentials(connection.credentials, sensitive_fields)
     local debug_credentials = mask_sensitive_values(connection.credentials, sensitive_fields)
 

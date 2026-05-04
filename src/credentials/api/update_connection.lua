@@ -10,8 +10,16 @@ local CREDENTIAL_VALIDATOR_CONTRACT = "userspace.credentials:credential_validato
 local CREDENTIALS_CONTRACT = "userspace.credentials:credentials_contract"
 
 local function call_provider_validator(provider_info, form_credentials)
-    if not provider_info.validation_contract_id then
+    local validation_contract_id = provider_info.validation_contract_id
+    if not validation_contract_id then
         return form_credentials, nil
+    end
+
+    if type(validation_contract_id) ~= "string" or validation_contract_id == "" then
+        return nil, {
+            field = "connection",
+            error = "Invalid credential validator contract ID"
+        }
     end
 
     local validator_contract, err = contract.get(CREDENTIAL_VALIDATOR_CONTRACT)
@@ -22,7 +30,7 @@ local function call_provider_validator(provider_info, form_credentials)
         }
     end
 
-    local validator_instance, err = validator_contract:open(provider_info.validation_contract_id)
+    local validator_instance, err = validator_contract:open(validation_contract_id)
     if err then
         return nil, {
             field = "connection",

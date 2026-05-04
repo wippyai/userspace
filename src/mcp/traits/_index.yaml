@@ -36,6 +36,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: MCP Tool
       comment: Command-pattern MCP tool caller with flexible schema
     source: file://command_caller.lua
@@ -52,6 +56,10 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp:
+        required_scopes:
+          - state.read
+          - state.write
       title: MCP Tool
       comment: Individual tools MCP caller with real schema validation
     source: file://individual_tools_caller.lua

@@ -297,9 +297,10 @@ local function define_tests()
                 expect(metadata.metadata.provider).to_equal("github")
                 expect(metadata.metadata.environment).to_equal("production")
 
-                -- Check encrypted fields are NOT present
-                expect(metadata.credentials).to_be_nil()
-                expect(metadata.credentials_data).to_be_nil()
+                -- Check encrypted fields are NOT present.
+                local raw_metadata = metadata :: any
+                expect(raw_metadata.credentials).to_be_nil()
+                expect(raw_metadata.credentials_data).to_be_nil()
 
                 expect(metadata.created_at).not_to_be_nil()
                 expect(metadata.updated_at).not_to_be_nil()
@@ -373,6 +374,9 @@ local function define_tests()
                 -- Query the database directly to verify data is encrypted
                 local db, err = sql.get("app:db")
                 expect(err).to_be_nil()
+                if db == nil then
+                    error("expected app:db connection")
+                end
 
                 local query = sql.builder.select("credentials_data")
                     :from("credentials_store")

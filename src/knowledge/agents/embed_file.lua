@@ -24,7 +24,7 @@ local function handle(args)
     end
 
     -- Open the KB with write access
-    local kb_instance, kb_err = component.open(kb_id, component.ACCESS.WRITE, "userspace.knowledge:embeddable")
+    local kb_instance, kb_err = component.open(kb_id :: string, component.ACCESS.WRITE, "userspace.knowledge:embeddable")
     if not kb_instance then
         return {
             success = false,

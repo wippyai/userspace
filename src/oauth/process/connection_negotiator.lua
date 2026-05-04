@@ -31,23 +31,20 @@ local function create_token_refresh_schedule(component_id, provider_name, connec
         return nil, "Failed to open scheduler: " .. err
     end
 
-    -- Calculate refresh interval based on token expiration
     local refresh_interval = "15m" -- default fallback
 
     local current_time = time.now():unix()
     local token_lifetime = expires_at - current_time
 
     if token_lifetime > 0 then
-        -- Calculate 75% of token lifetime, then schedule to check at that point
         local refresh_time = math.floor(token_lifetime * REFRESH_PERCENTAGE_THRESHOLD)
 
-        -- Convert to appropriate time format
         if refresh_time >= 3600 then
             refresh_interval = math.floor(refresh_time / 3600) .. "h"
         elseif refresh_time >= 60 then
             refresh_interval = math.floor(refresh_time / 60) .. "m"
         else
-            refresh_interval = math.max(30, refresh_time) .. "s"  -- Minimum 30 seconds
+            refresh_interval = math.max(30, refresh_time) .. "s"
         end
     end
 
@@ -112,12 +109,33 @@ local function register_component(component_id, oauth_connection, user_context, 
             return nil, "Failed to store OAuth connection: " .. oauth_err
         end
 
-        -- Handle token refresh schedule if needed (only for expiring tokens)
+        -- Handle token refresh schedule if needed (only for expiring tokens).
+        -- Treat the existing schedule_id as a hint, not a guarantee — it may
+        -- point at a row that was deleted out from under us (e.g. by manual
+        -- cleanup or a retention sweep). If get_schedule fails to find it,
+        -- create a new schedule and overwrite the stale reference.
         local connection_metadata, metadata_err = oauth_repo.get_connection_metadata(component_id)
-        if not metadata_err and not connection_metadata.schedule_id and oauth_connection.expires_at then
-            local schedule_id, schedule_err = create_token_refresh_schedule(component_id, provider_name, connection_name, oauth_connection.expires_at)
-            if schedule_id and not schedule_err then
-                oauth_repo.update_schedule_id(component_id, schedule_id)
+        if not metadata_err and oauth_connection.expires_at then
+            local need_schedule = not connection_metadata.schedule_id
+            if not need_schedule then
+                local scheduler_contract, sc_err = contract.get(SCHEDULER_CONTRACT)
+                if not sc_err and scheduler_contract then
+                    local scheduler_instance, open_err = scheduler_contract:open()
+                    if not open_err and scheduler_instance then
+                        local existing, get_err = scheduler_instance:get_schedule({
+                            schedule_id = connection_metadata.schedule_id
+                        })
+                        if get_err or not existing or not existing.success then
+                            need_schedule = true
+                        end
+                    end
+                end
+            end
+            if need_schedule then
+                local schedule_id, schedule_err = create_token_refresh_schedule(component_id, provider_name, connection_name, oauth_connection.expires_at)
+                if schedule_id and not schedule_err then
+                    oauth_repo.update_schedule_id(component_id, schedule_id)
+                end
             end
         end
 

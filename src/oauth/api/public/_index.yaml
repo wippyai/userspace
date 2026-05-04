@@ -33,13 +33,10 @@ entries:
     kind: function.lua
     meta:
       comment: OAuth callback page handler
-      description: Serves the OAuth callback page using renderer
+      description: Serves a self-contained OAuth callback completion page
     source: file://oauth_callback_page.lua
     modules:
       - http
-      - json
-    imports:
-      renderer: wippy.views:renderer
     method: handler
     pool:
       size: 4

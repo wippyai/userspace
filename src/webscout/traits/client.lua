@@ -28,34 +28,43 @@ local function get_default_headers()
 end
 
 local function merge_headers(custom_headers)
+    ---@type table<string, string>
     local headers = get_default_headers()
-    if custom_headers then
+    if type(custom_headers) == "table" then
         for k, v in pairs(custom_headers) do
-            headers[k] = v
+            headers[tostring(k)] = tostring(v)
         end
     end
     return headers
 end
 
-local function get(url, options)
+local function build_options(options)
     options = options or {}
-    options.headers = merge_headers(options.headers)
-    options.timeout = options.timeout or CONFIG.DEFAULT_TIMEOUT
-    return http_client.get(url, options)
+    local timeout = CONFIG.DEFAULT_TIMEOUT
+    if type(options.timeout) == "number" then
+        timeout = options.timeout
+    end
+
+    local headers: {[string]: string} = merge_headers(options.headers)
+    return {
+        headers = headers,
+        timeout = timeout
+    }
+end
+
+local function get(url, options)
+    local request_options = build_options(options)
+    return http_client.get(tostring(url), request_options)
 end
 
 local function post(url, options)
-    options = options or {}
-    options.headers = merge_headers(options.headers)
-    options.timeout = options.timeout or CONFIG.DEFAULT_TIMEOUT
-    return http_client.post(url, options)
+    local request_options = build_options(options)
+    return http_client.post(tostring(url), request_options)
 end
 
 local function request(method, url, options)
-    options = options or {}
-    options.headers = merge_headers(options.headers)
-    options.timeout = options.timeout or CONFIG.DEFAULT_TIMEOUT
-    return http_client.request(method, url, options)
+    local request_options = build_options(options)
+    return http_client.request(tostring(method), tostring(url), request_options)
 end
 
 return {
