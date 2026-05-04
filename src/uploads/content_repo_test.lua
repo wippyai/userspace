@@ -10,6 +10,9 @@ local function define_tests()
             })
 
             test.is_nil(err)
+            if merged == nil then
+                error("expected merged metadata")
+            end
             test.eq(merged.owner, "u2")
             test.eq(merged.keep, true)
             test.eq(merged.added, "yes")
@@ -21,6 +24,9 @@ local function define_tests()
             })
 
             test.is_nil(err)
+            if merged == nil then
+                error("expected merged metadata")
+            end
             test.eq(merged.added, "yes")
         end)
 
