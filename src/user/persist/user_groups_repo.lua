@@ -1,7 +1,6 @@
 local sql = require("sql")
 local time = require("time")
-
-local consts = require("consts")
+local consts = require("user_consts")
 
 local user_groups_repo = {}
 
