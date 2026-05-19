@@ -2,8 +2,7 @@ local sql = require("sql")
 local hash = require("hash")
 local crypto = require("crypto")
 local time = require("time")
-
-local consts = require("consts")
+local consts = require("user_consts")
 
 local user_repo = {}
 
@@ -128,7 +127,7 @@ function user_repo.get(identifier)
 
     local query = sql.builder.select("user_id", "email", "full_name", "password_hash", "status", "created_at", "updated_at")
         :from("app_users")
-        :where("user_id = ? OR email = ?", normalized, normalized)
+        :where("user_id = ? OR email = ?", identifier, normalized)
         :limit(1)
 
     local executor = query:run_with(db)
