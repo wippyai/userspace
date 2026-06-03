@@ -23,7 +23,7 @@ local function parse_rpc(raw: string?)
     if not raw or raw == "" then return nil end
     local trimmed = raw:match("^%s*(.-)%s*$") or raw
     if trimmed:sub(1, 1) == "{" then
-        local decoded, _ = json.decode(trimmed)
+        local decoded, _ = json.decode(trimmed :: string)
         return decoded
     end
     for line in raw:gmatch("[^\n]+") do
@@ -44,7 +44,7 @@ local function run(args)
         error("Missing MCP server url")
     end
 
-    local url = args.url
+    local url = args.url :: string
     local log = logger:named("mcp." .. args.name)
     log:info("Starting MCP http server", { name = args.name, url = url })
 
@@ -64,7 +64,7 @@ local function run(args)
                 command = command .. (string.find(a, " ") and (' "' .. a .. '"') or (" " .. a))
             end
         end
-        held_executor = exec.get(args.executor_id)
+        held_executor = exec.get(args.executor_id :: string)
         if not held_executor then
             error(mcp_consts.ERRORS.EXECUTOR_FAILED .. ": " .. tostring(args.executor_id))
         end
@@ -89,7 +89,7 @@ local function run(args)
     local initialization_error = nil
     local tools = {}
 
-    local function rpc(method, params, is_notification, timeout)
+    local function rpc(method: string, params: table?, is_notification: boolean?, timeout: string?)
         local body: table = { jsonrpc = "2.0", method = method }
         if not is_notification then
             body.id = request_id
