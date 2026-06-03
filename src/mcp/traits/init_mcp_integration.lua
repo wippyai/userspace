@@ -19,7 +19,7 @@ local function execute(base_prompt, context)
     local selected_tools = ctx.get("selected_tools") -- Array of tool names to include
 
     -- Connect to MCP server and get tools with schemas
-    local client, connect_err = mcp_client.connect(server_id)
+    local client, connect_err = mcp_client.connect(server_id :: string)
     if connect_err then
         return {
             prompt = base_prompt .. "\n\nMCP integration failed: " .. connect_err

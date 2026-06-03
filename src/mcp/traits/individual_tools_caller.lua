@@ -20,7 +20,7 @@ local function individual_tools_handler(params)
     -- If we have a real schema for this tool, we could validate parameters here
     -- For now, just pass through to MCP server for validation
 
-    local client, err = mcp_client.connect(server_id)
+    local client, err = mcp_client.connect(server_id :: string)
     if err then
         return nil, "Failed to connect to MCP server '" .. server_id .. "': " .. err
     end

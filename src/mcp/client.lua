@@ -16,14 +16,19 @@ local function verify_access(name)
     return true
 end
 
-local function create_client(name)
+local function create_client(name: string?, trusted: boolean?)
     if not name then
         return nil, "Name is required"
     end
 
-    local access_ok, access_err = verify_access(name)
-    if not access_ok then
-        return nil, access_err
+    -- Trusted connections skip the user-level mcp.connect permission check. They
+    -- are for internal server-side callers (e.g. an upload processor converting a
+    -- document) where the connection is an app capability, not a user action.
+    if not trusted then
+        local access_ok, access_err = verify_access(name)
+        if not access_ok then
+            return nil, access_err
+        end
     end
 
     local client = {
@@ -90,8 +95,14 @@ local function send_and_wait(client, request_data, timeout_ms)
     return response
 end
 
-function mcp_client.connect(name)
-    return create_client(name)
+function mcp_client.connect(name: string)
+    return create_client(name, false)
+end
+
+-- Connect without the user-level mcp.connect permission check. For trusted,
+-- server-side/internal callers only (not request-driven on a user's behalf).
+function mcp_client.connect_trusted(name: string)
+    return create_client(name, true)
 end
 
 function mcp_client.ping(client)

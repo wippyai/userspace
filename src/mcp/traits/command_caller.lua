@@ -15,7 +15,7 @@ local function command_caller_handler(params)
         return nil, "No tool_name configured in context"
     end
 
-    local client, err = mcp_client.connect(server_id)
+    local client, err = mcp_client.connect(server_id :: string)
     if err then
         return nil, "Failed to connect to MCP server '" .. server_id .. "': " .. err
     end
