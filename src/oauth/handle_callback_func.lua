@@ -171,8 +171,9 @@ local function handle(request_dto)
         }
     end
 
-    -- Parse token response
-    local token_data, err = json.decode(token_response.body)
+    -- Parse token response (body is string?; default to "" so the decode error
+    -- path handles a missing body instead of passing nil to json.decode)
+    local token_data, err = json.decode(token_response.body or "")
     if err then
         logger:debug("Failed to parse token response", {
             error = err,
@@ -317,8 +318,8 @@ local function handle(request_dto)
             oauth_connection.userinfo_error = "HTTP " ..
             userinfo_response.status_code .. ": " .. (userinfo_response.body or "")
         else
-            -- Parse user info response
-            local userinfo_data, err = json.decode(userinfo_response.body)
+            -- Parse user info response (body is string?; default to "")
+            local userinfo_data, err = json.decode(userinfo_response.body or "")
             if err then
                 logger:debug("Failed to parse user info response", { error = err })
                 oauth_connection.userinfo_error = "Failed to parse user info: " .. err
