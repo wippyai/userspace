@@ -244,9 +244,14 @@ end
 local function determine_completion_action(task, exec_result)
     local is_success = not exec_result.error
 
+    -- The disable/failure reasons carry the implementation's error so operators
+    -- see why a schedule stopped, not just a generic flag.
+    local failure_detail = tostring(exec_result.error or "no error message")
+
     -- Once schedules always get disabled after execution (success or failure)
     if task.schedule_type == schedule_repo.SCHEDULE_TYPES.ONCE then
-        local reason = is_success and "Once schedule completed successfully" or "Once schedule failed"
+        local reason = is_success and "Once schedule completed successfully"
+            or ("Once schedule failed: " .. failure_detail)
         return COMPLETION_ACTIONS.DISABLE, reason
     end
 
@@ -257,11 +262,12 @@ local function determine_completion_action(task, exec_result)
     else
         -- Failure: check retry logic
         if not exec_result.retriable then
-            return COMPLETION_ACTIONS.DISABLE, "Task failed with retriable=false"
+            return COMPLETION_ACTIONS.DISABLE, "Task failed (non-retriable): " .. failure_detail
         end
 
         if task.retry_count >= task.max_retries then
-            return COMPLETION_ACTIONS.DISABLE, "Maximum retries exceeded (" .. task.max_retries .. ")"
+            return COMPLETION_ACTIONS.DISABLE,
+                "Maximum retries exceeded (" .. task.max_retries .. "): " .. failure_detail
         end
 
         -- Still have retries left

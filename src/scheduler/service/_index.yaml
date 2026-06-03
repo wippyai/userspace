@@ -87,4 +87,15 @@ entries:
       schedule_calculator: userspace.scheduler.interval:schedule_calculator
       schedule_repo: userspace.scheduler.persist:schedule_repo
     method: run
+
+  - name: worker_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: scheduler
+    source: file://worker_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      worker: userspace.scheduler.service:worker
     
