@@ -1,6 +1,6 @@
 organization: userspace
 module: mcp
-version: 0.4.5
+version: 0.4.6
 description: Model Context Protocol client
 license: Apache-2.0
 repository: https://github.com/wippyai/userspace

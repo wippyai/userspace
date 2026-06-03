@@ -1,12 +1,18 @@
 local logger = require("logger")
 local http_client = require("http_client")
 local json = require("json")
+local time = require("time")
+local exec = require("exec")
 local mcp_consts = require("mcp_consts")
 
 -- MCP server manager for streamable-HTTP transport. Mirrors service/exec's
 -- client message interface (request/reply_to_topic), but speaks MCP JSON-RPC to
--- a configured URL instead of a child process's stdio. The actual server runs
--- elsewhere (e.g. a container managed by userspace/docker); this only talks to it.
+-- a configured URL instead of a child process's stdio.
+--
+-- If args.executor_id is set, this also launches the HTTP server itself via that
+-- executor (e.g. an exec.docker executor running an --http MCP image) and holds
+-- it for the process lifetime, then connects to args.url. That keeps a long-lived
+-- HTTP MCP server fully managed without coupling to userspace/docker.
 
 local REQUEST_TYPE_PING = "ping"
 local REQUEST_TYPE_TOOLS_LIST = "tools_list"
@@ -45,6 +51,36 @@ local function run(args)
     local registry_name = mcp_consts.REGISTRY.PREFIX .. args.name
     if not process.registry.register(registry_name) then
         error(mcp_consts.ERRORS.REGISTRY_FAILED .. ": " .. registry_name)
+    end
+
+    -- Optionally launch the HTTP server via an executor (e.g. exec.docker running
+    -- an --http MCP image) and hold it for this process's lifetime.
+    local held_proc = nil
+    local held_executor = nil
+    if args.executor_id and args.executor_id ~= "" then
+        local command = args.executable or ""
+        if args.args and #args.args > 0 then
+            for _, a in ipairs(args.args) do
+                command = command .. (string.find(a, " ") and (' "' .. a .. '"') or (" " .. a))
+            end
+        end
+        held_executor = exec.get(args.executor_id)
+        if not held_executor then
+            error(mcp_consts.ERRORS.EXECUTOR_FAILED .. ": " .. tostring(args.executor_id))
+        end
+        local proc, proc_err = held_executor:exec(command)
+        if not proc then
+            held_executor:release()
+            error("Failed to launch http server: " .. tostring(proc_err))
+        end
+        held_proc = proc
+        proc:start()
+        log:info("Launched http MCP server container", { executor = args.executor_id, command = command })
+    end
+
+    local function cleanup()
+        if held_proc then held_proc:close() end
+        if held_executor then held_executor:release() end
     end
 
     local config = mcp_consts.get_config()
@@ -136,17 +172,34 @@ local function run(args)
         end
     end
 
-    -- Initialize in the background so the server is reachable before we report ready.
+    -- Connect in the background, retrying while a freshly launched server binds
+    -- its port. Does not relaunch (avoids container/port leaks on a slow start).
     coroutine.spawn(function()
-        local ok, err = initialize_mcp()
-        if ok then
-            initialized = true
-            log:info("MCP http server ready", { tools_count = #tools })
-        else
+        local attempts = held_proc and 15 or 5
+        for i = 1, attempts do
+            local ok, err = initialize_mcp()
+            if ok then
+                initialized = true
+                log:info("MCP http server ready", { tools_count = #tools })
+                return
+            end
             initialization_error = err
-            log:error("MCP initialization failed", { error = err })
+            log:warn("MCP init attempt failed; retrying", { attempt = i, error = err })
+            time.sleep("2s")
         end
+        log:error("MCP initialization failed after retries", { error = initialization_error })
     end)
+
+    -- If we launched the server and it exits, fail so the supervisor respawns us
+    -- (cleanup first so the dead container/port is released before relaunch).
+    if held_proc then
+        coroutine.spawn(function()
+            held_proc:wait()
+            log:error("http MCP server exited")
+            cleanup()
+            error("http MCP server exited")
+        end)
+    end
 
     local events = process.events()
     local inbox = process.inbox()
@@ -172,6 +225,7 @@ local function run(args)
         end
     end
 
+    cleanup()
     return { status = "completed", initialized = initialized, tools_count = #tools }
 end
 
