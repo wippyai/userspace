@@ -7,6 +7,7 @@
     <style>
         /* CSS Custom Properties for unified timing */
         :root {
+            color-scheme: light dark;
             --timing-fast: 0.2s;
             --timing-normal: 0.3s;
             --timing-slow: 0.6s;
@@ -288,6 +289,25 @@
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
             }
+        }
+
+        /* Light theme. The popup is a standalone window and can't read the
+           app's theme tokens, so it follows the OS/browser color scheme. The
+           success/error/accent colors read well on both, only the surface and
+           text colors are overridden here. */
+        @media (prefers-color-scheme: light) {
+            body { background: #f8fafc; color: #0f172a; }
+            h1 { color: #0f172a; }
+            .subtitle { color: #475569; }
+            .auto-close {
+                color: #64748b;
+                background: rgba(241, 245, 249, 0.8);
+                border-color: rgba(203, 213, 225, 0.7);
+            }
+            .loading { background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); color: #475569; }
+            .css-spinner { border-color: rgba(148, 163, 184, 0.3); border-top-color: #475569; }
+            .progress-dot { background: rgba(148, 163, 184, 0.4); }
+            .error .subtitle { color: #b91c1c; }
         }
     </style>
 </head>
