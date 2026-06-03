@@ -20,3 +20,21 @@ entries:
     imports:
       mcp_consts: userspace.mcp:consts
     method: run
+
+  # userspace.mcp.service:http
+  - name: http
+    kind: process.lua
+    meta:
+      comment: MCP server manager for streamable-HTTP transport
+      tags:
+        - mcp
+        - server
+        - http
+    source: file://http.lua
+    modules:
+      - logger
+      - http_client
+      - json
+    imports:
+      mcp_consts: userspace.mcp:consts
+    method: run
