@@ -40,4 +40,3 @@ entries:
     default: "2024-11-05"
     storage: app.env:router
     variable: MCP_PROTOCOL_VERSION
-    
