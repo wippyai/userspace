@@ -35,6 +35,8 @@ entries:
       - logger
       - http_client
       - json
+      - time
+      - exec
     imports:
       mcp_consts: userspace.mcp:consts
     method: run
