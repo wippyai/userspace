@@ -7,6 +7,7 @@ entries:
     kind: registry.entry
     meta:
       name: MCP Integration
+      title: MCP Integration
       type: agent.trait
       comment: |
         Connects to MCP server and dynamically integrates all available tools.
@@ -38,6 +39,16 @@ entries:
       type: tool
       title: MCP Tool
       comment: Command-pattern MCP tool caller with flexible schema
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "tool": { "type": "string", "description": "Name of the MCP tool to call" },
+            "arguments": { "type": "object", "description": "Arguments to pass to the MCP tool" }
+          },
+          "required": ["tool"],
+          "additionalProperties": true
+        }
     source: file://command_caller.lua
     modules:
       - json
@@ -54,6 +65,16 @@ entries:
       type: tool
       title: MCP Tool
       comment: Individual tools MCP caller with real schema validation
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "tool": { "type": "string", "description": "Name of the MCP tool to invoke" },
+            "arguments": { "type": "object", "description": "Arguments for the selected MCP tool" }
+          },
+          "required": ["tool"],
+          "additionalProperties": true
+        }
     source: file://individual_tools_caller.lua
     modules:
       - json
