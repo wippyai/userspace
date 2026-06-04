@@ -22,6 +22,8 @@ function spec.build_container_config(c: {
     group_add: {string}?,
     devices: {table}?,
     device_requests: {table}?,
+    args: {string}?,
+    entrypoint: {string}?,
 }): {[string]: any}
     local env_array = nil
     if c.env then
@@ -127,8 +129,13 @@ function spec.build_container_config(c: {
         if #requests > 0 then host_config.DeviceRequests = requests end
     end
 
+    -- args run as raw Cmd against the image entrypoint (e.g. an ENTRYPOINT-based
+    -- server image taking flags); command is the shell convenience form wrapped in
+    -- sh -c. args takes precedence when both are given.
     local cmd = nil
-    if c.command then
+    if c.args then
+        cmd = c.args
+    elseif c.command then
         cmd = { "sh", "-c", c.command }
     end
 
@@ -146,6 +153,10 @@ function spec.build_container_config(c: {
         Tty = false,
         HostConfig = host_config,
     }
+
+    if c.entrypoint then
+        config.Entrypoint = c.entrypoint
+    end
 
     if c.labels then
         config.Labels = c.labels

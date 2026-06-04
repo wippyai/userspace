@@ -186,6 +186,8 @@ local function run_managed(docker, db_id, c, root_pid)
         group_add = cfg.group_add :: {string}?,
         devices = cfg.devices :: {table}?,
         device_requests = cfg.device_requests :: {table}?,
+        args = cfg.args :: {string}?,
+        entrypoint = cfg.entrypoint :: {string}?,
     })
 
     local create_params = {}

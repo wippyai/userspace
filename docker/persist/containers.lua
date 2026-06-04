@@ -65,6 +65,8 @@ function containers.create(db, spec: {
     group_add: {string}?,
     devices: {table}?,
     device_requests: {table}?,
+    args: {string}?,
+    entrypoint: {string}?,
     group_id: string?,
     labels: {[string]: string}?,
     callback_pid: string?,
@@ -100,6 +102,8 @@ function containers.create(db, spec: {
         group_add      = spec.group_add,
         devices        = spec.devices,
         device_requests = spec.device_requests,
+        args           = spec.args,
+        entrypoint     = spec.entrypoint,
     })
 
     local _, exec_err = db_execute(db, [[

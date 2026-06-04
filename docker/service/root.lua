@@ -13,7 +13,10 @@ local function create_from_entry(db, entry: {id: string, data: table?})
     local data = entry.data or {}
     local command = data.command and tostring(data.command) or nil
     local image = data.image and tostring(data.image) or "alpine:latest"
-    if not command then
+    local args = data.args :: {string}?
+    -- A container entry needs something to run: a shell command, or raw args
+    -- against the image entrypoint. Entries with neither are not containers.
+    if not command and not args then
         return false
     end
     local existing = containers_repo.get(db, entry.id)
@@ -24,6 +27,8 @@ local function create_from_entry(db, entry: {id: string, data: table?})
         id = entry.id,
         image = image,
         command = command,
+        args = args,
+        entrypoint = data.entrypoint :: {string}?,
         name = data.name and tostring(data.name) or nil,
         interactive = (data.interactive or false) :: boolean,
         env = data.env :: {[string]: string}?,

@@ -31,6 +31,45 @@ local function define_tests()
                 test.eq(result.Cmd[3], "echo hello", "third arg is the command")
             end)
 
+            it("uses raw args as Cmd against the image entrypoint", function()
+                local result = spec.build_container_config({
+                    image = "mcp/markitdown",
+                    args = { "--http", "--port", "3001" },
+                })
+                test.not_nil(result.Cmd, "Cmd is set")
+                test.eq(result.Cmd[1], "--http", "args passed raw, no sh -c wrap")
+                test.eq(result.Cmd[2], "--port", "second arg preserved")
+                test.eq(result.Cmd[3], "3001", "third arg preserved")
+            end)
+
+            it("prefers args over command when both are set", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    command = "echo hello",
+                    args = { "--flag" },
+                })
+                test.eq(result.Cmd[1], "--flag", "args wins")
+                test.eq(#result.Cmd, 1, "no sh -c wrap when args present")
+            end)
+
+            it("sets Entrypoint when provided", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    entrypoint = { "/bin/myserver" },
+                    args = { "--port", "8080" },
+                })
+                test.not_nil(result.Entrypoint, "Entrypoint is set")
+                test.eq(result.Entrypoint[1], "/bin/myserver", "entrypoint override applied")
+            end)
+
+            it("leaves Entrypoint nil by default (image default)", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    command = "echo hi",
+                })
+                test.is_nil(result.Entrypoint, "no entrypoint override means nil")
+            end)
+
             it("converts env map to array format", function()
                 local result = spec.build_container_config({
                     image = "alpine:latest",

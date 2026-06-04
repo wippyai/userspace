@@ -98,7 +98,9 @@ entries:
 | Field | Type | Description |
 |-------|------|-------------|
 | `image` | string | Docker image (default: `alpine:latest`) |
-| `command` | string | Command to run (required) |
+| `command` | string | Shell command, wrapped as `sh -c` (provide this or `args`) |
+| `args` | array? | Raw Cmd args passed to the image entrypoint, no `sh -c` wrap (e.g. `["--http","--port","3001"]` for an ENTRYPOINT-based server image). Takes precedence over `command`. |
+| `entrypoint` | array? | Override the image ENTRYPOINT |
 | `name` | string? | Container name |
 | `env` | map | Environment variables |
 | `ports` | array | Port mappings: `{host, container, protocol?}` |
