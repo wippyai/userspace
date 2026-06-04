@@ -60,12 +60,16 @@ function spec.build_container_config(c: {
         host_config.Binds = binds
     end
 
+    local exposed_ports = nil
     if c.ports then
         local port_bindings = {}
+        exposed_ports = {}
         for _, p in ipairs(c.ports) do
             local proto = p.protocol or "tcp"
             local key = tostring(p.container) .. "/" .. proto
             port_bindings[key] = { { HostPort = tostring(p.host) } }
+            -- Docker only publishes a port that is also exposed in the container config.
+            exposed_ports[key] = {}
         end
         if next(port_bindings) then
             host_config.PortBindings = port_bindings
@@ -156,6 +160,10 @@ function spec.build_container_config(c: {
 
     if c.entrypoint then
         config.Entrypoint = c.entrypoint
+    end
+
+    if exposed_ports and next(exposed_ports) then
+        config.ExposedPorts = exposed_ports
     end
 
     if c.labels then

@@ -230,6 +230,9 @@ local function define_tests()
                 test.not_nil(bindings, "PortBindings is set")
                 test.not_nil(bindings["80/tcp"], "80/tcp binding exists")
                 test.eq(bindings["80/tcp"][1].HostPort, "8080")
+                -- Docker only publishes a port that is also exposed in the config.
+                test.not_nil(result.ExposedPorts, "ExposedPorts is set")
+                test.not_nil(result.ExposedPorts["80/tcp"], "80/tcp is exposed")
             end)
 
             it("handles multiple ports with different protocols", function()

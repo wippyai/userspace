@@ -43,6 +43,8 @@ local function create_from_entry(db, entry: {id: string, data: table?})
         ports = data.ports :: {host: number, container: number, protocol: string?}[]?,
         network = data.network and tostring(data.network) or nil,
         work_dir = data.work_dir and tostring(data.work_dir) or nil,
+        restart_policy = data.restart_policy and tostring(data.restart_policy) or nil,
+        max_restarts = tonumber(data.max_restarts),
         labels = data.labels :: {[string]: string}?,
         persist_logs = false,
     })
