@@ -48,7 +48,17 @@ entries:
     command: redis-server --appendonly yes
     ports:
       - { host: 6379, container: 6379 }
+    restart_policy: unless-stopped
 ```
+
+### Services vs jobs
+
+A `restart_policy` marks a container as a **long-lived service**: the worker
+starts it, confirms it is up, then hands it off to Docker's restart policy and
+the monitor — it is never polled to completion or removed. A stopped/failed
+service is recreated on the next startup. Without a `restart_policy` the
+container is treated as a **finite job**: it is polled until it exits, its logs
+and exit code are recorded, and it is removed.
 
 ### Multi-service stack
 

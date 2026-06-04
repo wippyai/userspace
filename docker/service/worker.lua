@@ -238,12 +238,18 @@ local function run_managed(docker, db_id, c, root_pid)
     -- Release DB before blocking poll loop — reacquire after
     db:release()
 
+    -- A service (restart_policy set) is long-lived: once it is up past a short
+    -- stabilization window it is handed off to the monitor rather than polled to
+    -- completion, so it is never treated as a failed job or removed.
+    local is_service = cfg.restart_policy ~= nil and tostring(cfg.restart_policy) ~= "" and tostring(cfg.restart_policy) ~= "no"
     local log_since = os.time() - 1
     local lines_seen = 0
     local exit_code: number = -1
     local final_status = consts.status.STOPPED
     local error_msg: string? = nil
+    local still_running = false
     local max_polls = 3600
+    local stabilize_polls = 6
 
     for poll = 1, max_polls do
         local info, inspect_err = docker:inspect_container(docker_id)
@@ -292,12 +298,28 @@ local function run_managed(docker, db_id, c, root_pid)
             break
         end
 
-        if poll == max_polls then
-            final_status = consts.status.FAILED
-            error_msg = "container polling timeout after " .. max_polls .. " attempts"
+        -- A service past stabilization, or any container still running at the poll
+        -- cap, is a live long-lived container, not a failed job: stop polling, mark
+        -- it running, and let Docker's restart policy + the monitor own it.
+        if (is_service and poll >= stabilize_polls) or poll == max_polls then
+            still_running = true
+            break
         end
 
         time.sleep("500ms")
+    end
+
+    -- A still-running container is a live service: keep it (do not remove), leave
+    -- it marked running, and hand ongoing lifecycle to Docker's restart policy and
+    -- the monitor. Only finite jobs fall through to drain + remove below.
+    if still_running then
+        local run_db = sql.get(db_id)
+        if run_db then
+            containers_repo.update_status(run_db, cid, consts.status.RUNNING, {})
+            run_db:release()
+        end
+        notify_status(root_pid, cid, consts.status.RUNNING, { docker_id = docker_id })
+        return
     end
 
     -- Drain remaining logs
