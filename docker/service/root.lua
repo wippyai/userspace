@@ -9,6 +9,13 @@ local containers_repo = require("containers_repo")
 local helpers = require("helpers")
 local logger = require("logger")
 
+-- Local name from a registry id ("ns.sub:entry" -> "entry"). Declarative
+-- containers default to this so they get a stable Docker name (required for
+-- reclaim) without a separate name field that would collide with the entry name.
+local function short_name(id: string): string
+    return id:match(":([^:]+)$") or id
+end
+
 local function create_from_entry(db, entry: {id: string, data: table?})
     local data = entry.data or {}
     local command = data.command and tostring(data.command) or nil
@@ -29,7 +36,7 @@ local function create_from_entry(db, entry: {id: string, data: table?})
         command = command,
         args = args,
         entrypoint = data.entrypoint :: {string}?,
-        name = data.name and tostring(data.name) or nil,
+        name = (data.name and tostring(data.name)) or short_name(entry.id),
         interactive = (data.interactive or false) :: boolean,
         env = data.env :: {[string]: string}?,
         volumes = data.volumes :: {host: string, container: string, mode: string?}[]?,
