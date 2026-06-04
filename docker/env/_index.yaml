@@ -7,6 +7,7 @@ entries:
     meta:
       comment: Database resource for docker storage
       private: true
+    default: database
     storage: userspace.docker:os_env
     variable: DOCKER_DB_RESOURCE
 
@@ -15,5 +16,6 @@ entries:
     meta:
       comment: Process host for docker worker spawning
       private: true
+    default: process_host
     storage: userspace.docker:os_env
     variable: DOCKER_PROCESS_HOST

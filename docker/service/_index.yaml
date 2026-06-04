@@ -24,11 +24,9 @@ entries:
   - name: root.service
     kind: process.service
     process: root
-    host: app:processes
+    host: process_host
     lifecycle:
       auto_start: true
-      depends_on:
-        - app:processes
       restart:
         max_attempts: 3
 
@@ -40,6 +38,7 @@ entries:
       consts: userspace.docker.lib:consts
       helpers: userspace.docker.lib:helpers
       spec: userspace.docker.lib:spec
+      reclaim: userspace.docker.lib:reclaim
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
     modules:

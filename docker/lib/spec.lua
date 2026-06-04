@@ -19,6 +19,9 @@ function spec.build_container_config(c: {
     healthcheck: {test: {string}, interval: number?, timeout: number?, retries: number?, start_period: number?}?,
     cap_add: {string}?,
     dns: {string}?,
+    group_add: {string}?,
+    devices: {table}?,
+    device_requests: {table}?,
 }): {[string]: any}
     local env_array = nil
     if c.env then
@@ -92,6 +95,36 @@ function spec.build_container_config(c: {
 
     if c.dns then
         host_config.Dns = c.dns
+    end
+
+    if c.group_add then
+        host_config.GroupAdd = c.group_add
+    end
+
+    if c.devices then
+        local devices = {}
+        for _, d in ipairs(c.devices) do
+            table.insert(devices, {
+                PathOnHost = d.path_on_host or d.PathOnHost,
+                PathInContainer = d.path_in_container or d.PathInContainer or d.path_on_host or d.PathOnHost,
+                CgroupPermissions = d.cgroup_permissions or d.CgroupPermissions or "rwm",
+            })
+        end
+        if #devices > 0 then host_config.Devices = devices end
+    end
+
+    if c.device_requests then
+        local requests = {}
+        for _, r in ipairs(c.device_requests) do
+            table.insert(requests, {
+                Driver = r.driver or r.Driver,
+                Count = r.count or r.Count or 0,
+                DeviceIDs = r.device_ids or r.DeviceIDs,
+                Capabilities = r.capabilities or r.Capabilities,
+                Options = r.options or r.Options,
+            })
+        end
+        if #requests > 0 then host_config.DeviceRequests = requests end
     end
 
     local cmd = nil

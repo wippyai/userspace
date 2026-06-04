@@ -4,6 +4,7 @@ local time = require("time")
 local json = require("json")
 local consts = require("consts")
 local spec = require("spec")
+local reclaim = require("reclaim")
 local containers_repo = require("containers_repo")
 local docker_client = require("docker_client")
 local helpers = require("helpers")
@@ -182,11 +183,24 @@ local function run_managed(docker, db_id, c, root_pid)
         healthcheck = cfg.health_check :: {test: {string}, interval: number?, timeout: number?, retries: number?, start_period: number?}?,
         cap_add = cfg.cap_add :: {string}?,
         dns = cfg.dns :: {string}?,
+        group_add = cfg.group_add :: {string}?,
+        devices = cfg.devices :: {table}?,
+        device_requests = cfg.device_requests :: {table}?,
     })
 
     local create_params = {}
     if c.name then
         create_params.name = c.name
+        -- A container left by an ungraceful shutdown keeps this name and its host
+        -- ports, which makes create conflict. Reclaim it first; a failure here is
+        -- logged and left for create to surface.
+        local _, reclaim_err = reclaim.reclaim_existing(docker, tostring(c.name))
+        if reclaim_err then
+            logger:warn("reclaim existing container failed before create", {
+                name = tostring(c.name),
+                error = tostring(reclaim_err),
+            })
+        end
     end
 
     local created, create_err = docker:create_container(container_config, create_params)

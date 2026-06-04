@@ -11,7 +11,7 @@ entries:
         - containers
         - database
       description: Create containers and container_logs tables
-      target_db: app:db
+      target_db: database
       timestamp: "2026-02-13T10:00:00Z"
     source: file://01_create_containers.lua
     imports:
@@ -27,7 +27,7 @@ entries:
         - images
         - database
       description: Create images and image_builds tables
-      target_db: app:db
+      target_db: database
       timestamp: "2026-02-13T10:01:00Z"
     source: file://02_create_images.lua
     imports:
@@ -43,7 +43,7 @@ entries:
         - containers
         - database
       description: Add group_id column to containers for compose group tracking
-      target_db: app:db
+      target_db: database
       timestamp: "2026-03-29T10:00:00Z"
     source: file://03_add_group_id.lua
     imports:

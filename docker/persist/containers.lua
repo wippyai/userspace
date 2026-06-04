@@ -1,5 +1,6 @@
 local json = require("json")
 local uuid = require("uuid")
+local sql = require("sql")
 
 local containers = {}
 
@@ -12,6 +13,31 @@ local function safe_json_decode(raw: string): table?
         return nil
     end
     return result :: table
+end
+
+local function is_postgres(db): boolean
+    if type(db) ~= "table" and type(db) ~= "userdata" then return false end
+    if type(db.type) ~= "function" then return false end
+    local db_type = db:type()
+    if sql.type and db_type == sql.type.POSTGRES then return true end
+    return tostring(db_type):lower() == "postgres"
+end
+
+local function bind_sql(db, sql_text: string): string
+    if not is_postgres(db) then return sql_text end
+    local i = 0
+    return (sql_text:gsub("%?", function()
+        i = i + 1
+        return "$" .. tostring(i)
+    end))
+end
+
+local function db_execute(db, sql_text: string, args: any?)
+    return db:execute(bind_sql(db, sql_text), args)
+end
+
+local function db_query(db, sql_text: string, args: any?)
+    return db:query(bind_sql(db, sql_text), args)
 end
 
 function containers.create(db, spec: {
@@ -36,6 +62,9 @@ function containers.create(db, spec: {
     hostname: string?,
     cap_add: {string}?,
     dns: {string}?,
+    group_add: {string}?,
+    devices: {table}?,
+    device_requests: {table}?,
     group_id: string?,
     labels: {[string]: string}?,
     callback_pid: string?,
@@ -68,9 +97,12 @@ function containers.create(db, spec: {
         hostname       = spec.hostname,
         cap_add        = spec.cap_add,
         dns            = spec.dns,
+        group_add      = spec.group_add,
+        devices        = spec.devices,
+        device_requests = spec.device_requests,
     })
 
-    local _, exec_err = db:execute([[
+    local _, exec_err = db_execute(db, [[
         INSERT INTO containers (id, name, image, command, config, status, group_id, labels,
             callback_pid, callback_topic, persist_logs, created_by, created_at)
         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
@@ -88,7 +120,7 @@ function containers.create(db, spec: {
 end
 
 function containers.get(db, id: string): (table?, string?)
-    local rows, query_err = db:query("SELECT * FROM containers WHERE id = ?", { id })
+    local rows, query_err = db_query(db, "SELECT * FROM containers WHERE id = ?", { id })
     if query_err then
         return nil, "failed to get container: " .. tostring(query_err)
     end
@@ -141,7 +173,7 @@ function containers.list(db, filter: {
         table.insert(params, f.limit)
     end
 
-    local rows, query_err = db:query(query, params)
+    local rows, query_err = db_query(db, query, params)
     if query_err or not rows then
         return {}
     end
@@ -158,7 +190,7 @@ function containers.list(db, filter: {
 end
 
 function containers.list_pending(db): {table}
-    local rows, query_err = db:query(
+    local rows, query_err = db_query(db,
         "SELECT * FROM containers WHERE status = 'pending' ORDER BY created_at ASC"
     )
     if query_err or not rows then
@@ -177,7 +209,7 @@ function containers.list_pending(db): {table}
 end
 
 function containers.claim(db, id: string): boolean
-    local result = db:execute(
+    local result = db_execute(db,
         "UPDATE containers SET status = 'claimed' WHERE id = ? AND status = 'pending'",
         { id }
     )
@@ -224,7 +256,7 @@ function containers.update_status(db, id: string, status: string, fields: {
     end
 
     table.insert(params, id)
-    local _, exec_err = db:execute(
+    local _, exec_err = db_execute(db,
         "UPDATE containers SET " .. table.concat(sets, ", ") .. " WHERE id = ?",
         params
     )
@@ -237,7 +269,7 @@ function containers.update_status(db, id: string, status: string, fields: {
 end
 
 function containers.append_log(db, container_id: string, stream: string, line: string): string?
-    local _, err = db:execute([[
+    local _, err = db_execute(db, [[
         INSERT INTO container_logs (container_id, stream, line, ts) VALUES (?, ?, ?, ?)
     ]], { container_id, stream, line, os.time() })
     if err then
@@ -253,7 +285,7 @@ function containers.get_logs(db, container_id: string, limit: number?): ({table}
         query = query .. " LIMIT ?"
         table.insert(params, limit)
     end
-    local rows, err = db:query(query, params)
+    local rows, err = db_query(db, query, params)
     if err then
         return {}, "failed to get logs: " .. tostring(err)
     end
@@ -261,7 +293,7 @@ function containers.get_logs(db, container_id: string, limit: number?): ({table}
 end
 
 function containers.list_by_group(db, group_id: string): {table}
-    local rows, query_err = db:query(
+    local rows, query_err = db_query(db,
         "SELECT * FROM containers WHERE group_id = ? ORDER BY created_at DESC",
         { group_id }
     )
@@ -292,7 +324,7 @@ function containers.delete_by_group(db, group_id: string): (number, string?)
 end
 
 function containers.update_name(db, id: string, name: string): string?
-    local _, exec_err = db:execute("UPDATE containers SET name = ? WHERE id = ?", { name, id })
+    local _, exec_err = db_execute(db, "UPDATE containers SET name = ? WHERE id = ?", { name, id })
     if exec_err then
         return "failed to update name: " .. tostring(exec_err)
     end
@@ -300,8 +332,8 @@ function containers.update_name(db, id: string, name: string): string?
 end
 
 function containers.delete(db, id: string): string?
-    db:execute("DELETE FROM container_logs WHERE container_id = ?", { id })
-    local _, exec_err = db:execute("DELETE FROM containers WHERE id = ?", { id })
+    db_execute(db, "DELETE FROM container_logs WHERE container_id = ?", { id })
+    local _, exec_err = db_execute(db, "DELETE FROM containers WHERE id = ?", { id })
     if exec_err then
         return "failed to delete container: " .. tostring(exec_err)
     end

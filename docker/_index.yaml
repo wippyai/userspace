@@ -14,7 +14,6 @@ entries:
     kind: ns.requirement
     meta:
       description: Database resource for docker storage
-    default: app:db
     targets:
       - entry: userspace.docker.env:database_resource
         path: .default
@@ -25,18 +24,17 @@ entries:
       - entry: userspace.docker.migrations:03_add_group_id
         path: .meta.target_db
       - entry: userspace.docker.service:root.service
-        path: .lifecycle.depends_on[0]
+        path: .lifecycle.depends_on +=
 
   - name: process_host
     kind: ns.requirement
     meta:
       description: Process host for docker services
-    default: app:processes
     targets:
       - entry: userspace.docker.service:root.service
         path: .host
       - entry: userspace.docker.service:root.service
-        path: .lifecycle.depends_on[1]
+        path: .lifecycle.depends_on +=
       - entry: userspace.docker.env:process_host
         path: .default
 

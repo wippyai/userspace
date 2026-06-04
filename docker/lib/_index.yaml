@@ -21,6 +21,10 @@ entries:
       - json
       - process
 
+  - name: reclaim
+    kind: library.lua
+    source: file://reclaim.lua
+
   - name: spec_test
     kind: function.lua
     meta:
@@ -43,4 +47,16 @@ entries:
     method: run_tests
     imports:
       tar: userspace.docker.lib:tar
+      test: wippy.test:test
+
+  - name: reclaim_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Orphaned-container reclaim tests
+    source: file://reclaim_test.lua
+    method: run_tests
+    imports:
+      reclaim: userspace.docker.lib:reclaim
       test: wippy.test:test
