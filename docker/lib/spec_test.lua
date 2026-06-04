@@ -233,6 +233,11 @@ local function define_tests()
                 -- Docker only publishes a port that is also exposed in the config.
                 test.not_nil(result.ExposedPorts, "ExposedPorts is set")
                 test.not_nil(result.ExposedPorts["80/tcp"], "80/tcp is exposed")
+                -- Each value must encode as an empty JSON object, not [], or Docker
+                -- rejects the create with "cannot unmarshal array".
+                local json = require("json")
+                test.contains(json.encode(result.ExposedPorts), '"80/tcp":{}',
+                    "exposed port encodes as an empty object")
             end)
 
             it("handles multiple ports with different protocols", function()

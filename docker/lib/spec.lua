@@ -1,5 +1,15 @@
 local spec = {}
 
+-- Docker's ExposedPorts maps each port to an empty JSON object. A bare empty Lua
+-- table encodes as [] (array), which Docker rejects; a table that has held a
+-- string key keeps its dict allocated and encodes as {}.
+local function empty_object(): {[string]: any}
+    local obj: {[string]: any} = {}
+    obj.placeholder = true
+    obj.placeholder = nil
+    return obj
+end
+
 function spec.build_container_config(c: {
     image: string,
     command: string?,
@@ -69,7 +79,7 @@ function spec.build_container_config(c: {
             local key = tostring(p.container) .. "/" .. proto
             port_bindings[key] = { { HostPort = tostring(p.host) } }
             -- Docker only publishes a port that is also exposed in the container config.
-            exposed_ports[key] = {}
+            exposed_ports[key] = empty_object()
         end
         if next(port_bindings) then
             host_config.PortBindings = port_bindings

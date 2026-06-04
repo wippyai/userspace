@@ -33,6 +33,8 @@ entries:
       description: Container config builder tests
     source: file://spec_test.lua
     method: run_tests
+    modules:
+      - json
     imports:
       spec: userspace.docker.lib:spec
       test: wippy.test:test
