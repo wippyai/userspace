@@ -7,6 +7,27 @@ local logger = require("logger"):named("userspace.oauth.process.token_refresh")
 -- Constants
 local OAUTH_CONNECTOR_CONTRACT = "userspace.oauth:connector"
 local PROVIDER_DISCOVERY_CONTRACT = "userspace.oauth.discovery:provider_discovery"
+local NEEDS_REAUTH_STATE = "needs_reauth"
+
+-- Mark a connection as needing manual re-authorization. Called when a refresh
+-- fails permanently (revoked grant, missing refresh token) so the connection is
+-- surfaced as needing reconnection instead of silently failing every poll.
+local function mark_needs_reauth(component_id, reason)
+    local _, mark_err = oauth_repo.update_connection(component_id, {
+        connection_state = NEEDS_REAUTH_STATE
+    })
+    if mark_err then
+        logger:error("Failed to mark connection as needs_reauth", {
+            component_id = component_id,
+            error = mark_err
+        })
+    else
+        logger:warn("Connection marked as needs_reauth", {
+            component_id = component_id,
+            reason = reason
+        })
+    end
+end
 
 local function handle(request_dto)
     local schedule_id = request_dto.schedule_id or "unknown"
@@ -69,6 +90,7 @@ local function handle(request_dto)
             component_id = component_id,
             provider = provider_name
         })
+        mark_needs_reauth(component_id, "no refresh token")
         return {
             success = false,
             error = "No refresh token available - manual re-authorization required",
@@ -168,6 +190,10 @@ local function handle(request_dto)
             response_received = refresh_result.response_received,
             is_retriable = is_retriable
         })
+
+        if not is_retriable then
+            mark_needs_reauth(component_id, error_msg)
+        end
 
         return {
             success = false,
