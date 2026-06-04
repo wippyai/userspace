@@ -241,15 +241,15 @@ local function run_managed(docker, db_id, c, root_pid)
     -- A service (restart_policy set) is long-lived: once it is up past a short
     -- stabilization window it is handed off to the monitor rather than polled to
     -- completion, so it is never treated as a failed job or removed.
-    local is_service = cfg.restart_policy ~= nil and tostring(cfg.restart_policy) ~= "" and tostring(cfg.restart_policy) ~= "no"
+    local is_service = cfg.restart_policy ~= nil and consts.service_restart_policies[tostring(cfg.restart_policy)] == true
     local log_since = os.time() - 1
     local lines_seen = 0
     local exit_code: number = -1
     local final_status = consts.status.STOPPED
     local error_msg: string? = nil
     local still_running = false
-    local max_polls = 3600
-    local stabilize_polls = 6
+    local max_polls = consts.defaults.POLL_MAX
+    local stabilize_polls = consts.defaults.POLL_STABILIZE
 
     for poll = 1, max_polls do
         local info, inspect_err = docker:inspect_container(docker_id)

@@ -45,9 +45,18 @@ consts.build_status = {
 }
 
 consts.restart_policy = {
-    NONE       = "none",
-    ON_FAILURE = "on-failure",
-    ALWAYS     = "always",
+    NONE           = "none",
+    ON_FAILURE     = "on-failure",
+    ALWAYS         = "always",
+    UNLESS_STOPPED = "unless-stopped",
+}
+
+-- Restart policies that mark a container as a long-lived service: the daemon keeps
+-- it running, so the worker hands it off instead of polling it to completion.
+-- on-failure is intentionally excluded: such a container is a job that retries.
+consts.service_restart_policies = {
+    [consts.restart_policy.ALWAYS]         = true,
+    [consts.restart_policy.UNLESS_STOPPED] = true,
 }
 
 consts.registry = {
@@ -68,6 +77,8 @@ consts.defaults = {
     LOG_TTL            = 3600,
     MAX_RESTARTS       = 3,
     WORKER_COUNT       = 2,
+    POLL_MAX           = 3600,
+    POLL_STABILIZE     = 6,
 }
 
 return consts

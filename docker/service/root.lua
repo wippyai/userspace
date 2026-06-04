@@ -31,7 +31,7 @@ local function create_from_entry(db, entry: {id: string, data: table?})
         local status = tostring(existing.status)
         -- A live or in-flight container is left alone; a stopped/failed one is
         -- recreated (the worker reclaims any leftover container before re-create).
-        if status == "running" or status == "pending" or status == "claimed" then
+        if status == consts.status.RUNNING or status == consts.status.PENDING or status == consts.status.CLAIMED then
             return false
         end
         containers_repo.delete(db, entry.id)
