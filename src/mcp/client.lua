@@ -78,6 +78,11 @@ local function send_and_wait(client, request_data, timeout_ms)
         timeout_channel:case_receive()
     })
 
+    -- Stop listening on the per-call response channel regardless of outcome; on
+    -- timeout the listener would otherwise leak (a late reply lands on a dead
+    -- channel and the subscription lingers).
+    process.unlisten(reply_channel)
+
     if result.channel == timeout_channel then
         client.log:error("Request timeout", {
             request_id = request_id,

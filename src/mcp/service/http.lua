@@ -138,8 +138,22 @@ local function run(args)
         return true, nil
     end
 
+    -- Lazily (re)establish the MCP session: used on the first request and to
+    -- recover when the server restarts (e.g. its container is reclaimed), since a
+    -- fresh handshake re-syncs the session + tools against the new instance.
+    local function ensure_initialized()
+        if initialized then return true end
+        local ok, err = initialize_mcp()
+        if ok then
+            initialized = true
+            return true
+        end
+        initialization_error = err
+        return false
+    end
+
     local function handle_client_request(request)
-        if not initialized then
+        if not ensure_initialized() then
             return { error = "MCP server not initialized" ..
                 (initialization_error and (": " .. initialization_error) or "") }
         end
@@ -155,8 +169,16 @@ local function run(args)
             if request.params and next(request.params) then
                 tool_params.arguments = request.params
             end
-            local resp, err = rpc(mcp_consts.OPERATIONS.TOOLS_CALL, tool_params, false,
-                tostring(mcp_consts.DEFAULTS.TOOL_CALL_TIMEOUT_MS) .. "ms")
+            local timeout = tostring(mcp_consts.DEFAULTS.TOOL_CALL_TIMEOUT_MS) .. "ms"
+            local resp, err = rpc(mcp_consts.OPERATIONS.TOOLS_CALL, tool_params, false, timeout)
+            if not resp then
+                -- Transport failure: the server may have restarted. Re-handshake
+                -- against the (possibly new) instance and retry once.
+                initialized = false
+                if ensure_initialized() then
+                    resp, err = rpc(mcp_consts.OPERATIONS.TOOLS_CALL, tool_params, false, timeout)
+                end
+            end
             if not resp then return { error = "Tool call failed: " .. (err or "unknown error") } end
             if resp.result then return { success = true, result = resp.result } end
             return { error = resp.error and resp.error.message or "Tool call failed" }
@@ -177,14 +199,11 @@ local function run(args)
     coroutine.spawn(function()
         local attempts = held_proc and 15 or 5
         for i = 1, attempts do
-            local ok, err = initialize_mcp()
-            if ok then
-                initialized = true
+            if ensure_initialized() then
                 log:info("MCP http server ready", { tools_count = #tools })
                 return
             end
-            initialization_error = err
-            log:warn("MCP init attempt failed; retrying", { attempt = i, error = err })
+            log:warn("MCP init attempt failed; retrying", { attempt = i, error = initialization_error })
             time.sleep("2s")
         end
         log:error("MCP initialization failed after retries", { error = initialization_error })
