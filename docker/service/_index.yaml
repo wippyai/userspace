@@ -39,6 +39,7 @@ entries:
       helpers: userspace.docker.lib:helpers
       spec: userspace.docker.lib:spec
       reclaim: userspace.docker.lib:reclaim
+      images: userspace.docker.lib:images
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
     modules:
@@ -58,11 +59,13 @@ entries:
       consts: userspace.docker.lib:consts
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      reconcile: userspace.docker.lib:reconcile
     modules:
       - sql
       - process
       - channel
       - time
+      - registry
       - logger
 
   - name: image_builder

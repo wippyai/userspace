@@ -223,6 +223,16 @@ function containers.claim(db, id: string): boolean
     return false
 end
 
+-- Reset every claimed-but-not-started container back to pending. Called at startup
+-- where no worker holds a live claim, so any 'claimed' row is from a worker that
+-- crashed mid-claim and would otherwise be stuck forever.
+function containers.requeue_claimed(db): number
+    local result = db_execute(db,
+        "UPDATE containers SET status = 'pending' WHERE status = 'claimed'"
+    )
+    return (result and result.rows_affected) or 0
+end
+
 function containers.update_status(db, id: string, status: string, fields: {
     docker_id: string?,
     exit_code: number?,

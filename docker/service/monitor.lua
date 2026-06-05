@@ -1,8 +1,10 @@
 local sql = require("sql")
 local time = require("time")
+local registry = require("registry")
 local consts = require("consts")
 local containers_repo = require("containers_repo")
 local docker_client = require("docker_client")
+local reconcile = require("reconcile")
 
 local logger = require("logger")
 
@@ -69,6 +71,26 @@ function monitor.run(config: {
                                 (docker :: {[string]: any}):remove_container(tostring(c.docker_id), true)
                             end
                             containers_repo.delete(db, tostring(c.id))
+                        end
+                    end
+                end
+
+                -- Runtime recovery: requeue declared containers marked running whose
+                -- container has vanished (removed, or restart retries exhausted).
+                -- Docker's restart policy handles an ordinary crash; this catches the
+                -- cases it can't. The worker's fallback poll then recreates.
+                local declared, decl_err = registry.find({ ["meta.type"] = "docker.container" })
+                if not decl_err then
+                    for _, entry in ipairs(declared or {}) do
+                        local row = containers_repo.get(db, entry.id)
+                        local alive = false
+                        if row and docker and row.docker_id and tostring(row.docker_id) ~= "" then
+                            local info = (docker :: {[string]: any}):inspect_container(tostring(row.docker_id))
+                            alive = (info and info.State and info.State.Running) and true or false
+                        end
+                        if row and reconcile.needs_requeue(row, alive) then
+                            log:warn("declared container vanished; requeueing", { id = entry.id })
+                            containers_repo.update_status(db, tostring(row.id), consts.status.PENDING, {})
                         end
                     end
                 end

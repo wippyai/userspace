@@ -25,6 +25,16 @@ entries:
     kind: library.lua
     source: file://reclaim.lua
 
+  - name: images
+    kind: library.lua
+    source: file://images.lua
+
+  - name: reconcile
+    kind: library.lua
+    source: file://reconcile.lua
+    imports:
+      consts: userspace.docker.lib:consts
+
   - name: spec_test
     kind: function.lua
     meta:
@@ -49,6 +59,30 @@ entries:
     method: run_tests
     imports:
       tar: userspace.docker.lib:tar
+      test: wippy.test:test
+
+  - name: images_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Image ensure/pull tests
+    source: file://images_test.lua
+    method: run_tests
+    imports:
+      images: userspace.docker.lib:images
+      test: wippy.test:test
+
+  - name: reconcile_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Declared-container reconcile tests
+    source: file://reconcile_test.lua
+    method: run_tests
+    imports:
+      reconcile: userspace.docker.lib:reconcile
       test: wippy.test:test
 
   - name: reclaim_test

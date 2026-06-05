@@ -5,6 +5,7 @@ local json = require("json")
 local consts = require("consts")
 local spec = require("spec")
 local reclaim = require("reclaim")
+local images = require("images")
 local containers_repo = require("containers_repo")
 local docker_client = require("docker_client")
 local helpers = require("helpers")
@@ -189,6 +190,19 @@ local function run_managed(docker, db_id, c, root_pid)
         args = cfg.args :: {string}?,
         entrypoint = cfg.entrypoint :: {string}?,
     })
+
+    -- Pull the image if it is not present locally; otherwise create fails on a
+    -- fresh host that never pulled it.
+    local img_ok, img_err = images.ensure(docker, tostring(cfg.image or c.image))
+    if not img_ok then
+        containers_repo.update_status(db, cid, consts.status.FAILED, {
+            error = "image: " .. tostring(img_err),
+            stopped_at = os.time(),
+        })
+        db:release()
+        notify_status(root_pid, cid, consts.status.FAILED, { error = "image: " .. tostring(img_err) })
+        return
+    end
 
     local create_params = {}
     if c.name then

@@ -70,6 +70,13 @@ local function run()
         return nil, "failed to get database: " .. tostring(err)
     end
 
+    -- Recover containers a crashed worker left stuck in 'claimed' (no live worker
+    -- holds a claim at startup).
+    local requeued = containers_repo.requeue_claimed(db)
+    if requeued > 0 then
+        log:info("requeued stale claimed containers", { count = requeued })
+    end
+
     local found_entries, find_err = registry.find({ ["meta.type"] = "docker.container" })
     if found_entries and #found_entries > 0 then
         local created = 0
