@@ -27,6 +27,7 @@ entries:
     meta:
       comment: Google Custom Search API key for web search functionality
       icon: tabler:search
+    variable: GOOGLE_SEARCH_API_KEY
 
   # userspace.webscout:google_search_engine_id
   - name: google_search_engine_id
@@ -34,6 +35,7 @@ entries:
     meta:
       comment: Google Custom Search Engine ID (cx) for search queries
       icon: tabler:search
+    variable: GOOGLE_SEARCH_ENGINE_ID
 
   # userspace.webscout:user_agent
   - name: user_agent
@@ -41,4 +43,5 @@ entries:
     meta:
       comment: User agent string for web requests
       icon: tabler:browser
+    variable: WEBSCOUT_USER_AGENT
     default: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
