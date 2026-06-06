@@ -9,6 +9,24 @@ entries:
       title: Userspace MCP
       description: Model Context Protocol client
 
+  # Lets the consuming app repoint where the env variables below are read from,
+  # matching userspace/users and userspace/uploads. Defaults to app.env:router
+  # so existing apps keep working.
+  - name: env_storage
+    kind: ns.requirement
+    meta:
+      description: Environment variable storage location
+    default: app.env:router
+    targets:
+      - entry: userspace.mcp.env:client_name
+        path: .storage
+      - entry: userspace.mcp.env:client_version
+        path: .storage
+      - entry: userspace.mcp.env:executor_id
+        path: .storage
+      - entry: userspace.mcp.env:protocol_version
+        path: .storage
+
   # userspace.mcp:client
   - name: client
     kind: library.lua
