@@ -39,7 +39,7 @@ local function handle(args)
         return nil, "Search API error: " .. response.status_code
     end
 
-    local data, err = json.decode(response.body)
+    local data, err = json.decode(response.body or "")
     if not data then
         return nil, "Failed to parse search results: " .. tostring(err)
     end

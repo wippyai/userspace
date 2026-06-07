@@ -23,11 +23,7 @@ local function handle(args)
     if max_size > 100000 then max_size = 100000 end
     if max_size < 1000 then max_size = 1000 end
 
-    local options = {
-        headers = args.headers
-    }
-
-    local response, err = client.get(args.url, options)
+    local response, err = client.get(args.url)
     if err then
         return nil, "Failed to fetch page: " .. err
     end
@@ -37,7 +33,7 @@ local function handle(args)
     end
 
     local content_type = response.headers["content-type"] or response.headers["Content-Type"] or ""
-    local content = response.body
+    local content = response.body or ""
 
     if content_type:find("text/html") then
         content = clean_content(content)

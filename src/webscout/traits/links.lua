@@ -86,7 +86,7 @@ local function handle(args)
     end
 
     local base_url = get_base_url(args.url)
-    local links = extract_links(response.body, base_url, absolute_only)
+    local links = extract_links(response.body or "", base_url, absolute_only)
 
     return {
         url = args.url,

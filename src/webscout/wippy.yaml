@@ -1,6 +1,6 @@
 organization: userspace
 module: webscout
-version: 0.1.0
+version: 0.2.2
 description: Web research tools for AI agents - search, read pages, and extract links
 license: MPL-2.0
 repository: https://github.com/wippyai/userspace
