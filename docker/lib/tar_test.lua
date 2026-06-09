@@ -102,32 +102,32 @@ local function define_tests()
             test.eq(#archive, 512 + 1024, "header + end marker only")
         end)
 
-        it("create_file emits a directory entry per parent component", function()
-            local archive = tar.create_file("/work/run/model.pt", "weights")
-            -- entries are relative (no leading slash) with dir entries first
-            test.eq(archive:sub(1, 5), "work/", "first entry is the work/ dir")
-            test.eq(string.byte(archive, 157), string.byte("5"), "dir typeflag")
-            test.eq(archive:sub(513, 522), "work/run/\0", "second entry is work/run/ dir")
-            test.eq(archive:sub(1025, 1042):gsub("\0.*$", ""), "work/run/model.pt", "third entry is the file")
-        end)
-
-        it("read_first round-trips create_file content (incl. binary + large)", function()
+        it("read_first round-trips a file entry (incl. binary + large)", function()
             for _, payload in ipairs({
                 "hello world",
                 string.char(0, 1, 2, 255, 254, 10, 13) .. "binary",
                 string.rep("checkpoint-bytes-0123456789\n", 20000), -- ~560KB
             }) do
-                local archive = tar.create_file("/work/run/data.bin", payload)
-                local content, name = tar.read_first(archive)
+                local archive = tar.create({ { name = "data.bin", content = payload } })
+                local content, name, is_dir = tar.read_first(archive)
                 test.eq(content, payload)
-                test.eq(name, "work/run/data.bin")
+                test.eq(name, "data.bin")
+                test.is_false(is_dir)
             end
         end)
 
-        it("read_first skips directory entries to find the file", function()
-            local archive = tar.create_file("a/b/c.txt", "deep")
-            local content = tar.read_first(archive)
-            test.eq(content, "deep")
+        it("read_first flags a directory entry instead of returning a child", function()
+            -- a `GET /archive` on a directory path tars the dir first; the reader must
+            -- report it as a directory so the caller errors rather than silently
+            -- returning some contained file. Build a directory record by hand (name
+            -- "d/", typeflag '5' at offset 156) - read_first keys off those two fields.
+            local name = "d/"
+            local header = name .. string.rep("\0", 512 - #name)
+            header = header:sub(1, 156) .. "5" .. header:sub(158)
+            local content, ename, is_dir = tar.read_first(header)
+            test.is_true(is_dir, "directory entry is flagged")
+            test.eq(content, nil, "no content returned for a directory")
+            test.eq(ename, "d/")
         end)
 
         it("read_first returns nil for an archive with no file", function()

@@ -52,9 +52,19 @@ local function handle(input: {
     end
 
     local content = input.content or ""
-    local tar_data = tar.create_file(input.path, content)
+    -- Extract a single-file tar INTO the target's parent directory. Docker requires
+    -- that directory to exist and errors ("not a directory") if a component is a
+    -- file - so a bad path fails cleanly instead of clobbering a file into a dir.
+    local path = (tostring(input.path):gsub("/+$", ""))
+    local base = path:match("[^/]+$")
+    if not base or base == "" then
+        return { success = false, error = "invalid path: " .. tostring(input.path) }
+    end
+    local dir = path:match("^(.*)/[^/]+$") or "/"
+    if dir == "" then dir = "/" end
+    local tar_data = tar.create({ { name = base :: string, content = content } })
 
-    local _, put_err = docker:put_archive(tostring(container.docker_id), "/", tar_data)
+    local _, put_err = docker:put_archive(tostring(container.docker_id), dir, tar_data)
     if put_err then
         return { success = false, error = tostring(put_err) }
     end

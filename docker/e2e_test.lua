@@ -683,21 +683,29 @@ local function define_tests()
                 test.is_nil(create_err, "archive test container created")
                 local id = created.Id
                 docker:start_container(id)
+                docker:exec_container(id, "mkdir -p /copytest/nested")
 
+                local dir = "/copytest/nested"
                 for _, payload in ipairs({
                     "plain text payload",
                     string.char(0, 1, 2, 255, 254, 10, 13, 9) .. "binary-bytes",
                     string.rep("checkpoint-shard-0123456789abcdef\n", 8000), -- ~272KB
                 }) do
-                    local path = "/copytest/nested/data.bin"
-                    local put_ok, put_err = docker:put_archive(id, "/", tar.create_file(path, payload))
+                    local put_ok, put_err = docker:put_archive(id, dir, tar.create({ { name = "data.bin", content = payload } }))
                     test.not_nil(put_ok, "put_archive ok: " .. tostring(put_err))
 
-                    local tar_data, get_err = docker:get_archive(id, path)
+                    local tar_data, get_err = docker:get_archive(id, dir .. "/data.bin")
                     test.is_nil(get_err, "get_archive ok")
-                    local content = tar.read_first(tostring(tar_data))
+                    local content, _, is_dir = tar.read_first(tostring(tar_data))
+                    test.is_false(is_dir, "file path not flagged as dir")
                     test.eq(content, payload, "copied bytes match (" .. #payload .. " bytes)")
                 end
+
+                -- get on a directory path reports a directory, never a child file
+                local dtar, derr = docker:get_archive(id, dir)
+                test.is_nil(derr, "get_archive on dir succeeds at the wire level")
+                local _, _, dir_is = tar.read_first(tostring(dtar))
+                test.is_true(dir_is, "directory path flagged as a directory")
 
                 docker:stop_container(id, 1)
                 docker:remove_container(id, true)

@@ -55,7 +55,10 @@ local function handle(input: {
         return { success = false, error = tostring(get_err) }
     end
 
-    local content, name = tar.read_first(tostring(tar_data))
+    local content, name, is_dir = tar.read_first(tostring(tar_data))
+    if is_dir then
+        return { success = false, error = "path is a directory, not a file: " .. input.path }
+    end
     if content == nil then
         return { success = false, error = "no file at path: " .. input.path }
     end
