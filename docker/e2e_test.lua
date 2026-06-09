@@ -2,6 +2,7 @@ local env = require("env")
 local test = require("test")
 local time = require("time")
 local docker_client = require("docker_client")
+local tar = require("tar")
 
 local function get_logs_retry(docker, container_id, opts, max_retries)
     for i = 1, max_retries or 10 do
@@ -668,6 +669,38 @@ local function define_tests()
                 docker:remove_container(server.Id, true)
                 docker:remove_container(client.Id, true)
                 docker:remove_network(net_name)
+            end)
+        end)
+
+        describe("archive copy (put/get file)", function()
+            it("round-trips a file in and out of a container, byte-exact", function()
+                local config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "sleep 30" },
+                    HostConfig = { AutoRemove = false },
+                }
+                local created, create_err = docker:create_container(config)
+                test.is_nil(create_err, "archive test container created")
+                local id = created.Id
+                docker:start_container(id)
+
+                for _, payload in ipairs({
+                    "plain text payload",
+                    string.char(0, 1, 2, 255, 254, 10, 13, 9) .. "binary-bytes",
+                    string.rep("checkpoint-shard-0123456789abcdef\n", 8000), -- ~272KB
+                }) do
+                    local path = "/copytest/nested/data.bin"
+                    local put_ok, put_err = docker:put_archive(id, "/", tar.create_file(path, payload))
+                    test.not_nil(put_ok, "put_archive ok: " .. tostring(put_err))
+
+                    local tar_data, get_err = docker:get_archive(id, path)
+                    test.is_nil(get_err, "get_archive ok")
+                    local content = tar.read_first(tostring(tar_data))
+                    test.eq(content, payload, "copied bytes match (" .. #payload .. " bytes)")
+                end
+
+                docker:stop_container(id, 1)
+                docker:remove_container(id, true)
             end)
         end)
     end)

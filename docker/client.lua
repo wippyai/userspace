@@ -704,6 +704,37 @@ function docker.new(socket_path: string?)
         }, nil
     end
 
+    -- Extract a tar stream into a directory inside the container (Docker's
+    -- `PUT /containers/{id}/archive`). tar_data is raw tar bytes; path is the
+    -- destination directory (must exist - include dir entries in the tar to
+    -- create parents). Binary-safe and unbounded: the body streams as x-tar.
+    function client:put_archive(id: string, path: string, tar_data: string): (boolean?, string?)
+        local _, req_err = make_request(sock, "PUT", "/containers/" .. id .. "/archive", {
+            query = { path = path },
+            raw_body = tar_data,
+            headers = { ["Content-Type"] = "application/x-tar" },
+            timeout = "300s",
+        })
+        if req_err then
+            return nil, req_err
+        end
+        return true, nil
+    end
+
+    -- Read a path from the container as a tar stream (Docker's
+    -- `GET /containers/{id}/archive`). Returns the raw tar bytes (a single-file
+    -- path yields a one-entry tar). Binary-safe and unbounded.
+    function client:get_archive(id: string, path: string): (string?, string?)
+        local result, req_err = make_request(sock, "GET", "/containers/" .. id .. "/archive", {
+            query = { path = path },
+            timeout = "300s",
+        })
+        if req_err then
+            return nil, req_err
+        end
+        return tostring(result.raw_body or ""), nil
+    end
+
     -- Image operations
 
     function client:prune_images(dangling_only: boolean?)

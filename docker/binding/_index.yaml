@@ -116,6 +116,36 @@ entries:
       - env
     method: handle
 
+  - name: containers_put_archive_func
+    kind: function.lua
+    meta:
+      comment: Copy a file into a running container (tar stream over the archive API)
+    source: file://containers_put_archive.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
+      tar: userspace.docker.lib:tar
+    modules:
+      - sql
+      - env
+    method: handle
+
+  - name: containers_get_archive_func
+    kind: function.lua
+    meta:
+      comment: Copy a file out of a running container (tar stream over the archive API)
+    source: file://containers_get_archive.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      docker_client: userspace.docker:docker_client
+      consts: userspace.docker.lib:consts
+      tar: userspace.docker.lib:tar
+    modules:
+      - sql
+      - env
+    method: handle
+
   - name: containers_wait_func
     kind: function.lua
     meta:

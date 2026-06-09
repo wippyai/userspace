@@ -442,7 +442,7 @@ local function define_tests()
                 })
                 test.eq(id, custom_id)
 
-                local c = containers_repo.get(db, id)
+                local c = containers_repo.get(db, id :: string)
                 test.eq(c.id, custom_id)
 
                 cleanup(db, id)
@@ -905,7 +905,7 @@ local function define_tests()
                 test.not_nil(id)
                 test.is_nil(err)
 
-                local c = containers_repo.get(db, id)
+                local c = containers_repo.get(db, id :: string)
                 test.eq(c.image, "alpine:latest")
                 test.is_nil(c.command)
                 test.is_nil(c.name)
