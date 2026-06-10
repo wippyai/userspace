@@ -2,6 +2,20 @@ version: "1.0"
 namespace: userspace.component.persist
 
 entries:
+  # userspace.component.persist:access_subjects
+  - name: access_subjects
+    kind: library.lua
+    meta:
+      comment: Resolve a user into their access subjects (user + groups) for component access checks
+      tags:
+        - components
+        - userspace
+        - access
+      description: Single, fail-closed place that expands a user into "user + their groups" so read and write access resolve identically and automatically
+    source: file://access_subjects.lua
+    modules:
+      - security
+
   # userspace.component.persist:component_reader
   - name: component_reader
     kind: library.lua
@@ -17,6 +31,8 @@ entries:
     modules:
       - sql
       - json
+    imports:
+      access_subjects: userspace.component.persist:access_subjects
 
   # userspace.component.persist:component_reader_test
   - name: component_reader_test
@@ -37,12 +53,11 @@ entries:
     modules:
       - sql
       - uuid
-      - json
       - time
     imports:
       component_reader: userspace.component.persist:component_reader
       test: wippy.test:test
-    method: run_tests
+    method: run
 
   # userspace.component.persist:ops
   - name: ops
@@ -62,3 +77,5 @@ entries:
       - time
       - uuid
       - json
+    imports:
+      access_subjects: userspace.component.persist:access_subjects

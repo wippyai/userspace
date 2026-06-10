@@ -1,5 +1,6 @@
 local sql = require("sql")
 local json = require("json")
+local access_subjects = require("access_subjects")
 
 -- Constants
 local APP_DB = "app:db"
@@ -211,6 +212,44 @@ local function create_in_clause(field, values)
     return { field .. " IN (" .. table.concat(placeholders, ", ") .. ")", unpack(values) }
 end
 
+---Scope a query to components a user can access. Subjects (user + their groups)
+---come from access_subjects.
+---@param query_builder table
+---@param user_id string
+---@param access_mask_filter integer|nil
+---@return table
+local function apply_access_join(query_builder, user_id, component_ids, access_mask_filter)
+    local subjects = access_subjects.resolve(user_id)
+
+    if #subjects == 1 then
+        -- No groups: a direct, index-backed join.
+        query_builder = query_builder:inner_join("component_access ca ON c.component_id = ca.component_id")
+        query_builder = query_builder:where("ca.user_id = ?", subjects[1])
+    else
+        -- User + groups: aggregate to one row per component (MAX(access_mask)) so
+        -- multiple grants neither duplicate rows nor under-report access. When the
+        -- caller scopes to specific component ids, push that filter into the
+        -- aggregation so single-component checks stay O(1).
+        local args = {}
+        for _, s in ipairs(subjects) do args[#args + 1] = s end
+        local where_sql = "user_id IN (" .. access_subjects.placeholders(subjects) .. ")"
+        if component_ids and #component_ids > 0 then
+            where_sql = where_sql .. " AND component_id IN (" .. access_subjects.placeholders(component_ids) .. ")"
+            for _, cid in ipairs(component_ids) do args[#args + 1] = cid end
+        end
+        local join_sql = "(SELECT component_id, MAX(access_mask) AS access_mask FROM component_access WHERE "
+            .. where_sql
+            .. " GROUP BY component_id) ca ON c.component_id = ca.component_id"
+        query_builder = query_builder:inner_join(join_sql, unpack(args))
+    end
+
+    if access_mask_filter then
+        query_builder = query_builder:where("(ca.access_mask & ?) = ?", access_mask_filter, access_mask_filter)
+    end
+
+    return query_builder
+end
+
 ---Build the SQL query based on current state
 ---@param self ComponentReaderInstance
 ---@return table
@@ -233,14 +272,7 @@ function methods:_build_query()
 
     -- Join with access table if user_id is specified
     if self._user_id then
-        query_builder = query_builder:inner_join("component_access ca ON c.component_id = ca.component_id")
-        query_builder = query_builder:where("ca.user_id = ?", self._user_id)
-
-        -- Apply access mask filter if specified
-        if self._access_mask_filter then
-            query_builder = query_builder:where("(ca.access_mask & ?) = ?", self._access_mask_filter,
-                self._access_mask_filter)
-        end
+        query_builder = apply_access_join(query_builder, self._user_id, self._component_ids, self._access_mask_filter)
     end
 
     -- Add component ID filtering
@@ -451,13 +483,7 @@ function methods:count()
 
     -- Apply same joins and filters as main query
     if self._user_id then
-        query_builder = query_builder:inner_join("component_access ca ON c.component_id = ca.component_id")
-        query_builder = query_builder:where("ca.user_id = ?", self._user_id)
-
-        if self._access_mask_filter then
-            query_builder = query_builder:where("(ca.access_mask & ?) = ?", self._access_mask_filter,
-                self._access_mask_filter)
-        end
+        query_builder = apply_access_join(query_builder, self._user_id, self._component_ids, self._access_mask_filter)
     end
 
     if self._component_ids and #self._component_ids > 0 then

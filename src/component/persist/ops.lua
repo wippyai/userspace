@@ -2,6 +2,7 @@ local sql = require("sql")
 local time = require("time")
 local uuid = require("uuid")
 local json = require("json")
+local access_subjects = require("access_subjects")
 
 -- Define constants
 local constants = {
@@ -424,16 +425,23 @@ handlers[constants.COMMAND_TYPES.REVOKE_ACCESS] = function(tx, command)
     }
 end
 
--- Helper function to check if user has specific access to component
+-- Check whether the user (or one of their groups) has the required access to a
+-- component. access_subjects resolves the user into their subjects, so a grant
+-- to any of the user's groups counts like a direct grant — same as the read path.
 local function check_user_access(tx, user_id, component_id, required_mask)
     if not user_id or not component_id or not required_mask then
         return false
     end
 
+    local subjects = access_subjects.resolve(user_id)
+
+    -- Authorized when one subject's grant on this component carries every required
+    -- bit. The bitwise test runs in SQL for correctness on SQLite and PostgreSQL.
     local access_query = sql.builder.select("access_mask")
         :from("component_access")
-        :where("user_id = ?", user_id)
+        :where("user_id IN (" .. access_subjects.placeholders(subjects) .. ")", unpack(subjects))
         :where("component_id = ?", component_id)
+        :where("(access_mask & ?) = ?", required_mask, required_mask)
         :limit(1)
 
     local executor = access_query:run_with(tx)
@@ -443,8 +451,7 @@ local function check_user_access(tx, user_id, component_id, required_mask)
         return false
     end
 
-    local user_mask = results[1].access_mask or 0
-    return (user_mask and required_mask) == required_mask
+    return true
 end
 
 -- Return the module

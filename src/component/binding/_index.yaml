@@ -150,3 +150,21 @@ entries:
       ops: userspace.component.persist:ops
     method: handle
     
+  # userspace.component.binding:group_access_test
+  - name: group_access_test
+    kind: function.lua
+    meta:
+      name: Component Group Access Test
+      type: test
+      suite: component_group_access
+      comment: Group-subject access resolves like a direct grant (sqlite + postgres)
+    source: file://group_access_test.lua
+    modules:
+      - sql
+      - uuid
+      - time
+      - funcs
+      - security
+    imports:
+      test: wippy.test:test
+    method: run

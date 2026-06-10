@@ -20,7 +20,6 @@ entries:
     kind: http.endpoint
     meta:
       comment: Endpoint that deletes a user component
-      router: app:api
     method: DELETE
     func: delete_component
     path: /userspace/components/{component_id}
@@ -42,7 +41,6 @@ entries:
     kind: http.endpoint
     meta:
       comment: Endpoint that discovers available component types
-      router: app:api
     method: GET
     func: discover_components
     path: /userspace/components/discover
@@ -65,7 +63,6 @@ entries:
     kind: http.endpoint
     meta:
       comment: Endpoint that lists user components
-      router: app:api
     method: GET
     func: list_components
     path: /userspace/components/list
@@ -88,7 +85,6 @@ entries:
     kind: http.endpoint
     meta:
       comment: Endpoint that updates component metadata
-      router: app:api
     method: PUT
     func: update_component
     path: /userspace/components/{component_id}

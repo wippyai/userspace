@@ -9,6 +9,23 @@ entries:
       title: Userspace Component
       description: Component service and registry for user-owned resources
 
+  # HTTP router for the component API endpoints; the consuming app wires it.
+  # default app:api keeps current consumers working unchanged.
+  - name: router
+    kind: ns.requirement
+    meta:
+      description: HTTP router for component API endpoints
+    default: app:api
+    targets:
+      - entry: userspace.component.api:delete_component.endpoint
+        path: .meta.router
+      - entry: userspace.component.api:discover_components.endpoint
+        path: .meta.router
+      - entry: userspace.component.api:list_components.endpoint
+        path: .meta.router
+      - entry: userspace.component.api:update_component.endpoint
+        path: .meta.router
+
   # userspace.component:component
   - name: component
     kind: library.lua
