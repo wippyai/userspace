@@ -1,101 +1,112 @@
+-- component_reader: a fluent, immutable query builder over the component tables.
+-- Builder methods return a new reader; terminal methods (all/one/count/exists)
+-- own a pooled connection for their single call, release it on every return
+-- path, and return (value, error?) — errors are structured via the global errors
+-- module and never raised, so callers stay in control of flow.
+
 local sql = require("sql")
 local json = require("json")
 local access_subjects = require("access_subjects")
+local consts = require("consts")
 
--- Constants
-local APP_DB = "app:db"
+-- Include flags + filters that make up a reader's immutable state.
+type ReaderState = {
+    _user_id: string?,
+    _component_ids: string[]?,
+    _impl_ids: string[]?,
+    _meta_filters: { [string]: string }?,
+    _access_mask_filter: integer?,
+    _parent_id: string?,
+    _parent_is_null: boolean,
+    _path_prefix: string?,
+    _include_meta: boolean,
+    _include_private_context: boolean,
+    _include_access_level: boolean,
+    _include_placement: boolean,
+    _limit: integer?,
+    _offset: integer?,
+    _order_by: string,
+    _order_direction: string,
+    _order_by_position: boolean,
+}
 
----@class ComponentReaderInstance
----@field _user_id string|nil
----@field _component_ids string[]|nil
----@field _impl_ids string[]|nil
----@field _meta_filters table|nil
----@field _access_mask_filter integer|nil
----@field _include_meta boolean
----@field _include_private_context boolean
----@field _include_access_level boolean
----@field _limit integer|nil
----@field _offset integer|nil
----@field _order_by string
----@field _order_direction string
+-- One component row as read back. Optional fields are populated only when the
+-- matching include flag is set. private_context/meta are open JSON leaves.
+type ComponentResult = {
+    component_id: string,
+    impl_id: string,
+    created_at: string,
+    updated_at: string,
+    private_context: { [string]: any }?, -- open private config blob
+    meta: { [string]: string }?,
+    access_level: integer?,
+    parent_id: string?,
+    position: string?,
+    path: string?,
+}
 
----@class ComponentResult
----@field component_id string
----@field impl_id string
----@field created_at string
----@field updated_at string
----@field private_context table|nil
----@field meta table|nil
----@field access_level integer|nil
+-- Which extra columns/joins to populate.
+type IncludeOptions = {
+    meta: boolean?,
+    private_context: boolean?,
+    access_level: boolean?,
+    placement: boolean?,
+}
 
----@class IncludeOptions
----@field meta boolean|nil
----@field private_context boolean|nil
----@field access_level boolean|nil
-
--- Create the module table
 local component_reader = {}
 local methods = {}
 local reader_mt = { __index = methods }
 
----Helper to create an immutable copy of a reader
----@param self ComponentReaderInstance
----@return ComponentReaderInstance
-function methods:_copy()
+-- Immutable copy of a reader for the next builder step.
+function methods:_copy(): ReaderState
     local new_instance = {}
     for k, v in pairs(self) do
         new_instance[k] = v
     end
-    return setmetatable(new_instance, reader_mt)
+    return setmetatable(new_instance, reader_mt) :: ReaderState
 end
 
----Helper to normalize arguments from varargs or table
----@param args any[]
----@param arg_count integer
----@return string[]
-local function normalize_args(args, arg_count)
+-- Normalize varargs/array args into a string list.
+local function normalize_args(args: any[], arg_count: integer): string[]
     if arg_count == 1 and type(args[1]) == "table" and not getmetatable(args[1]) then
-        return args[1] -- It's already a table
-    else
-        return args    -- Use the varargs as the array
+        return args[1] :: string[]
     end
+    return args :: string[]
 end
 
----Initialize a new reader for components
----@return ComponentReaderInstance
-function component_reader.new()
+-- Initialize a new reader for components.
+function component_reader.new(): ReaderState
     local instance = {
         _user_id = nil,
         _component_ids = nil,
         _impl_ids = nil,
         _meta_filters = nil,
         _access_mask_filter = nil,
+        _parent_id = nil,
+        _parent_is_null = false,
+        _path_prefix = nil,
         _include_meta = true,
         _include_private_context = false,
         _include_access_level = false,
+        _include_placement = false,
         _limit = nil,
         _offset = nil,
-        _order_by = "created_at",
-        _order_direction = "DESC"
+        _order_by = consts.DEFAULTS.ORDER_BY,
+        _order_direction = consts.DEFAULTS.ORDER_DIRECTION,
+        _order_by_position = false,
     }
-    return setmetatable(instance, reader_mt)
+    return setmetatable(instance, reader_mt) :: ReaderState
 end
 
----Filter by user ID (for access control)
----@param self ComponentReaderInstance
----@param user_id string
----@return ComponentReaderInstance
-function methods:with_user(user_id)
+-- Filter by user ID (for access control).
+function methods:with_user(user_id: string): ReaderState
     local new_instance = self:_copy()
     new_instance._user_id = user_id
     return new_instance
 end
 
----Filter by specific component IDs
----@param self ComponentReaderInstance
----@param ... string|string[]
----@return ComponentReaderInstance
-function methods:with_components(...)
+-- Filter by specific component IDs (varargs or a single array).
+function methods:with_components(...): ReaderState
     local args = { ... }
     local count = select("#", ...)
     local new_instance = self:_copy()
@@ -103,11 +114,8 @@ function methods:with_components(...)
     return new_instance
 end
 
----Filter by implementation IDs
----@param self ComponentReaderInstance
----@param ... string|string[]
----@return ComponentReaderInstance
-function methods:with_impl_ids(...)
+-- Filter by implementation IDs (varargs or a single array).
+function methods:with_impl_ids(...): ReaderState
     local args = { ... }
     local count = select("#", ...)
     local new_instance = self:_copy()
@@ -115,129 +123,119 @@ function methods:with_impl_ids(...)
     return new_instance
 end
 
----Filter by metadata key-value pairs
----Usage: :with_meta({class = "workflow", status = "active"})
----@param self ComponentReaderInstance
----@param meta_filters table<string, string>
----@return ComponentReaderInstance
-function methods:with_meta(meta_filters)
+-- Filter by metadata key-value pairs (all must match).
+function methods:with_meta(meta_filters: { [string]: string }?): ReaderState
     if not meta_filters or type(meta_filters) ~= "table" then
-        return self
+        return self :: ReaderState
     end
-
     local new_instance = self:_copy()
     new_instance._meta_filters = meta_filters
     return new_instance
 end
 
----Filter by access mask (user must have at least these permissions)
----@param self ComponentReaderInstance
----@param mask integer
----@return ComponentReaderInstance
-function methods:with_access_mask(mask)
+-- Filter by access mask (user must have at least these permissions).
+function methods:with_access_mask(mask: integer): ReaderState
     local new_instance = self:_copy()
     new_instance._access_mask_filter = mask
     return new_instance
 end
 
----Configure what data to include
----@param self ComponentReaderInstance
----@param options IncludeOptions
----@return ComponentReaderInstance
-function methods:include_options(options)
-    if not options or type(options) ~= "table" then
-        return self
-    end
-
+-- Filter by parent id. Pass nil to scope to root-level components.
+function methods:with_parent(parent_id: string?): ReaderState
     local new_instance = self:_copy()
-
-    if options.meta ~= nil then
-        new_instance._include_meta = options.meta
+    if parent_id == nil then
+        new_instance._parent_id = nil
+        new_instance._parent_is_null = true
+    else
+        new_instance._parent_id = parent_id
+        new_instance._parent_is_null = false
     end
-
-    if options.private_context ~= nil then
-        new_instance._include_private_context = options.private_context
-    end
-
-    if options.access_level ~= nil then
-        new_instance._include_access_level = options.access_level
-    end
-
     return new_instance
 end
 
----Set pagination
----@param self ComponentReaderInstance
----@param limit integer
----@param offset integer|nil
----@return ComponentReaderInstance
-function methods:limit(limit, offset)
+-- Filter to components whose stored path is the given prefix or below it. The
+-- prefix must be a stored path value (sqlite materialized path or pg ltree).
+function methods:with_path_prefix(path_prefix: string): ReaderState
+    local new_instance = self:_copy()
+    new_instance._path_prefix = path_prefix
+    return new_instance
+end
+
+-- Configure what data to include.
+function methods:include_options(options: IncludeOptions): ReaderState
+    if not options or type(options) ~= "table" then
+        return self :: ReaderState
+    end
+
+    local new_instance = self:_copy()
+    if options.meta ~= nil then new_instance._include_meta = options.meta end
+    if options.private_context ~= nil then new_instance._include_private_context = options.private_context end
+    if options.access_level ~= nil then new_instance._include_access_level = options.access_level end
+    if options.placement ~= nil then new_instance._include_placement = options.placement end
+    return new_instance
+end
+
+-- Set pagination.
+function methods:limit(limit: integer, offset: integer?): ReaderState
     local new_instance = self:_copy()
     new_instance._limit = limit
     new_instance._offset = offset or 0
     return new_instance
 end
 
----Set ordering
----@param self ComponentReaderInstance
----@param field string|nil
----@param direction string|nil
----@return ComponentReaderInstance
-function methods:order_by(field, direction)
+-- Set ordering.
+function methods:order_by(field: string?, direction: string?): ReaderState
     local new_instance = self:_copy()
-    new_instance._order_by = field or "created_at"
-    new_instance._order_direction = direction or "DESC"
+    new_instance._order_by = field or consts.DEFAULTS.ORDER_BY
+    new_instance._order_direction = direction or consts.DEFAULTS.ORDER_DIRECTION
+    new_instance._order_by_position = false
     return new_instance
 end
 
----Helper function to create a parameterized IN clause
----@param field string
----@param values string[]
----@return table|nil
-local function create_in_clause(field, values)
+-- Order by sibling position (lexorank), then created_at for stability.
+function methods:order_by_position(): ReaderState
+    local new_instance = self:_copy()
+    new_instance._order_by_position = true
+    return new_instance
+end
+
+-- Build a parameterized IN clause as { sql_fragment, value1, value2, ... }.
+local function create_in_clause(field: string, values: string[]?): any[]?
     if not values or #values == 0 then
         return nil
     end
-
     if #values == 1 then
         return { field .. " = ?", values[1] }
     end
-
-    -- For multiple values, create a placeholders string like "?, ?, ?"
-    local placeholders = {}
+    local placeholders: string[] = {}
     for i = 1, #values do
-        table.insert(placeholders, "?")
+        placeholders[i] = "?"
     end
-
     return { field .. " IN (" .. table.concat(placeholders, ", ") .. ")", unpack(values) }
 end
 
----Scope a query to components a user can access. Subjects (user + their groups)
----come from access_subjects.
----@param query_builder table
----@param user_id string
----@param access_mask_filter integer|nil
----@return table
-local function apply_access_join(query_builder, user_id, component_ids, access_mask_filter)
+-- Scope a query to components a user can access. Subjects (user + their groups)
+-- come from access_subjects.
+local function apply_access_join(query_builder: any, user_id: string, component_ids: string[]?, access_mask_filter: integer?): any
     local subjects = access_subjects.resolve(user_id)
 
     if #subjects == 1 then
         -- No groups: a direct, index-backed join.
-        query_builder = query_builder:inner_join("component_access ca ON c.component_id = ca.component_id")
+        query_builder = query_builder:inner_join(consts.TABLES.ACCESS .. " ca ON c.component_id = ca.component_id")
         query_builder = query_builder:where("ca.user_id = ?", subjects[1])
     else
         -- User + groups: aggregate to one row per component (MAX(access_mask)) so
         -- multiple grants neither duplicate rows nor under-report access. When the
         -- caller scopes to specific component ids, push that filter into the
         -- aggregation so single-component checks stay O(1).
-        local args = {}
+        local args: any[] = {}
         for _, s in ipairs(subjects) do args[#args + 1] = s end
         local where_sql = "user_id IN (" .. access_subjects.placeholders(subjects) .. ")"
         if component_ids and #component_ids > 0 then
             where_sql = where_sql .. " AND component_id IN (" .. access_subjects.placeholders(component_ids) .. ")"
             for _, cid in ipairs(component_ids) do args[#args + 1] = cid end
         end
-        local join_sql = "(SELECT component_id, MAX(access_mask) AS access_mask FROM component_access WHERE "
+        local join_sql = "(SELECT component_id, MAX(access_mask) AS access_mask FROM " .. consts.TABLES.ACCESS .. " WHERE "
             .. where_sql
             .. " GROUP BY component_id) ca ON c.component_id = ca.component_id"
         query_builder = query_builder:inner_join(join_sql, unpack(args))
@@ -250,64 +248,91 @@ local function apply_access_join(query_builder, user_id, component_ids, access_m
     return query_builder
 end
 
----Build the SQL query based on current state
----@param self ComponentReaderInstance
----@return table
-function methods:_build_query()
-    local select_fields = { "c.component_id", "c.impl_id", "c.created_at", "c.updated_at" }
-
-    -- Include private context if requested
-    if self._include_private_context then
-        table.insert(select_fields, "c.private_context")
+-- Apply placement filters shared by main and count queries.
+function methods:_apply_placement_filters(query_builder: any): any
+    local self = self :: ReaderState
+    if self._parent_is_null then
+        query_builder = query_builder:where("c.parent_id IS NULL")
+    elseif self._parent_id then
+        query_builder = query_builder:where("c.parent_id = ?", self._parent_id)
     end
 
-    -- Include access_mask if requested and user filtering is enabled
-    if self._include_access_level and self._user_id then
-        table.insert(select_fields, "ca.access_mask")
+    if self._path_prefix then
+        if self._path_prefix:find(consts.PATH_SEPARATOR, 1, true) then
+            -- sqlite materialized path
+            query_builder = query_builder:where("c.path LIKE ?", self._path_prefix .. "%")
+        else
+            -- pg ltree path label
+            query_builder = query_builder:where("c.path <@ ?", self._path_prefix)
+        end
     end
 
-    -- Start building the query
-    local query_builder = sql.builder.select(unpack(select_fields))
-        :from("components c")
+    return query_builder
+end
 
-    -- Join with access table if user_id is specified
-    if self._user_id then
-        query_builder = apply_access_join(query_builder, self._user_id, self._component_ids, self._access_mask_filter)
-    end
-
-    -- Add component ID filtering
+-- Apply id / impl / meta filters shared by main and count queries.
+function methods:_apply_filters(query_builder: any): any
+    local self = self :: ReaderState
     if self._component_ids and #self._component_ids > 0 then
-        local id_clause = create_in_clause("c.component_id", self._component_ids :: any)
+        local id_clause = create_in_clause("c.component_id", self._component_ids)
         if id_clause then
             query_builder = query_builder:where(sql.builder.expr(unpack(id_clause)))
         end
     end
 
-    -- Add implementation ID filtering
     if self._impl_ids and #self._impl_ids > 0 then
-        local impl_clause = create_in_clause("c.impl_id", self._impl_ids :: any)
+        local impl_clause = create_in_clause("c.impl_id", self._impl_ids)
         if impl_clause then
             query_builder = query_builder:where(sql.builder.expr(unpack(impl_clause)))
         end
     end
 
-    -- FIXED: Add metadata filtering if specified (removed dependency on _include_meta)
     if self._meta_filters then
         for key, value in pairs(self._meta_filters) do
             query_builder = query_builder:where(sql.builder.expr(
-                "c.component_id IN (SELECT component_id FROM component_meta WHERE key = ? AND value = ?)",
+                "c.component_id IN (SELECT component_id FROM " .. consts.TABLES.META .. " WHERE key = ? AND value = ?)",
                 key, value
             ))
         end
     end
 
-    -- Add ordering
-    local order_field = "c." .. self._order_by
-    query_builder = query_builder:order_by(order_field .. " " .. self._order_direction)
+    return self:_apply_placement_filters(query_builder)
+end
 
-    -- Add pagination
+-- Build the main SELECT query based on current state.
+function methods:_build_query(): any
+    local self = self :: ReaderState
+    local select_fields = { "c.component_id", "c.impl_id", "c.created_at", "c.updated_at" }
+
+    if self._include_private_context then
+        table.insert(select_fields, "c.private_context")
+    end
+    if self._include_placement then
+        table.insert(select_fields, "c.parent_id")
+        table.insert(select_fields, "c.position")
+        table.insert(select_fields, "c.path")
+    end
+    if self._include_access_level and self._user_id then
+        table.insert(select_fields, "ca.access_mask")
+    end
+
+    local query_builder = sql.builder.select(unpack(select_fields)):from(consts.TABLES.COMPONENTS .. " c")
+
+    if self._user_id then
+        query_builder = apply_access_join(query_builder, self._user_id, self._component_ids, self._access_mask_filter)
+    end
+
+    query_builder = self:_apply_filters(query_builder)
+
+    if self._order_by_position then
+        query_builder = query_builder:order_by("c.position ASC")
+        query_builder = query_builder:order_by("c.created_at ASC")
+    else
+        query_builder = query_builder:order_by("c." .. self._order_by .. " " .. self._order_direction)
+    end
+
     if self._limit then
-        query_builder = query_builder:limit(self._limit :: number)
+        query_builder = query_builder:limit(self._limit)
         if self._offset and self._offset > 0 then
             query_builder = query_builder:offset(self._offset)
         end
@@ -316,217 +341,176 @@ function methods:_build_query()
     return query_builder
 end
 
----Parse JSON private context
----@param context_str string|nil
----@return table
-local function parse_private_context(context_str)
+-- Parse a stored JSON private context into a table; an unparseable value yields
+-- an empty table so a malformed row never breaks the read.
+local function parse_private_context(context_str: any): { [string]: any }
     if not context_str or type(context_str) ~= "string" then
         return {}
     end
-
-    local success, parsed = pcall(json.decode, context_str)
-    if success then
-        return parsed
-    else
-        return {}
+    local ok, parsed = pcall(json.decode, context_str)
+    if ok and type(parsed) == "table" then
+        return parsed :: { [string]: any }
     end
+    return {}
 end
 
----Load metadata for components
----@param db table
----@param component_ids string[]
----@return table<string, table<string, string>>
-local function load_metadata(db, component_ids)
+-- Load metadata for components keyed by component_id.
+local function load_metadata(db: any, component_ids: string[]): ({ [string]: { [string]: string } }?, error?)
     if not component_ids or #component_ids == 0 then
-        return {}
+        return {}, nil
     end
 
     local meta_clause = create_in_clause("component_id", component_ids)
     if not meta_clause then
-        return {}
+        return {}, nil
     end
 
-    local meta_query = sql.builder.select("component_id", "key", "value")
-        :from("component_meta")
+    local meta_rows, err = sql.builder.select("component_id", "key", "value")
+        :from(consts.TABLES.META)
         :where(sql.builder.expr(unpack(meta_clause)))
         :order_by("component_id, key")
-
-    local executor = meta_query:run_with(db)
-    local meta_rows, err = executor:query()
-
+        :run_with(db):query()
     if err then
-        error("Failed to load component metadata: " .. err)
+        return nil, (errors.new({ message = "failed to load component metadata: " .. tostring(err), kind = errors.INTERNAL }) :: error)
     end
 
-    -- Group metadata by component_id
-    local metadata_map = {}
+    local metadata_map: { [string]: { [string]: string } } = {}
     for _, row in ipairs(meta_rows or {}) do
         if not metadata_map[row.component_id] then
             metadata_map[row.component_id] = {}
         end
         metadata_map[row.component_id][row.key] = row.value
     end
-
-    return metadata_map
+    return metadata_map, nil
 end
 
----Helper to get database connection
----@return table
-local function get_db()
-    local db, err = sql.get(APP_DB)
-    if err then
-        error("Failed to connect to database: " .. err)
+-- Open a pooled connection for a single terminal call.
+local function get_db(): (any, error?)
+    local db, err = sql.get(consts.DB_RESOURCE)
+    if err or not db then
+        return nil, (errors.new({ message = "failed to connect to database: " .. tostring(err), kind = errors.UNAVAILABLE }) :: error)
     end
-    return db
+    return db, nil
 end
 
----Get all matching components
----@param self ComponentReaderInstance
----@return ComponentResult[]
-function methods:all()
-    local query_builder = self:_build_query()
-    local db = get_db()
+-- Decode private context and project the access mask into access_level.
+function methods:_finalize_row(component: ComponentResult)
+    if self._include_private_context and component.private_context then
+        component.private_context = parse_private_context(component.private_context)
+    end
+    local raw = component :: any
+    if self._include_access_level and raw.access_mask ~= nil then
+        component.access_level = raw.access_mask
+        raw.access_mask = nil
+    end
+end
 
-    local executor = query_builder:run_with(db)
-    local results, err = executor:query()
+-- Get all matching components.
+function methods:all(): (ComponentResult[]?, error?)
+    local db, db_err = get_db()
+    if db_err then
+        return nil, db_err
+    end
 
+    local results, err = self:_build_query():run_with(db):query()
     if err then
         db:release()
-        error("Failed to fetch components: " .. err)
+        return nil, (errors.new({ message = "failed to fetch components: " .. tostring(err), kind = errors.INTERNAL }) :: error)
     end
 
-    -- Load metadata if requested
-    local metadata_map = {}
+    local metadata_map: { [string]: { [string]: string } } = {}
     if self._include_meta and results and #results > 0 then
-        local component_ids = {}
+        local component_ids: string[] = {}
         for _, component in ipairs(results) do
-            table.insert(component_ids, component.component_id)
+            component_ids[#component_ids + 1] = component.component_id
         end
-        metadata_map = load_metadata(db, component_ids :: any)
+        local loaded, meta_err = load_metadata(db, component_ids)
+        if meta_err then
+            db:release()
+            return nil, meta_err
+        end
+        metadata_map = loaded or {}
     end
 
     db:release()
 
-    -- Process results
-    for i, component in ipairs(results or {}) do
-        -- Parse private context if included
-        if self._include_private_context and component.private_context then
-            component.private_context = parse_private_context(component.private_context)
-        end
-
-        -- Set access_level from access_mask if included
-        if self._include_access_level and component.access_mask ~= nil then
-            component.access_level = component.access_mask
-            component.access_mask = nil  -- Remove the raw field
-        end
-
-        -- Add metadata if included
+    for _, component in ipairs(results or {}) do
+        self:_finalize_row(component :: ComponentResult)
         if self._include_meta then
             component.meta = metadata_map[component.component_id] or {}
         end
     end
 
-    return results or {}
+    return (results or {}) :: ComponentResult[], nil
 end
 
----Get a single component
----@param self ComponentReaderInstance
----@return ComponentResult|nil
-function methods:one()
-    local query_builder = self:_build_query():limit(1)
-    local db = get_db()
+-- Get a single component (nil, nil when none match).
+function methods:one(): (ComponentResult?, error?)
+    local db, db_err = get_db()
+    if db_err then
+        return nil, db_err
+    end
 
-    local executor = query_builder:run_with(db)
-    local results, err = executor:query()
-
+    local results, err = self:_build_query():limit(1):run_with(db):query()
     if err then
         db:release()
-        error("Failed to fetch component: " .. err)
+        return nil, (errors.new({ message = "failed to fetch component: " .. tostring(err), kind = errors.INTERNAL }) :: error)
     end
 
     if not results or #results == 0 then
         db:release()
-        return nil
+        return nil, nil
     end
 
     local component = results[1]
 
-    -- Load metadata if requested
     if self._include_meta then
-        local metadata_map = load_metadata(db, { component.component_id })
-        component.meta = metadata_map[component.component_id] or {}
+        local metadata_map, meta_err = load_metadata(db, { component.component_id :: string })
+        if meta_err then
+            db:release()
+            return nil, meta_err
+        end
+        component.meta = (metadata_map or {})[component.component_id] or {}
     end
 
     db:release()
 
-    -- Parse private context if included
-    if self._include_private_context and component.private_context then
-        component.private_context = parse_private_context(component.private_context)
-    end
-
-    -- Set access_level from access_mask if included
-    if self._include_access_level and component.access_mask ~= nil then
-        component.access_level = component.access_mask
-        component.access_mask = nil  -- Remove the raw field
-    end
-
-    return component
+    self:_finalize_row(component :: ComponentResult)
+    return component :: ComponentResult, nil
 end
 
----Count matching components
----@param self ComponentReaderInstance
----@return integer
-function methods:count()
-    -- Build a count query based on the same filters
+-- Count matching components.
+function methods:count(): (integer?, error?)
+    local self = self :: ReaderState
     local query_builder = sql.builder.select("COUNT(DISTINCT c.component_id) as count")
-        :from("components c")
+        :from(consts.TABLES.COMPONENTS .. " c")
 
-    -- Apply same joins and filters as main query
     if self._user_id then
         query_builder = apply_access_join(query_builder, self._user_id, self._component_ids, self._access_mask_filter)
     end
 
-    if self._component_ids and #self._component_ids > 0 then
-        local id_clause = create_in_clause("c.component_id", self._component_ids :: any)
-        if id_clause then
-            query_builder = query_builder:where(sql.builder.expr(unpack(id_clause)))
-        end
-    end
+    query_builder = self:_apply_filters(query_builder)
 
-    if self._impl_ids and #self._impl_ids > 0 then
-        local impl_clause = create_in_clause("c.impl_id", self._impl_ids :: any)
-        if impl_clause then
-            query_builder = query_builder:where(sql.builder.expr(unpack(impl_clause)))
-        end
+    local db, db_err = get_db()
+    if db_err then
+        return nil, db_err
     end
-
-    -- FIXED: Add metadata filtering if specified (removed dependency on _include_meta)
-    if self._meta_filters then
-        for key, value in pairs(self._meta_filters) do
-            query_builder = query_builder:where(sql.builder.expr(
-                "c.component_id IN (SELECT component_id FROM component_meta WHERE key = ? AND value = ?)",
-                key, value
-            ))
-        end
-    end
-
-    local db = get_db()
-    local executor = query_builder:run_with(db)
-    local results, err = executor:query()
+    local results, err = query_builder:run_with(db):query()
     db:release()
-
     if err then
-        error("Failed to count components: " .. err)
+        return nil, (errors.new({ message = "failed to count components: " .. tostring(err), kind = errors.INTERNAL }) :: error)
     end
 
-    return results[1].count
+    return results[1].count :: integer, nil
 end
 
----Check if matching components exist
----@param self ComponentReaderInstance
----@return boolean
-function methods:exists()
-    return self:count() > 0
+-- Check if matching components exist.
+function methods:exists(): (boolean, error?)
+    local n, err = self:count()
+    if err then
+        return false, err
+    end
+    return (n or 0) > 0, nil
 end
 
 return component_reader

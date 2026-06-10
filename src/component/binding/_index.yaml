@@ -23,7 +23,11 @@ entries:
           list_components: userspace.component.binding:list_components_func
           register_component: userspace.component.binding:register_component_func
           update_component: userspace.component.binding:update_component_func
-    
+          set_placement: userspace.component.binding:set_placement_func
+          list_children: userspace.component.binding:list_children_func
+          grant_subtree: userspace.component.binding:grant_subtree_func
+          revoke_subtree: userspace.component.binding:revoke_subtree_func
+
   # userspace.component.binding:delete_component_func
   - name: delete_component_func
     kind: function.lua
@@ -145,11 +149,83 @@ entries:
     source: file://update_component_func.lua
     modules:
       - sql
+      - time
       - security
     imports:
       ops: userspace.component.persist:ops
     method: handle
-    
+
+  # userspace.component.binding:set_placement_func
+  - name: set_placement_func
+    kind: function.lua
+    meta:
+      comment: Re-parent and/or reorder a component within the hierarchy
+      tags:
+        - components
+        - placement
+        - hierarchy
+      description: WRITE-gated placement update; rejects cycles and re-materializes node + descendant paths
+    source: file://set_placement_func.lua
+    modules:
+      - sql
+      - security
+    imports:
+      ops: userspace.component.persist:ops
+    method: handle
+
+  # userspace.component.binding:list_children_func
+  - name: list_children_func
+    kind: function.lua
+    meta:
+      comment: List the children of a component (root when parent omitted)
+      tags:
+        - components
+        - placement
+        - hierarchy
+      description: Access-filtered children listing ordered by position then created_at
+    source: file://list_children_func.lua
+    modules:
+      - security
+    imports:
+      component_reader: userspace.component.persist:component_reader
+    method: handle
+
+  # userspace.component.binding:grant_subtree_func
+  - name: grant_subtree_func
+    kind: function.lua
+    meta:
+      comment: Grant access to a component and all its descendants
+      tags:
+        - components
+        - placement
+        - access
+      description: ADMIN-gated subtree grant applied to root plus every descendant
+    source: file://grant_subtree_func.lua
+    modules:
+      - sql
+      - security
+    imports:
+      ops: userspace.component.persist:ops
+    method: handle
+
+  # userspace.component.binding:revoke_subtree_func
+  - name: revoke_subtree_func
+    kind: function.lua
+    meta:
+      comment: Revoke a subject's access from a component and all its descendants
+      tags:
+        - components
+        - placement
+        - access
+      description: ADMIN-gated subtree revoke applied to root plus every descendant
+    source: file://revoke_subtree_func.lua
+    modules:
+      - sql
+      - security
+    imports:
+      ops: userspace.component.persist:ops
+    method: handle
+
   # userspace.component.binding:group_access_test
   - name: group_access_test
     kind: function.lua
@@ -167,4 +243,24 @@ entries:
       - security
     imports:
       test: wippy.test:test
+    method: run
+
+  # userspace.component.binding:placement_test
+  - name: placement_test
+    kind: function.lua
+    meta:
+      name: Component Placement Test
+      type: test
+      suite: component_placement
+      comment: Hierarchy, ordering, cycle rejection, orphaning, and subtree access (sqlite + postgres)
+    source: file://placement_test.lua
+    modules:
+      - sql
+      - uuid
+      - time
+      - funcs
+      - security
+    imports:
+      test: wippy.test:test
+      placement: userspace.component.persist:placement
     method: run

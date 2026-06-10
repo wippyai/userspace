@@ -15,7 +15,6 @@ local BUSINESS_ERRORS = {
 }
 
 local function handle(request_dto)
-    -- Input validation
     if not request_dto or type(request_dto) ~= "table" then
         return { success = false, error = VALIDATION_ERRORS.INVALID_REQUEST }
     end
@@ -24,7 +23,6 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.MISSING_COMPONENT_ID }
     end
 
-    -- Security context validation
     local actor = security.actor()
     if not actor then
         return { success = false, error = VALIDATION_ERRORS.NO_ACTOR }
@@ -42,20 +40,24 @@ local function handle(request_dto)
         :with_access_mask(ops.ACCESS.READ)
         :include_options({
             meta = true,
-            private_context = false  -- Never expose private context in get_component
+            private_context = false, -- Never expose private context in get_component
+            placement = true
         })
 
-    local component = reader:one()
-
+    local component, read_err = reader:one()
+    if read_err then
+        return { success = false, error = tostring(read_err) }
+    end
     if not component then
         return { success = false, error = BUSINESS_ERRORS.NOT_FOUND }
     end
 
-    -- Success response with component data
     return {
         component_id = component.component_id,
         impl_id = component.impl_id,
         meta = component.meta or {},
+        parent_id = component.parent_id,
+        position = component.position,
         created_at = component.created_at,
         updated_at = component.updated_at,
         success = true

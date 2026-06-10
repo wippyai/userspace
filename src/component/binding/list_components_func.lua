@@ -20,8 +20,8 @@ local PAGINATION_LIMITS = {
 }
 
 local ORDERING_OPTIONS = {
-    VALID_FIELDS = {"created_at", "updated_at"},
-    VALID_DIRECTIONS = {"ASC", "DESC"},
+    VALID_FIELDS = { "created_at", "updated_at" },
+    VALID_DIRECTIONS = { "ASC", "DESC" },
     DEFAULT_FIELD = "created_at",
     DEFAULT_DIRECTION = "DESC"
 }
@@ -45,7 +45,6 @@ local function validate_ordering(ordering)
     local field = ordering.field or ORDERING_OPTIONS.DEFAULT_FIELD
     local direction = ordering.direction or ORDERING_OPTIONS.DEFAULT_DIRECTION
 
-    -- Check if field is valid
     local valid_field = false
     for _, valid in ipairs(ORDERING_OPTIONS.VALID_FIELDS) do
         if field == valid then
@@ -57,7 +56,6 @@ local function validate_ordering(ordering)
         return nil, nil, "ordering.field must be one of: " .. table.concat(ORDERING_OPTIONS.VALID_FIELDS, ", ")
     end
 
-    -- Check if direction is valid
     local valid_direction = false
     for _, valid in ipairs(ORDERING_OPTIONS.VALID_DIRECTIONS) do
         if direction == valid then
@@ -82,7 +80,6 @@ local function validate_impl_ids(impl_ids)
 end
 
 local function handle(request_dto)
-    -- Input validation (request_dto is optional)
     if request_dto == nil then
         request_dto = {}
     end
@@ -91,7 +88,6 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.INVALID_REQUEST }
     end
 
-    -- Security context validation
     local actor = security.actor()
     if not actor then
         return { success = false, error = VALIDATION_ERRORS.NO_ACTOR }
@@ -102,7 +98,6 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.INVALID_ACTOR }
     end
 
-    -- Extract and validate request sections
     local filters = request_dto.filters or {}
     local pagination = request_dto.pagination or {}
     local ordering = request_dto.ordering or {}
@@ -119,29 +114,25 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.INVALID_ORDERING }
     end
 
-    -- Validate pagination parameters
     local limit, offset, pagination_error = validate_pagination(pagination)
     if pagination_error then
         return { success = false, error = pagination_error }
     end
 
-    -- Validate ordering parameters
     local order_field, order_direction, ordering_error = validate_ordering(ordering)
     if ordering_error then
         return { success = false, error = ordering_error }
     end
 
-    -- Build component reader with user filter and options
     local reader = component_reader.new()
         :with_user(user_id)
         :include_options({
             meta = true,
-            private_context = false  -- Never expose private context in listings
+            private_context = false -- Never expose private context in listings
         })
         :limit(limit, offset)
         :order_by(order_field, order_direction)
 
-    -- Apply filters
     if filters.impl_ids and type(filters.impl_ids) == "table" and #filters.impl_ids > 0 then
         local impl_ids_error = validate_impl_ids(filters.impl_ids)
         if impl_ids_error then
@@ -158,14 +149,20 @@ local function handle(request_dto)
         reader = reader:with_access_mask(filters.access_mask)
     end
 
-    -- Get components and total count
-    local components = reader:all()
-    local total_count = reader:count()
+    local components, list_err = reader:all()
+    if list_err then
+        return { success = false, error = tostring(list_err) }
+    end
+    components = components or {}
 
-    -- Determine if there are more results
+    local total_count, count_err = reader:count()
+    if count_err then
+        return { success = false, error = tostring(count_err) }
+    end
+    total_count = total_count or 0
+
     local has_more = ((offset or 0) + #components) < total_count
 
-    -- Success response
     return {
         components = components,
         total_count = total_count,

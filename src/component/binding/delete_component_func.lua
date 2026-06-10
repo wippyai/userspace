@@ -24,7 +24,6 @@ local DATABASE_ERRORS = {
 }
 
 local function handle(request_dto)
-    -- Input validation
     if not request_dto or type(request_dto) ~= "table" then
         return { success = false, error = VALIDATION_ERRORS.INVALID_REQUEST }
     end
@@ -33,7 +32,6 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.MISSING_COMPONENT_ID }
     end
 
-    -- Security context validation
     local actor = security.actor()
     if not actor then
         return { success = false, error = VALIDATION_ERRORS.NO_ACTOR }
@@ -44,25 +42,26 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.INVALID_ACTOR }
     end
 
-    -- First, check if we can access component and get its info (no transaction yet)
+    -- Check access and read component info before opening a transaction.
     local reader = component_reader.new()
         :with_user(user_id)
         :with_components(request_dto.component_id)
-        :with_access_mask(ops.ACCESS.DELETE) -- Must have DELETE access
+        :with_access_mask(ops.ACCESS.DELETE)
         :include_options({
             meta = false,
             private_context = true
         })
 
-    local component = reader:one()
-
+    local component, read_err = reader:one()
+    if read_err then
+        return { success = false, error = tostring(read_err) }
+    end
     if not component then
         return { success = false, error = DATABASE_ERRORS.ACCESS_DENIED }
     end
 
-    -- Try delegated deletion if component implements deletable contract
+    -- Try delegated deletion if the component implements the deletable contract.
     if component.impl_id then
-        -- Try to get deletable contract
         local deletable_contract, contract_err = contract.get(DELETABLE_CONTRACT)
         if deletable_contract then
             local ctx = {}
@@ -75,20 +74,15 @@ local function handle(request_dto)
 
             local instance, open_err = deletable_contract:open(component.impl_id :: string, ctx)
             if instance then
-                -- Component is deletable - delegate cleanup to component
-                -- Component is deletable - delegate cleanup to component
                 local cleanup_result, cleanup_err = instance:delete({})
-
                 local cleanup_success = (not cleanup_err and cleanup_result and cleanup_result.success)
 
-                -- Now service handles unregistering regardless of cleanup result
-                -- (avoids orphaned entries if cleanup fails)
+                -- Service unregisters regardless of cleanup result to avoid orphans.
                 local db, err_db = sql.get(ops.DB_RESOURCE)
                 if err_db then
                     return {
                         success = false,
-                        error = "Cleanup " ..
-                            (cleanup_success and "succeeded" or "failed") ..
+                        error = "Cleanup " .. (cleanup_success and "succeeded" or "failed") ..
                             " but failed to connect to database: " .. err_db
                     }
                 end
@@ -98,13 +92,11 @@ local function handle(request_dto)
                     db:release()
                     return {
                         success = false,
-                        error = "Cleanup " ..
-                            (cleanup_success and "succeeded" or "failed") ..
+                        error = "Cleanup " .. (cleanup_success and "succeeded" or "failed") ..
                             " but failed to begin transaction: " .. err_tx
                     }
                 end
 
-                -- Double-check access within transaction
                 local has_access = ops.check_user_access(tx, user_id, request_dto.component_id, ops.ACCESS.DELETE)
                 if not has_access then
                     tx:rollback()
@@ -112,40 +104,35 @@ local function handle(request_dto)
                     return { success = false, error = DATABASE_ERRORS.ACCESS_DENIED }
                 end
 
-                -- Unregister component from service
                 local delete_command = {
                     type = ops.COMMAND_TYPES.DELETE_COMPONENT,
-                    payload = {
-                        component_id = request_dto.component_id
-                    }
+                    payload = { component_id = request_dto.component_id }
                 }
 
-                local delete_result, err_delete = ops.handlers[ops.COMMAND_TYPES.DELETE_COMPONENT](tx, delete_command)
+                local delete_result, err_delete = ops.dispatch(tx, db, delete_command)
                 if err_delete then
                     tx:rollback()
                     db:release()
                     return {
                         success = false,
-                        error = "Cleanup " ..
-                            (cleanup_success and "succeeded" or "failed") .. " but failed to unregister: " .. err_delete
+                        error = "Cleanup " .. (cleanup_success and "succeeded" or "failed") ..
+                            " but failed to unregister: " .. tostring(err_delete)
                     }
                 end
 
-                -- Commit transaction
                 local commit_ok, err_commit = tx:commit()
                 if err_commit then
                     tx:rollback()
                     db:release()
                     return {
                         success = false,
-                        error = "Cleanup " ..
-                            (cleanup_success and "succeeded" or "failed") .. " but failed to commit: " .. err_commit
+                        error = "Cleanup " .. (cleanup_success and "succeeded" or "failed") ..
+                            " but failed to commit: " .. err_commit
                     }
                 end
 
                 db:release()
 
-                -- Return result based on both cleanup and unregister success
                 if cleanup_success then
                     return {
                         component_id = request_dto.component_id,
@@ -162,11 +149,11 @@ local function handle(request_dto)
                     }
                 end
             end
-            -- If we can't open deletable contract, component is not deletable
+            -- Cannot open deletable contract: component is not deletable.
         end
     end
 
-    -- Component is NOT deletable - proceed with normal deletion
+    -- Component is NOT deletable: normal deletion.
     local db, err_db = sql.get(ops.DB_RESOURCE)
     if err_db then
         return { success = false, error = DATABASE_ERRORS.CONNECTION_FAILED .. ": " .. err_db }
@@ -178,7 +165,6 @@ local function handle(request_dto)
         return { success = false, error = DATABASE_ERRORS.TRANSACTION_FAILED .. ": " .. err_tx }
     end
 
-    -- Double-check access within transaction
     local has_access = ops.check_user_access(tx, user_id, request_dto.component_id, ops.ACCESS.DELETE)
     if not has_access then
         tx:rollback()
@@ -186,22 +172,18 @@ local function handle(request_dto)
         return { success = false, error = DATABASE_ERRORS.ACCESS_DENIED }
     end
 
-    -- Delete the component using ops handler
     local delete_command = {
         type = ops.COMMAND_TYPES.DELETE_COMPONENT,
-        payload = {
-            component_id = request_dto.component_id
-        }
+        payload = { component_id = request_dto.component_id }
     }
 
-    local delete_result, err_delete = ops.handlers[ops.COMMAND_TYPES.DELETE_COMPONENT](tx, delete_command)
+    local delete_result, err_delete = ops.dispatch(tx, db, delete_command)
     if err_delete then
         tx:rollback()
         db:release()
-        return { success = false, error = DATABASE_ERRORS.DELETE_FAILED .. ": " .. err_delete }
+        return { success = false, error = DATABASE_ERRORS.DELETE_FAILED .. ": " .. tostring(err_delete) }
     end
 
-    -- Commit transaction
     local commit_ok, err_commit = tx:commit()
     if err_commit then
         tx:rollback()
@@ -211,7 +193,6 @@ local function handle(request_dto)
 
     db:release()
 
-    -- Success response
     return {
         component_id = request_dto.component_id,
         deleted = delete_result.changes_made or false,

@@ -52,3 +52,21 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  # userspace.component.migrations:04_add_placement_columns
+  - name: 04_add_placement_columns
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - components
+        - userspace
+        - placement
+        - hierarchy
+      description: Add parent_id, position (lexorank), and path (ltree/materialized) columns for placement/hierarchy
+      target_db: app:db
+      timestamp: "2025-06-14T10:15:00Z"
+    source: file://04_add_placement_columns.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

@@ -1,37 +1,27 @@
+-- component: the client library for opening components with access validation.
+-- It wraps the component_service contract (actor-validated paths) and the
+-- component_reader (system-level paths). Every function returns (value, error?);
+-- errors are structured via the global errors module and never raised.
+
 local contract = require("contract")
 local component_reader = require("component_reader")
+local consts = require("consts")
 
--- Constants
+-- Contract ids the client talks to.
 local COMPONENT_SERVICE = "userspace.component:component_service"
 local DEFAULT_CONTRACT = "userspace.contract:component"
 
--- Access level constants (bitmask permissions)
-local ACCESS = {
-    NONE = 0,   -- 0000 - No access
-    READ = 1,   -- 0001 - Can read component metadata
-    WRITE = 2,  -- 0010 - Can modify component metadata
-    DELETE = 4, -- 0100 - Can delete component
-    ADMIN = 8,  -- 1000 - Full admin access (grant/revoke permissions)
+-- Access level bitmask (re-exported so callers reference component.ACCESS.*).
+local ACCESS = consts.ACCESS
 
-    -- Common combinations
-    READ_WRITE = 3,   -- 0011 - Read and write
-    READ_DELETE = 5,  -- 0101 - Read and delete
-    WRITE_DELETE = 6, -- 0110 - Write and delete
-    FULL = 15,        -- 1111 - All permissions
-}
+-- An opened contract instance: its methods are dispatched by the contract.
+type ContractInstance = any -- runtime contract proxy; method set is contract-defined
 
----@class ComponentInstance
----@field [string] function Contract method calls
+-- The component_service contract instance.
+type ServiceInstance = any -- runtime contract proxy
 
----@alias AccessLevel integer Access level bitmask
-
--- Helper Functions
-
----Helper function for bitwise AND operation
----@param a integer First number
----@param b integer Second number
----@return integer result Bitwise AND result
-local function bitwise_and(a, b)
+-- Bitwise AND for access-mask checks (Lua 5.1 has no bit operators).
+local function bitwise_and(a: integer, b: integer): integer
     local result = 0
     local bit = 1
     while bit <= math.max(a, b) do
@@ -43,258 +33,201 @@ local function bitwise_and(a, b)
     return result
 end
 
----Get component service instance
----@return table|nil service Component service instance or nil on error
----@return string|nil error Error message or nil on success
-local function get_component_service()
+-- Open the component service contract.
+local function get_component_service(): (ServiceInstance?, error?)
     local component_service_contract, err = contract.get(COMPONENT_SERVICE)
     if err then
-        return nil, "Failed to get component service: " .. err
+        return nil, (errors.new({ message = "failed to get component service: " .. tostring(err), kind = errors.INTERNAL }) :: error)
     end
 
-    local component_service, service_err = component_service_contract:open()
+    local service, service_err = component_service_contract:open()
     if service_err then
-        return nil, "Failed to open component service: " .. service_err
+        return nil, (errors.new({ message = "failed to open component service: " .. tostring(service_err), kind = errors.INTERNAL }) :: error)
     end
 
-    return component_service, nil
+    return service :: ServiceInstance?, nil
 end
 
----Check service result for errors
----@param result table Service result
----@param operation_name string Name of operation for error messages
----@return string|nil error Error message or nil if success
-local function check_service_result(result, operation_name)
+-- Map a service result's {success,error} envelope into a structured error.
+local function service_result_error(result: any, operation_name: string): error?
     if not result then
-        return operation_name .. " returned nil result"
+        return (errors.new({ message = operation_name .. " returned nil result", kind = errors.INTERNAL }) :: error)
     end
-
     if not result.success then
-        return (result.error) or (operation_name .. " failed")
+        return (errors.new({ message = result.error or (operation_name .. " failed"), kind = errors.PERMISSION_DENIED }) :: error)
     end
-
     return nil
 end
 
----Open contract instance with component context
----@param impl_id string Implementation ID to use as binding
----@param context table Component context
----@param target_contract_id string|nil Optional target contract ID
----@return ComponentInstance|nil instance Contract instance or nil on error
----@return string|nil error Error message or nil on success
-local function open_contract_instance(impl_id, context, target_contract_id)
+-- Open a contract instance bound to impl_id with the component context.
+local function open_contract_instance(impl_id: string, context: { [string]: any }, target_contract_id: string?): (ContractInstance?, error?)
     local contract_to_open = target_contract_id or DEFAULT_CONTRACT
 
     local target_contract, contract_err = contract.get(contract_to_open)
     if contract_err then
-        return nil, "Failed to get contract '" .. contract_to_open .. "': " .. contract_err
+        return nil, (errors.new({ message = "failed to get contract '" .. contract_to_open .. "': " .. tostring(contract_err), kind = errors.INTERNAL }) :: error)
     end
 
-    local instance, instance_err = target_contract:open(impl_id :: string, context)
+    local instance, instance_err = target_contract:open(impl_id, context)
     if instance_err then
-        return nil, "Failed to open component instance: " .. instance_err
+        return nil, (errors.new({ message = "failed to open component instance: " .. tostring(instance_err), kind = errors.INTERNAL }) :: error)
     end
 
-    -- Validate target contract if specified
     if target_contract_id and not contract.is(instance, target_contract_id) then
-        return nil, "Component does not implement target contract '" .. tostring(target_contract_id) .. "'"
+        return nil, (errors.new({ message = "component does not implement target contract '" .. tostring(target_contract_id) .. "'", kind = errors.INVALID }) :: error)
     end
 
-    return instance, nil
+    return instance :: ContractInstance?, nil
 end
 
--- Public API Functions
-
----Get component service instance (public API)
----@return table|nil service Component service instance or nil on error
----@return string|nil error Error message or nil on success
-local function get_service()
+-- Public service accessor.
+local function get_service(): (ServiceInstance?, error?)
     return get_component_service()
 end
 
----Validate access to a component without opening it
----@param component_id string Component UUID to check
----@param required_access AccessLevel Required access level bitmask
----@return integer access_level User's access level if they have required access, 0 if insufficient or error
----@return string|nil error Error message or nil on success
-local function validate_access(component_id, required_access)
-    if not component_id or component_id == "" then
-        return 0, "Component ID is required"
-    end
-
-    if not required_access or type(required_access) ~= "number" then
-        return 0, "Access level is required"
-    end
-
-    local component_service, service_err = get_component_service()
-    if service_err then
-        return 0, service_err
-    end
-
-    -- Get access context to check permissions
-    local access_result, access_err = component_service:get_access_context({
-        component_id = component_id
-    })
-    if access_err then
-        return 0, "Component not found or access denied: " .. access_err
-    end
-
-    -- Check service result success
-    local result_err = check_service_result(access_result, "get_access_context")
-    if result_err then
-        return 0, "Component not found or access denied: " .. result_err
-    end
-
-    -- Check access level using bitwise AND
-    local user_access = access_result.access_level or 0
-    local has_required_access = bitwise_and(user_access, required_access) == required_access
-
-    if has_required_access then
-        return user_access, nil
-    else
-        return 0, "Insufficient access to component"
-    end
-end
-
----Open a component by ID with access validation
----@param component_id string Component UUID to open
----@param required_access AccessLevel Required access level bitmask
----@param target_contract_id string|nil Optional target contract ID, uses default if nil
----@return ComponentInstance|nil instance Opened component instance or nil on error
----@return string|nil error Error message or nil on success
-local function open(component_id, required_access, target_contract_id)
-    if not component_id or component_id == "" then
-        return nil, "Component ID is required"
-    end
-
-    if not required_access or type(required_access) ~= "number" then
-        return nil, "Access level is required"
-    end
-
-    local component_service, service_err = get_component_service()
-    if service_err then
+-- Resolve the actor's access context for a component via the service.
+local function resolve_access_context(component_id: string): (any, error?)
+    local service, service_err = get_component_service()
+    if service_err or not service then
         return nil, service_err
     end
 
-    -- Get access context (includes impl_id - only one call needed!)
-    local access_result, access_err = component_service:get_access_context({
-        component_id = component_id
-    })
+    local access_result, access_err = service:get_access_context({ component_id = component_id })
     if access_err then
-        return nil, "Component not found or access denied: " .. access_err
+        return nil, (errors.new({ message = "component not found or access denied: " .. tostring(access_err), kind = errors.NOT_FOUND }) :: error)
     end
 
-    -- Check service result success
-    local result_err = check_service_result(access_result, "get_access_context")
+    local result_err = service_result_error(access_result, "get_access_context")
     if result_err then
-        return nil, "Component not found or access denied: " .. result_err
+        return nil, result_err
     end
 
-    -- Check access level using bitwise AND
+    return access_result, nil
+end
+
+-- Validate access to a component without opening it. Returns the actor's access
+-- level when it satisfies required_access, else (0, error).
+local function validate_access(component_id: string, required_access: integer): (integer, error?)
+    if not component_id or component_id == "" then
+        return 0, (errors.new({ message = "component ID is required", kind = errors.INVALID }) :: error)
+    end
+    if not required_access or type(required_access) ~= "number" then
+        return 0, (errors.new({ message = "access level is required", kind = errors.INVALID }) :: error)
+    end
+
+    local access_result, access_err = resolve_access_context(component_id)
+    if access_err then
+        return 0, access_err
+    end
+
     local user_access = access_result.access_level or 0
-    local has_required_access = bitwise_and(user_access, required_access) == required_access
+    if bitwise_and(user_access, required_access) == required_access then
+        return user_access, nil
+    end
+    return 0, (errors.new({ message = "insufficient access to component", kind = errors.PERMISSION_DENIED }) :: error)
+end
 
-    if not has_required_access then
-        return nil, "Insufficient access to component"
+-- Open a component by ID with access validation.
+local function open(component_id: string, required_access: integer, target_contract_id: string?): (ContractInstance?, error?)
+    if not component_id or component_id == "" then
+        return nil, (errors.new({ message = "component ID is required", kind = errors.INVALID }) :: error)
+    end
+    if not required_access or type(required_access) ~= "number" then
+        return nil, (errors.new({ message = "access level is required", kind = errors.INVALID }) :: error)
     end
 
-    -- Prepare context with component_id
+    local access_result, access_err = resolve_access_context(component_id)
+    if access_err then
+        return nil, access_err
+    end
+
+    local user_access = access_result.access_level or 0
+    if bitwise_and(user_access, required_access) ~= required_access then
+        return nil, (errors.new({ message = "insufficient access to component", kind = errors.PERMISSION_DENIED }) :: error)
+    end
+
     local context = access_result.context or {}
     context.component_id = component_id
 
-    -- Open the contract instance
     return open_contract_instance(access_result.impl_id :: string, context, target_contract_id)
 end
 
----Find and open a single component by metadata filters
----@param meta_filters table<string, string> Metadata key-value pairs to match (all must match)
----@param required_access AccessLevel Required access level bitmask
----@param target_contract_id string|nil Optional target contract ID, uses default if nil
----@return ComponentInstance|nil instance Opened component instance or nil on error
----@return string|nil error Error message or nil on success
-local function open_by_meta(meta_filters, required_access, target_contract_id)
-    -- Input validation
+-- Validate that meta_filters is a non-empty string->string map.
+local function validate_meta_filters(meta_filters: any): error?
     if not meta_filters or type(meta_filters) ~= "table" then
-        return nil, "Metadata filters are required and must be a table"
+        return (errors.new({ message = "metadata filters are required and must be a table", kind = errors.INVALID }) :: error)
     end
-
-    if not required_access or type(required_access) ~= "number" then
-        return nil, "Access level is required"
-    end
-
-    -- Check if meta_filters is empty and validate types
     local has_filters = false
     for key, value in pairs(meta_filters) do
         if type(key) ~= "string" or type(value) ~= "string" then
-            return nil, "Metadata filters must be string key-value pairs"
+            return (errors.new({ message = "metadata filters must be string key-value pairs", kind = errors.INVALID }) :: error)
         end
         has_filters = true
     end
-
     if not has_filters then
-        return nil, "At least one metadata filter is required"
+        return (errors.new({ message = "at least one metadata filter is required", kind = errors.INVALID }) :: error)
     end
+    return nil
+end
 
-    local component_service, service_err = get_component_service()
-    if service_err then
+-- Resolve a single component's access context by metadata filters via the service.
+local function resolve_access_context_by_meta(meta_filters: { [string]: string }, required_access: integer): (any, error?)
+    local service, service_err = get_component_service()
+    if service_err or not service then
         return nil, service_err
     end
 
-    -- Get access context by metadata (includes uniqueness check and impl_id)
-    local access_result, access_err = component_service:get_access_context_by_meta({
+    local access_result, access_err = service:get_access_context_by_meta({
         meta = meta_filters,
-        access_mask = required_access
+        access_mask = required_access,
     })
     if access_err then
-        return nil, access_err
+        return nil, (errors.new({ message = tostring(access_err), kind = errors.NOT_FOUND }) :: error)
     end
 
-    -- Check service result success
-    local result_err = check_service_result(access_result, "get_access_context_by_meta")
+    local result_err = service_result_error(access_result, "get_access_context_by_meta")
     if result_err then
         return nil, result_err
     end
 
-    -- Open the contract instance
-    return open_contract_instance(access_result.impl_id :: string, access_result.context :: any, target_contract_id)
+    return access_result, nil
 end
 
----Get a component's private context by ID with access validation
----@param component_id string Component UUID
----@param required_access AccessLevel Required access level bitmask
----@return table|nil context Private context or nil on error
----@return string|nil error Error message or nil on success
-local function get_context(component_id, required_access)
-    if not component_id or component_id == "" then
-        return nil, "Component ID is required"
+-- Find and open a single component by metadata filters.
+local function open_by_meta(meta_filters: { [string]: string }, required_access: integer, target_contract_id: string?): (ContractInstance?, error?)
+    local filters_err = validate_meta_filters(meta_filters)
+    if filters_err then
+        return nil, filters_err
     end
-
     if not required_access or type(required_access) ~= "number" then
-        return nil, "Access level is required"
+        return nil, (errors.new({ message = "access level is required", kind = errors.INVALID }) :: error)
     end
 
-    local component_service, service_err = get_component_service()
-    if service_err then
-        return nil, service_err
-    end
-
-    local access_result, access_err = component_service:get_access_context({
-        component_id = component_id
-    })
+    local access_result, access_err = resolve_access_context_by_meta(meta_filters, required_access)
     if access_err then
-        return nil, "Component not found or access denied: " .. access_err
+        return nil, access_err
     end
 
-    local result_err = check_service_result(access_result, "get_access_context")
-    if result_err then
-        return nil, "Component not found or access denied: " .. result_err
+    return open_contract_instance(access_result.impl_id :: string, (access_result.context or {}) :: { [string]: any }, target_contract_id)
+end
+
+-- Get a component's private context by ID with access validation.
+local function get_context(component_id: string, required_access: integer): ({ [string]: any }?, error?)
+    if not component_id or component_id == "" then
+        return nil, (errors.new({ message = "component ID is required", kind = errors.INVALID }) :: error)
+    end
+    if not required_access or type(required_access) ~= "number" then
+        return nil, (errors.new({ message = "access level is required", kind = errors.INVALID }) :: error)
+    end
+
+    local access_result, access_err = resolve_access_context(component_id)
+    if access_err then
+        return nil, access_err
     end
 
     local user_access = access_result.access_level or 0
-    local has_required_access = bitwise_and(user_access, required_access) == required_access
-
-    if not has_required_access then
-        return nil, "Insufficient access to component"
+    if bitwise_and(user_access, required_access) ~= required_access then
+        return nil, (errors.new({ message = "insufficient access to component", kind = errors.PERMISSION_DENIED }) :: error)
     end
 
     local context = access_result.context or {}
@@ -302,77 +235,40 @@ local function get_context(component_id, required_access)
     return context, nil
 end
 
----Get a component's private context by metadata filters with access validation
----@param meta_filters table<string, string> Metadata key-value pairs to match
----@param required_access AccessLevel Required access level bitmask
----@return table|nil context Private context or nil on error
----@return string|nil error Error message or nil on success
-local function get_context_by_meta(meta_filters, required_access)
-    if not meta_filters or type(meta_filters) ~= "table" then
-        return nil, "Metadata filters are required and must be a table"
+-- Get a component's private context by metadata filters with access validation.
+local function get_context_by_meta(meta_filters: { [string]: string }, required_access: integer): ({ [string]: any }?, error?)
+    local filters_err = validate_meta_filters(meta_filters)
+    if filters_err then
+        return nil, filters_err
     end
-
     if not required_access or type(required_access) ~= "number" then
-        return nil, "Access level is required"
+        return nil, (errors.new({ message = "access level is required", kind = errors.INVALID }) :: error)
     end
 
-    local has_filters = false
-    for key, value in pairs(meta_filters) do
-        if type(key) ~= "string" or type(value) ~= "string" then
-            return nil, "Metadata filters must be string key-value pairs"
-        end
-        has_filters = true
-    end
-
-    if not has_filters then
-        return nil, "At least one metadata filter is required"
-    end
-
-    local component_service, service_err = get_component_service()
-    if service_err then
-        return nil, service_err
-    end
-
-    local access_result, access_err = component_service:get_access_context_by_meta({
-        meta = meta_filters,
-        access_mask = required_access
-    })
+    local access_result, access_err = resolve_access_context_by_meta(meta_filters, required_access)
     if access_err then
         return nil, access_err
     end
 
-    local result_err = check_service_result(access_result, "get_access_context_by_meta")
-    if result_err then
-        return nil, result_err
-    end
-
-    local context = access_result.context :: any or {}
-    return context, nil
+    return (access_result.context or {}) :: { [string]: any }, nil
 end
 
----Get a component's private context by ID without actor validation.
----Reads directly from the database, suitable for system-level / background workers.
----@param component_id string Component UUID
----@return table|nil context Private context or nil on error
----@return string|nil error Error message or nil on success
-local function get_private_context(component_id)
+-- Get a component's private context by ID without actor validation. Reads
+-- directly from the database, suitable for system-level / background workers.
+local function get_private_context(component_id: string): ({ [string]: any }?, error?)
     if not component_id or component_id == "" then
-        return nil, "Component ID is required"
+        return nil, (errors.new({ message = "component ID is required", kind = errors.INVALID }) :: error)
     end
 
-    local ok, result = pcall(function()
-        return component_reader.new()
-            :with_components(component_id)
-            :include_options({ private_context = true, meta = false })
-            :one()
-    end)
-
-    if not ok then
-        return nil, "Failed to read component: " .. tostring(result)
+    local result, read_err = component_reader.new()
+        :with_components(component_id)
+        :include_options({ private_context = true, meta = false })
+        :one()
+    if read_err then
+        return nil, read_err
     end
-
     if not result then
-        return nil, "Component not found"
+        return nil, (errors.new({ message = "component not found", kind = errors.NOT_FOUND }) :: error)
     end
 
     local context = result.private_context or {}
@@ -380,42 +276,32 @@ local function get_private_context(component_id)
     return context, nil
 end
 
----Open a component by ID without actor validation.
----Reads impl_id and private_context directly from the database, then opens the contract instance.
----Suitable for system-level / background workers.
----@param component_id string Component UUID to open
----@param target_contract_id string|nil Optional target contract ID, uses default if nil
----@return ComponentInstance|nil instance Opened component instance or nil on error
----@return string|nil error Error message or nil on success
-local function open_private(component_id, target_contract_id)
+-- Open a component by ID without actor validation. Reads impl_id and private
+-- context directly from the database, then opens the contract instance.
+-- Suitable for system-level / background workers.
+local function open_private(component_id: string, target_contract_id: string?): (ContractInstance?, error?)
     if not component_id or component_id == "" then
-        return nil, "Component ID is required"
+        return nil, (errors.new({ message = "component ID is required", kind = errors.INVALID }) :: error)
     end
 
-    local ok, result = pcall(function()
-        return component_reader.new()
-            :with_components(component_id)
-            :include_options({ private_context = true, meta = false })
-            :one()
-    end)
-
-    if not ok then
-        return nil, "Failed to read component: " .. tostring(result)
+    local result, read_err = component_reader.new()
+        :with_components(component_id)
+        :include_options({ private_context = true, meta = false })
+        :one()
+    if read_err then
+        return nil, read_err
     end
-
     if not result then
-        return nil, "Component not found"
+        return nil, (errors.new({ message = "component not found", kind = errors.NOT_FOUND }) :: error)
     end
 
-    local component_data: {impl_id: string, private_context: table?} = result
-    local context = component_data.private_context or {}
+    local context = result.private_context or {}
     context.component_id = component_id
 
-    return open_contract_instance(component_data.impl_id, context, target_contract_id)
+    return open_contract_instance(result.impl_id :: string, context, target_contract_id)
 end
 
--- Component module
-local component = {
+return {
     ACCESS = ACCESS,
     open = open,
     open_by_meta = open_by_meta,
@@ -426,5 +312,3 @@ local component = {
     get_context_by_meta = get_context_by_meta,
     get_private_context = get_private_context,
 }
-
-return component

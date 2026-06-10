@@ -43,7 +43,8 @@ entries:
       - sql
     imports:
       component_reader: userspace.component.persist:component_reader
-    
+      consts: userspace.component.persist:consts
+
   # userspace.component:component_service
   - name: component_service
     kind: contract.definition
@@ -58,10 +59,11 @@ entries:
       - name: register_component
         description: |
           Register a new component with implementation ID, private context, and metadata.
-          Creates component owned by current actor with full access.
+          Creates a component owned by the current actor with full access. Optional
+          parent_id/position place it in the hierarchy (root + end-of-siblings when omitted).
           Calling: register_component(request_dto)
         input_schemas:
-          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"component_id\": {\n      \"type\": \"string\", \n      \"description\": \"Optional component UUID, generated if not provided\"\n    },\n    \"impl_id\": {\n      \"type\": \"string\",\n      \"description\": \"Implementation contract ID (e.g., 'workflow.nodes:http_request')\"\n    },\n    \"private_context\": {\n      \"type\": \"object\",\n      \"description\": \"Private configuration for component execution\",\n      \"default\": {}\n    },\n    \"meta\": {\n      \"type\": \"object\",\n      \"description\": \"Public metadata key-value pairs (title, class, etc.)\",\n      \"default\": {}\n    },\n    \"additional_access\": {\n      \"type\": \"array\",\n      \"description\": \"Additional user access grants\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"user_id\": {\"type\": \"string\"},\n          \"access_mask\": {\"type\": \"integer\"}\n        },\n        \"required\": [\"user_id\", \"access_mask\"]\n      },\n      \"default\": []\n    }\n  },\n  \"required\": [\"impl_id\"]\n}\n"
+          - definition: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"component_id\": {\n      \"type\": \"string\", \n      \"description\": \"Optional component UUID, generated if not provided\"\n    },\n    \"impl_id\": {\n      \"type\": \"string\",\n      \"description\": \"Implementation contract ID (e.g., 'workflow.nodes:http_request')\"\n    },\n    \"private_context\": {\n      \"type\": \"object\",\n      \"description\": \"Private configuration for component execution\",\n      \"default\": {}\n    },\n    \"meta\": {\n      \"type\": \"object\",\n      \"description\": \"Public metadata key-value pairs (title, class, etc.)\",\n      \"default\": {}\n    },\n    \"additional_access\": {\n      \"type\": \"array\",\n      \"description\": \"Additional user access grants\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"user_id\": {\"type\": \"string\"},\n          \"access_mask\": {\"type\": \"integer\"}\n        },\n        \"required\": [\"user_id\", \"access_mask\"]\n      },\n      \"default\": []\n    },\n    \"parent_id\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Optional parent component UUID; root when omitted\"\n    },\n    \"position\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Optional lexorank position; end-of-siblings when omitted\"\n    }\n  },\n  \"required\": [\"impl_id\"]\n}\n"
             format: application/schema+json
         output_schemas:
           - definition: |
@@ -70,6 +72,7 @@ entries:
                 "properties": {
                   "component_id": {"type": "string"},
                   "impl_id": {"type": "string"},
+                  "parent_id": {"type": ["string", "null"]},
                   "created_at": {"type": "string"},
                   "success": {"type": "boolean"}
                 },
@@ -78,7 +81,7 @@ entries:
             format: application/schema+json
       - name: get_component
         description: |
-          Get component public information (impl_id, metadata) - requires READ access.
+          Get component public information (impl_id, metadata, placement) - requires READ access.
           Uses current actor for permission check.
           Calling: get_component(request_dto)
         input_schemas:
@@ -105,6 +108,8 @@ entries:
                     "type": "object",
                     "description": "Component metadata key-value pairs"
                   },
+                  "parent_id": {"type": ["string", "null"]},
+                  "position": {"type": ["string", "null"]},
                   "created_at": {"type": "string"},
                   "updated_at": {"type": "string"}
                 },
@@ -325,9 +330,9 @@ entries:
       - name: delete_component
         description: |
           Delete a component - requires DELETE access.
-          If component implements deletable contract, delegates cleanup to component first.
-          Service always handles final unregistering from component registry.
-          Permanently removes component and all associated metadata and access records.
+          If the component implements the deletable contract, cleanup is delegated first.
+          The service always unregisters the component. Direct children are orphaned to
+          root (ON DELETE SET NULL); subtrees are never cascade-deleted.
           Calling: delete_component(request_dto)
         input_schemas:
           - definition: |
@@ -354,4 +359,154 @@ entries:
                 "required": ["component_id", "deleted", "success"]
               }
             format: application/schema+json
-    
+      - name: set_placement
+        description: |
+          Re-parent and/or reorder a component within the hierarchy - requires WRITE access.
+          Rejects cycles (moving under self or a descendant; tree unchanged). Re-materializes
+          the path for the node and all descendants. parent_id null/false moves to root;
+          position defaults to end-of-siblings.
+          Calling: set_placement(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {"type": "string", "description": "Component UUID to place"},
+                  "parent_id": {
+                    "type": ["string", "null", "boolean"],
+                    "description": "New parent UUID; null/false moves to root; omit to keep current parent"
+                  },
+                  "position": {
+                    "type": ["string", "null"],
+                    "description": "Optional lexorank position; end-of-siblings when omitted"
+                  }
+                },
+                "required": ["component_id"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "component_id": {"type": "string"},
+                  "parent_id": {"type": ["string", "null"]},
+                  "position": {"type": "string"},
+                  "changes_made": {"type": "boolean"},
+                  "success": {"type": "boolean"}
+                },
+                "required": ["component_id", "success"]
+              }
+            format: application/schema+json
+      - name: list_children
+        description: |
+          List the children of a component (root-level when parent_id omitted), ordered by
+          position then created_at, access-filtered for the current actor.
+          Calling: list_children(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "parent_id": {
+                    "type": ["string", "null"],
+                    "description": "Parent component UUID; root-level when omitted"
+                  },
+                  "pagination": {
+                    "type": "object",
+                    "properties": {
+                      "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50},
+                      "offset": {"type": "integer", "minimum": 0, "default": 0}
+                    }
+                  }
+                },
+                "default": {}
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "components": {"type": "array"},
+                  "total_count": {"type": "integer"},
+                  "has_more": {"type": "boolean"},
+                  "parent_id": {"type": ["string", "null"]}
+                },
+                "required": ["components", "total_count", "has_more"]
+              }
+            format: application/schema+json
+      - name: grant_subtree
+        description: |
+          Grant access to a component and all its descendants - requires ADMIN on the root.
+          The subject is exactly one of user_id or group_id. Applied via the same grant path
+          as update_component GRANT_ACCESS.
+          Calling: grant_subtree(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "root_component_id": {"type": "string", "description": "Subtree root UUID"},
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "user_id": {"type": "string"},
+                      "group_id": {"type": "string"}
+                    },
+                    "description": "Exactly one of user_id or group_id"
+                  },
+                  "access_mask": {"type": "integer", "minimum": 0, "description": "Bitmask of permissions to grant"}
+                },
+                "required": ["root_component_id", "subject", "access_mask"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "root_component_id": {"type": "string"},
+                  "affected": {"type": "integer"},
+                  "changes_made": {"type": "boolean"},
+                  "success": {"type": "boolean"}
+                },
+                "required": ["root_component_id", "affected", "success"]
+              }
+            format: application/schema+json
+      - name: revoke_subtree
+        description: |
+          Revoke a subject's access from a component and all its descendants - requires ADMIN
+          on the root. The subject is exactly one of user_id or group_id.
+          Calling: revoke_subtree(request_dto)
+        input_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "root_component_id": {"type": "string", "description": "Subtree root UUID"},
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "user_id": {"type": "string"},
+                      "group_id": {"type": "string"}
+                    },
+                    "description": "Exactly one of user_id or group_id"
+                  }
+                },
+                "required": ["root_component_id", "subject"]
+              }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              {
+                "type": "object",
+                "properties": {
+                  "root_component_id": {"type": "string"},
+                  "affected": {"type": "integer"},
+                  "changes_made": {"type": "boolean"},
+                  "success": {"type": "boolean"}
+                },
+                "required": ["root_component_id", "affected", "success"]
+              }
+            format: application/schema+json

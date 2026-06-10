@@ -1,4 +1,5 @@
 local sql = require("sql")
+local time = require("time")
 local security = require("security")
 local ops = require("ops")
 
@@ -22,7 +23,6 @@ local DATABASE_ERRORS = {
     CONNECTION_FAILED = "Failed to connect to database",
     TRANSACTION_FAILED = "Failed to begin transaction",
     ACCESS_DENIED = "Insufficient access to perform requested operations",
-    NO_HANDLER = "No handler found for command type",
     COMMAND_FAILED = "Command %d failed",
     COMMIT_FAILED = "Failed to commit transaction"
 }
@@ -55,7 +55,6 @@ local function validate_commands(commands)
     local required_access = 0
 
     for i, command in ipairs(commands) do
-        -- Validate command structure
         if type(command) ~= "table" then
             return nil, "commands[" .. i .. "] " .. COMMAND_ERRORS.INVALID_COMMAND
         end
@@ -68,13 +67,11 @@ local function validate_commands(commands)
             return nil, "commands[" .. i .. "]" .. COMMAND_ERRORS.MISSING_PAYLOAD
         end
 
-        -- Check if command type is supported and get access requirements
         local access_required = COMMAND_ACCESS_REQUIREMENTS[command.type]
         if not access_required then
             return nil, "commands[" .. i .. "]" .. string.format(COMMAND_ERRORS.UNSUPPORTED_TYPE, command.type)
         end
 
-        -- Accumulate required access permissions using bitwise OR
         required_access = bitwise_or(required_access, access_required)
     end
 
@@ -82,7 +79,6 @@ local function validate_commands(commands)
 end
 
 local function handle(request_dto)
-    -- Input validation
     if not request_dto or type(request_dto) ~= "table" then
         return { success = false, error = VALIDATION_ERRORS.INVALID_REQUEST }
     end
@@ -95,7 +91,6 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.MISSING_COMMANDS }
     end
 
-    -- Security context validation
     local actor = security.actor()
     if not actor then
         return { success = false, error = VALIDATION_ERRORS.NO_ACTOR }
@@ -106,13 +101,11 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.INVALID_ACTOR }
     end
 
-    -- Validate commands and determine required access level
     local required_access, validate_error = validate_commands(request_dto.commands)
     if validate_error then
         return { success = false, error = validate_error }
     end
 
-    -- Database transaction
     local db, err_db = sql.get(ops.DB_RESOURCE)
     if err_db then
         return { success = false, error = DATABASE_ERRORS.CONNECTION_FAILED .. ": " .. err_db }
@@ -124,7 +117,6 @@ local function handle(request_dto)
         return { success = false, error = DATABASE_ERRORS.TRANSACTION_FAILED .. ": " .. err_tx }
     end
 
-    -- Check user access to component
     local has_access = ops.check_user_access(tx, user_id, request_dto.component_id, required_access)
     if not has_access then
         tx:rollback()
@@ -132,12 +124,10 @@ local function handle(request_dto)
         return { success = false, error = DATABASE_ERRORS.ACCESS_DENIED }
     end
 
-    -- Execute each command in sequence
     local results = {}
     local changes_made = false
 
     for i, command in ipairs(request_dto.commands) do
-        -- Prepare command payload with component_id
         local command_payload = {}
         for k, v in pairs(command.payload) do
             command_payload[k] = v
@@ -145,23 +135,15 @@ local function handle(request_dto)
         command_payload.component_id = request_dto.component_id
 
         local command_to_execute = {
-            type = command.type,
+            type = command.type :: string,
             payload = command_payload
         }
 
-        -- Execute command using ops handler
-        local handler = ops.handlers[command.type]
-        if not handler then
-            tx:rollback()
-            db:release()
-            return { success = false, error = DATABASE_ERRORS.NO_HANDLER .. ": " .. command.type }
-        end
-
-        local result, err_cmd = handler(tx, command_to_execute)
+        local result, err_cmd = ops.dispatch(tx, db, command_to_execute)
         if err_cmd then
             tx:rollback()
             db:release()
-            return { success = false, error = string.format(DATABASE_ERRORS.COMMAND_FAILED, i) .. ": " .. err_cmd }
+            return { success = false, error = string.format(DATABASE_ERRORS.COMMAND_FAILED, i) .. ": " .. tostring(err_cmd) }
         end
 
         table.insert(results, result)
@@ -170,7 +152,6 @@ local function handle(request_dto)
         end
     end
 
-    -- Commit transaction
     local commit_ok, err_commit = tx:commit()
     if err_commit then
         tx:rollback()
@@ -180,13 +161,12 @@ local function handle(request_dto)
 
     db:release()
 
-    -- Success response
     return {
         component_id = request_dto.component_id,
         changes_made = changes_made,
         results = results,
         success = true,
-        updated_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        updated_at = time.now():format(time.RFC3339)
     }
 end
 

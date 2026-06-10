@@ -3,104 +3,73 @@ local json = require("json")
 local component = require("component")
 
 local function handler()
-    -- Get response and request objects
     local res = http.response()
     local req = http.request()
     if not res or not req then
         return nil, "Failed to get HTTP context"
     end
 
-    -- Use component.get_service() shortcut instead of manual contract getting
     local service, err = component.get_service()
-    if err then
+    if err or not service then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to get component service: " .. err
-        })
+        res:write_json({ success = false, error = "Failed to get component service: " .. tostring(err) })
         return
     end
 
-    -- Parse query parameters
     local limit = tonumber(req:query("limit")) or 50
     local offset = tonumber(req:query("offset")) or 0
     local impl_id = req:query("impl_id")
     local class = req:query("class")
     local access_mask = tonumber(req:query("access_mask"))
 
-    -- Validate parameters
     if limit < 1 or limit > 100 then
         res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "limit must be between 1 and 100"
-        })
+        res:write_json({ success = false, error = "limit must be between 1 and 100" })
         return
     end
 
     if offset < 0 then
         res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "offset must be >= 0"
-        })
+        res:write_json({ success = false, error = "offset must be >= 0" })
         return
     end
 
-    -- Build request DTO
     local request_dto = {
-        pagination = {
-            limit = limit,
-            offset = offset
-        }
+        pagination = { limit = limit, offset = offset }
     }
 
-    -- Add filters if provided
     local filters = {}
-
     if impl_id and impl_id ~= "" then
         filters.impl_ids = { impl_id }
     end
-
     if class and class ~= "" then
         filters.meta = { class = class }
     end
-
     if access_mask and access_mask > 0 then
         filters.access_mask = access_mask
     end
-
     if next(filters) then
         request_dto.filters = filters
     end
 
-    -- Call the service
-    local result, err = service:list_components(request_dto)
+    local result, call_err = service:list_components(request_dto)
     if not result then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Service call failed: " .. (err or "unknown error")
-        })
+        res:write_json({ success = false, error = "Service call failed: " .. (call_err or "unknown error") })
         return
     end
 
-    -- Check if service returned an error
     if not result.success then
         res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = result.error or "Service returned error"
-        })
+        res:write_json({ success = false, error = result.error or "Service returned error" })
         return
     end
 
-    -- Return successful response
     res:set_status(http.STATUS.OK)
     res:set_content_type(http.CONTENT.JSON)
     res:write_json({
@@ -114,6 +83,4 @@ local function handler()
     })
 end
 
-return {
-    handler = handler
-}
+return { handler = handler }

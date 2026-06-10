@@ -16,7 +16,6 @@ local BUSINESS_ERRORS = {
 }
 
 local function handle(request_dto)
-    -- Input validation
     if not request_dto or type(request_dto) ~= "table" then
         return { success = false, error = VALIDATION_ERRORS.INVALID_REQUEST }
     end
@@ -25,7 +24,6 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.MISSING_COMPONENT_ID }
     end
 
-    -- Security context validation
     local actor = security.actor()
     if not actor then
         return { success = false, error = VALIDATION_ERRORS.NO_ACTOR }
@@ -36,25 +34,25 @@ local function handle(request_dto)
         return { success = false, error = VALIDATION_ERRORS.INVALID_ACTOR }
     end
 
-    -- Query component with any access level (no specific mask required)
-    -- The fact that user has access record means they can get execution context
-    -- Now we need impl_id too, so we need to include it
+    -- Query component with any access level (the access record itself grants
+    -- execution context). Includes impl_id, private context, and access level.
     local reader = component_reader.new()
         :with_user(user_id)
         :with_components(request_dto.component_id)
         :include_options({
             meta = false,
-            private_context = true, -- We need the private context for execution
-            access_level = true     -- We need the user's access level
+            private_context = true,
+            access_level = true
         })
 
-    local component = reader:one()
-
+    local component, read_err = reader:one()
+    if read_err then
+        return { success = false, error = tostring(read_err) }
+    end
     if not component then
         return { success = false, error = BUSINESS_ERRORS.NOT_FOUND }
     end
 
-    -- Success response with enhanced access context structure including impl_id
     return {
         id = component.component_id,
         context = component.private_context or {},

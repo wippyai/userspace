@@ -3,57 +3,37 @@ local json = require("json")
 local component = require("component")
 
 local function handler()
-    -- Get response and request objects
     local res = http.response()
     local req = http.request()
     if not res or not req then
         return nil, "Failed to get HTTP context"
     end
 
-    -- Get component ID from path parameter
     local component_id = req:param("component_id")
     if not component_id or component_id == "" then
         res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Missing required path parameter: component_id"
-        })
+        res:write_json({ success = false, error = "Missing required path parameter: component_id" })
         return
     end
 
-    -- Use component.get_service() shortcut instead of manual contract getting
     local service, err = component.get_service()
-    if err then
+    if err or not service then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to get component service: " .. err
-        })
+        res:write_json({ success = false, error = "Failed to get component service: " .. tostring(err) })
         return
     end
 
-    -- Build request DTO
-    local request_dto = {
-        component_id = component_id
-    }
-
-    -- Call the service
-    local result, err = service:delete_component(request_dto)
+    local result, call_err = service:delete_component({ component_id = component_id })
     if not result then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Service call failed: " .. (err or "unknown error")
-        })
+        res:write_json({ success = false, error = "Service call failed: " .. (call_err or "unknown error") })
         return
     end
 
-    -- Check if service returned an error
     if not result.success then
-        -- Map common errors to appropriate HTTP status codes
         local status_code = http.STATUS.BAD_REQUEST
         if result.error then
             if result.error:find("not found") or result.error:find("Component not found") then
@@ -65,14 +45,10 @@ local function handler()
 
         res:set_status(status_code)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = result.error or "Service returned error"
-        })
+        res:write_json({ success = false, error = result.error or "Service returned error" })
         return
     end
 
-    -- Return successful response
     res:set_status(http.STATUS.OK)
     res:set_content_type(http.CONTENT.JSON)
     res:write_json({
@@ -83,6 +59,4 @@ local function handler()
     })
 end
 
-return {
-    handler = handler
-}
+return { handler = handler }

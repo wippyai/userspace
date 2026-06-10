@@ -2,6 +2,35 @@ version: "1.0"
 namespace: userspace.component.persist
 
 entries:
+  # userspace.component.persist:consts
+  - name: consts
+    kind: library.lua
+    meta:
+      comment: Component-owned constants (db resource, table names, access masks, command types, lexorank alphabet)
+      tags:
+        - components
+        - userspace
+        - constants
+      description: Single source for the persist/binding layer constants so nothing is hardcoded in function bodies
+    source: file://consts.lua
+
+  # userspace.component.persist:placement
+  - name: placement
+    kind: library.lua
+    meta:
+      comment: Hierarchy and ordering engine (lexorank positions + materialized/ltree paths)
+      tags:
+        - components
+        - userspace
+        - placement
+        - hierarchy
+      description: Backend-aware path materialization (postgres ltree, sqlite materialized TEXT) and lexorank fractional ordering for O(1) reorder
+    source: file://placement.lua
+    modules:
+      - sql
+    imports:
+      consts: userspace.component.persist:consts
+
   # userspace.component.persist:access_subjects
   - name: access_subjects
     kind: library.lua
@@ -33,6 +62,7 @@ entries:
       - json
     imports:
       access_subjects: userspace.component.persist:access_subjects
+      consts: userspace.component.persist:consts
 
   # userspace.component.persist:component_reader_test
   - name: component_reader_test
@@ -79,3 +109,5 @@ entries:
       - json
     imports:
       access_subjects: userspace.component.persist:access_subjects
+      placement: userspace.component.persist:placement
+      consts: userspace.component.persist:consts
