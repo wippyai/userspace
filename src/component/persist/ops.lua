@@ -10,7 +10,7 @@ local uuid = require("uuid")
 local json = require("json")
 local access_subjects = require("access_subjects")
 local placement = require("placement")
-local consts = require("consts")
+local consts = require("userspace_component_consts")
 
 -- A pooled connection or an open transaction.
 type Executor = sql.DB | sql.Transaction

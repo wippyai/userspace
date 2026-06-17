@@ -11,7 +11,7 @@
 -- transaction keeps control of rollback.
 
 local sql = require("sql")
-local consts = require("consts")
+local consts = require("userspace_component_consts")
 
 local M = {}
 

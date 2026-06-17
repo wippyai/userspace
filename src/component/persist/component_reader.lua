@@ -7,7 +7,7 @@
 local sql = require("sql")
 local json = require("json")
 local access_subjects = require("access_subjects")
-local consts = require("consts")
+local consts = require("userspace_component_consts")
 
 -- Include flags + filters that make up a reader's immutable state.
 type ReaderState = {

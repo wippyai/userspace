@@ -43,7 +43,7 @@ entries:
       - sql
     imports:
       component_reader: userspace.component.persist:component_reader
-      consts: userspace.component.persist:consts
+      userspace_component_consts: userspace.component.persist:consts
 
   # userspace.component:component_service
   - name: component_service
