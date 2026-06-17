@@ -5,7 +5,7 @@
 
 local contract = require("contract")
 local component_reader = require("component_reader")
-local consts = require("consts")
+local consts = require("userspace_component_consts")
 
 -- Contract ids the client talks to.
 local COMPONENT_SERVICE = "userspace.component:component_service"
