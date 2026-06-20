@@ -3,6 +3,7 @@ local spec = {}
 function spec.build_container_config(c: {
     image: string,
     command: string?,
+    args: {string}?,
     env: {[string]: string}?,
     volumes: {host: string, container: string, mode: string?}[]?,
     ports: {host: number, container: number, protocol: string?}[]?,
@@ -94,8 +95,12 @@ function spec.build_container_config(c: {
         host_config.Dns = c.dns
     end
 
+    -- `args` is exec form (argv, set as Cmd directly and appended to any image
+    -- ENTRYPOINT); `command` is shell form (wrapped in sh -c). args wins if both set.
     local cmd = nil
-    if c.command then
+    if c.args and #c.args > 0 then
+        cmd = c.args
+    elseif c.command then
         cmd = { "sh", "-c", c.command }
     end
 

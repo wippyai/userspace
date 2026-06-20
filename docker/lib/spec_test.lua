@@ -31,6 +31,27 @@ local function define_tests()
                 test.eq(result.Cmd[3], "echo hello", "third arg is the command")
             end)
 
+            it("sets args as Cmd (exec form, no sh -c wrap)", function()
+                local result = spec.build_container_config({
+                    image = "pytorch/pytorch",
+                    args = { "bash", "-lc", "python train.py" },
+                })
+                test.not_nil(result.Cmd, "Cmd is set from args")
+                test.eq(result.Cmd[1], "bash")
+                test.eq(result.Cmd[2], "-lc")
+                test.eq(result.Cmd[3], "python train.py")
+            end)
+
+            it("prefers args over command when both are present", function()
+                local result = spec.build_container_config({
+                    image = "x",
+                    command = "should-be-ignored",
+                    args = { "echo", "hi" },
+                })
+                test.eq(result.Cmd[1], "echo")
+                test.eq(result.Cmd[2], "hi")
+            end)
+
             it("converts env map to array format", function()
                 local result = spec.build_container_config({
                     image = "alpine:latest",

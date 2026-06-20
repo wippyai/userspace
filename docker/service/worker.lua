@@ -163,6 +163,7 @@ local function run_managed(docker, db_id, c, root_pid)
     local container_config = spec.build_container_config({
         image = tostring(cfg.image or c.image),
         command = cfg.command and tostring(cfg.command) or nil,
+        args = cfg.args :: {string}?,
         env = cfg.env :: {[string]: string}?,
         volumes = cfg.volumes :: {host: string, container: string, mode: string?}[]?,
         ports = cfg.ports :: {host: number, container: number, protocol: string?}[]?,

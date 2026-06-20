@@ -19,6 +19,7 @@ function containers.create(db, spec: {
     name: string?,
     image: string,
     command: string?,
+    args: {string}?,
     env: {[string]: string}?,
     volumes: {host: string, container: string, mode: string?}[]?,
     ports: {host: number, container: number, protocol: string?}[]?,
@@ -51,6 +52,7 @@ function containers.create(db, spec: {
     local config_json = json.encode({
         image          = spec.image,
         command        = spec.command,
+        args           = spec.args,
         env            = spec.env,
         volumes        = spec.volumes,
         ports          = spec.ports,
