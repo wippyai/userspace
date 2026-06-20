@@ -19,8 +19,16 @@ local function handler(body)
     end
 
     local upload, err = upload_repo.get(upload_id)
-    if err or not upload then
-        log:error("upload not found", { upload_id = upload_id, error = err })
+    if err then
+        if err == "Upload not found" then
+            log:error("upload not found", { upload_id = upload_id })
+            return { skipped = true }
+        end
+        log:error("failed to load upload", { upload_id = upload_id, error = err })
+        return nil, "failed to load upload: " .. err
+    end
+    if not upload then
+        log:error("upload not found", { upload_id = upload_id })
         return { skipped = true }
     end
 

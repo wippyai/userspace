@@ -258,6 +258,9 @@ entries:
       auto_start: true
       depends_on:
         - userspace.uploads:process_queue
+      security:
+        groups:
+          - wippy.security:process
 
   # userspace.uploads:recover_pending
   - name: recover_pending
@@ -311,6 +314,21 @@ entries:
       - base64
     imports:
       upload_tokens: userspace.uploads:upload_tokens
+      test: wippy.test:test
+    method: run
+
+  # userspace.uploads:process_worker_test
+  - name: process_worker_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: uploads
+      comment: Verifies live upload worker security and retry/error behavior.
+    source: file://process_worker_test.lua
+    modules:
+      - registry
+    imports:
+      process_worker: userspace.uploads:process_worker
       test: wippy.test:test
     method: run
 
