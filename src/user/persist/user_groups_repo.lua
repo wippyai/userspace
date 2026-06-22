@@ -204,7 +204,7 @@ function user_groups_repo.get_user_with_groups(identifier)
 
     local user_query = sql.builder.select("user_id", "email", "full_name", "password_hash", "status", "created_at", "updated_at")
         :from("app_users")
-        :where("user_id = ? OR email = ?", normalized, normalized)
+        :where("user_id = ? OR email = ?", identifier, normalized)
         :limit(1)
 
     local user_executor = user_query:run_with(db)
