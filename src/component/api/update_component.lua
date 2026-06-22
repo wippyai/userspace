@@ -2,7 +2,6 @@ local http = require("http")
 local json = require("json")
 local time = require("time")
 local component = require("component")
-local api_error = require("api_error")
 
 local STATUS = http.STATUS
 local CONTENT = http.CONTENT
@@ -32,7 +31,8 @@ local function handler()
 
     local body, parse_err = req:body_json()
     if parse_err then
-        api_error.fail(res, STATUS.BAD_REQUEST, "Invalid JSON request body", parse_err)
+        res:set_status(STATUS.BAD_REQUEST)
+        res:write_json({ success = false, error = "Invalid JSON request body: " .. parse_err })
         return
     end
 
@@ -47,13 +47,18 @@ local function handler()
 
     local access_level, access_err = component.validate_access(component_id, component.ACCESS.WRITE)
     if not access_level or access_level == 0 then
-        api_error.fail(res, STATUS.FORBIDDEN, "Insufficient permissions to update this component", access_err)
+        res:set_status(STATUS.FORBIDDEN)
+        res:write_json({
+            success = false,
+            error = access_err and tostring(access_err) or "Insufficient permissions to update this component"
+        })
         return
     end
 
     local service, err = component.get_service()
     if err or not service then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to get component service", err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({ success = false, error = "Failed to get component service: " .. tostring(err) })
         return
     end
 
@@ -88,7 +93,8 @@ local function handler()
     })
 
     if update_err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to update component", update_err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({ success = false, error = "Failed to update component: " .. tostring(update_err) })
         return
     end
 

@@ -2,7 +2,6 @@ local http = require("http")
 local json = require("json")
 local security = require("security")
 local writer = require("writer")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -38,15 +37,23 @@ local function handler()
 
     local body, err = req:body()
     if err then
+        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.BAD_REQUEST, "Failed to read request body", err)
+        res:write_json({
+            success = false,
+            error = "Failed to read request body: " .. err
+        })
         return
     end
 
     local data, json_err = json.decode(body)
     if json_err then
+        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.BAD_REQUEST, "Invalid JSON", json_err)
+        res:write_json({
+            success = false,
+            error = "Invalid JSON: " .. json_err
+        })
         return
     end
 
@@ -72,8 +79,12 @@ local function handler()
 
     local batch, batch_err = writer.for_project(user_id, project_id)
     if batch_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create batch", batch_err)
+        res:write_json({
+            success = false,
+            error = "Failed to create batch: " .. batch_err
+        })
         return
     end
 
@@ -88,15 +99,23 @@ local function handler()
     )
 
     if batch_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to add create entry command", batch_err)
+        res:write_json({
+            success = false,
+            error = "Failed to add create entry command: " .. batch_err
+        })
         return
     end
 
     local result, exec_err = batch:execute()
     if exec_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to execute commands", exec_err)
+        res:write_json({
+            success = false,
+            error = "Failed to execute commands: " .. exec_err
+        })
         return
     end
 

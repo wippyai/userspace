@@ -5,7 +5,6 @@ local start_tokens = require("start_tokens")
 local doc_repo = require("doc_repo")
 local template_registry = require("template_registry")
 local agent_registry = require("agent_registry")
-local api_error = require("api_error")
 
 local DEFAULT_AGENT_ID = "userspace.drafling.agents:drafling_agent"
 
@@ -63,8 +62,12 @@ local function handler()
 
     local agent_spec, agent_err = agent_registry.get_by_id(agent_id)
     if agent_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to load agent", agent_err)
+        res:write_json({
+            success = false,
+            error = "Failed to load agent: " .. agent_err
+        })
         return
     end
 
@@ -89,8 +92,12 @@ local function handler()
 
     local start_token, token_err = start_tokens.pack(session_params)
     if token_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create start token", token_err)
+        res:write_json({
+            success = false,
+            error = "Failed to create start token: " .. token_err
+        })
         return
     end
 

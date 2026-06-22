@@ -3,7 +3,6 @@ local json = require("json")
 local security = require("security")
 local history_repo = require("history_repo")
 local doc_repo = require("doc_repo")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -40,8 +39,12 @@ local function handler()
     -- Verify project exists and user has access
     local project, project_err = doc_repo.get(project_id, user_id)
     if project_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to verify project access", project_err)
+        res:write_json({
+            success = false,
+            error = "Failed to verify project access: " .. project_err
+        })
         return
     end
 
@@ -77,8 +80,12 @@ local function handler()
     -- Get project history
     local history, history_err = history_repo.get_project_history(project_id, options)
     if history_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get project history", history_err)
+        res:write_json({
+            success = false,
+            error = "Failed to get project history: " .. history_err
+        })
         return
     end
 

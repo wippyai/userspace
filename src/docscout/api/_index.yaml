@@ -2,15 +2,6 @@ version: "1.0"
 namespace: userspace.docscout.api
 
 entries:
-  # userspace.docscout.api:api_error
-  - name: api_error
-    kind: library.lua
-    meta:
-      comment: Shared API error helper that logs internally and returns sanitized client responses
-    source: file://api_error.lua
-    modules:
-      - logger
-
   # userspace.docscout.api:create_group
   - name: create_group
     kind: function.lua
@@ -23,7 +14,6 @@ entries:
       - registry
     imports:
       governance_client: keeper.gov:client
-      api_error: userspace.docscout.api:api_error
     method: handler
     pool:
       size: 1
@@ -50,7 +40,6 @@ entries:
       - registry
     imports:
       governance_client: keeper.gov:client
-      api_error: userspace.docscout.api:api_error
     method: handler
     pool:
       size: 1
@@ -75,8 +64,6 @@ entries:
       - http
       - json
       - registry
-    imports:
-      api_error: userspace.docscout.api:api_error
     method: handler
     pool:
       size: 1
@@ -102,7 +89,6 @@ entries:
       - json
     imports:
       extractor: userspace.docscout:extractor
-      api_error: userspace.docscout.api:api_error
     method: handler
     pool:
       size: 1
@@ -129,7 +115,6 @@ entries:
       - registry
     imports:
       governance_client: keeper.gov:client
-      api_error: userspace.docscout.api:api_error
     method: handler
     pool:
       size: 1

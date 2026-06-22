@@ -3,7 +3,6 @@ local security = require("security")
 local json = require("json")
 
 local upload_repo = require("upload_repo")
-local api_error = require("api_error")
 
 -- Handler to delete a single upload by ID
 local function delete_handler()
@@ -53,7 +52,12 @@ local function delete_handler()
     -- Get upload by ID first to check ownership
     local upload, err = upload_repo.get(uuid)
     if err then
-        api_error.fail(res, http.STATUS.NOT_FOUND, "Upload not found", err)
+        res:set_status(http.STATUS.NOT_FOUND)
+        res:write_json({
+            success = false,
+            error = "Upload not found",
+            details = err
+        })
         return
     end
 
@@ -70,7 +74,12 @@ local function delete_handler()
     -- Delete the upload
     local result, err = upload_repo.delete(uuid)
     if err then
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to delete upload", err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to delete upload",
+            details = err
+        })
         return
     end
 

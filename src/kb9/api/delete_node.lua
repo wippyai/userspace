@@ -1,7 +1,6 @@
 local http = require("http")
 local json = require("json")
 local component = require("component")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -54,8 +53,12 @@ local function handler()
             status_code = http.STATUS.FORBIDDEN
         end
 
+        res:set_status(status_code)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, status_code, "Failed to open KB9 component", kb9_err)
+        res:write_json({
+            success = false,
+            error = kb9_err or "Failed to open KB9 component"
+        })
         return
     end
 
@@ -74,8 +77,12 @@ local function handler()
     local result, exec_err = kb9_instance:execute_commands(command_request)
 
     if exec_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to execute delete command", exec_err)
+        res:write_json({
+            success = false,
+            error = "Failed to execute delete command: " .. exec_err
+        })
         return
     end
 

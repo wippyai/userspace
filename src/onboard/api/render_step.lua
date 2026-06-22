@@ -4,7 +4,6 @@ local security = require("security")
 local templates = require("templates")
 local onboard_registry = require("onboard_registry")
 local env = require("env")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -41,8 +40,12 @@ local function handler()
     -- Get the step from the registry
     local step, err = onboard_registry.get_by_name(step_name)
     if err then
+        res:set_status(http.STATUS.NOT_FOUND)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.NOT_FOUND, "Step not found", err)
+        res:write_json({
+            success = false,
+            error = "Step not found: " .. err
+        })
         return
     end
 
@@ -60,8 +63,12 @@ local function handler()
     -- Get the template set
     local tmpl, tmpl_err = templates.get(step.template_set)
     if tmpl_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to load template set", tmpl_err)
+        res:write_json({
+            success = false,
+            error = "Failed to load template set: " .. tmpl_err
+        })
         return
     end
 
@@ -78,8 +85,12 @@ local function handler()
     tmpl:release()
 
     if render_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to render template", render_err)
+        res:write_json({
+            success = false,
+            error = "Failed to render template: " .. render_err
+        })
         return
     end
 

@@ -4,7 +4,6 @@ local json = require("json")
 local time = require("time")
 
 local upload_repo = require("upload_repo")
-local api_error = require("api_error")
 
 -- Handler to list user uploads
 local function list_handler()
@@ -55,7 +54,12 @@ local function list_handler()
     -- Get uploads for the user
     local uploads, err = upload_repo.list_by_user(user_id, limit, offset)
     if err then
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to list uploads", err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to list uploads",
+            details = err
+        })
         return
     end
 
