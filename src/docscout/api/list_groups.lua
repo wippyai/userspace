@@ -1,6 +1,7 @@
 local http = require("http")
 local json = require("json")
 local registry = require("registry")
+local api_error = require("api_error")
 
 local function handler()
     -- Get response object
@@ -18,12 +19,8 @@ local function handler()
     -- Get a snapshot of the registry
     local snapshot, err = registry.snapshot()
     if not snapshot then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to get registry snapshot: " .. (err or "unknown error")
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get registry snapshot", err)
         return
     end
 

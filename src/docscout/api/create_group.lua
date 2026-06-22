@@ -2,6 +2,7 @@ local http = require("http")
 local json = require("json")
 local registry = require("registry")
 local governance = require("governance_client")
+local api_error = require("api_error")
 
 local function handler()
     -- Get response and request objects
@@ -25,12 +26,8 @@ local function handler()
     -- Parse JSON body
     local data, err = req:body_json()
     if err then
-        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to parse JSON body: " .. err
-        })
+        api_error.fail(res, http.STATUS.BAD_REQUEST, "Failed to parse JSON body", err)
         return
     end
 
@@ -71,12 +68,8 @@ local function handler()
     -- Get a snapshot of the registry
     local snapshot, err = registry.snapshot()
     if not snapshot then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to get registry snapshot: " .. (err or "unknown error")
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get registry snapshot", err)
         return
     end
 
@@ -144,12 +137,8 @@ local function handler()
     -- Apply changes using governance client
     local version, err = governance.request_changes(changes)
     if not version then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to apply registry changes: " .. (err or "unknown error")
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to apply registry changes", err)
         return
     end
 

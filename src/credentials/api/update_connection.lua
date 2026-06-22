@@ -2,6 +2,9 @@ local http = require("http")
 local json = require("json")
 local contract = require("contract")
 local component = require("component")
+local api_error = require("api_error")
+
+local log = require("logger"):named("userspace.credentials.api")
 
 local STATUS = http.STATUS
 local CONTENT = http.CONTENT
@@ -16,25 +19,28 @@ local function call_provider_validator(provider_info, form_credentials)
 
     local validator_contract, err = contract.get(CREDENTIAL_VALIDATOR_CONTRACT)
     if err then
+        log:error("Failed to get credential validator contract", { error = tostring(err) })
         return nil, {
             field = "connection",
-            error = "Failed to get credential validator contract: " .. err
+            error = "Failed to get credential validator contract"
         }
     end
 
     local validator_instance, err = validator_contract:open(provider_info.validation_contract_id)
     if err then
+        log:error("Failed to initialize credential validator", { error = tostring(err) })
         return nil, {
             field = "connection",
-            error = "Failed to initialize credential validator: " .. err
+            error = "Failed to initialize credential validator"
         }
     end
 
     local result, err = validator_instance:normalize_and_validate(form_credentials)
     if err then
+        log:error("Validator error", { error = tostring(err) })
         return nil, {
             field = "connection",
-            error = "Validator error: " .. err
+            error = "Validator error"
         }
     end
 
@@ -79,11 +85,7 @@ local function handler()
 
     local body, parse_err = req:body_json()
     if parse_err then
-        res:set_status(STATUS.BAD_REQUEST)
-        res:write_json({
-            success = false,
-            error = "Invalid JSON request body: " .. parse_err
-        })
+        api_error.fail(res, STATUS.BAD_REQUEST, "Invalid JSON request body", parse_err)
         return
     end
 
@@ -108,22 +110,14 @@ local function handler()
     -- Open the component with credentials contract and WRITE access
     local cred_component, comp_err = component.open(component_id, component.ACCESS.WRITE, CREDENTIALS_CONTRACT)
     if comp_err then
-        res:set_status(STATUS.FORBIDDEN)
-        res:write_json({
-            success = false,
-            error = comp_err
-        })
+        api_error.fail(res, STATUS.FORBIDDEN, "Insufficient permissions to update this connection", comp_err)
         return
     end
 
     -- Get existing credentials info to find provider
     local existing_info, info_err = cred_component:get_info({})
     if info_err then
-        res:set_status(STATUS.NOT_FOUND)
-        res:write_json({
-            success = false,
-            error = "Connection not found: " .. info_err
-        })
+        api_error.fail(res, STATUS.NOT_FOUND, "Connection not found", info_err)
         return
     end
 
@@ -140,21 +134,13 @@ local function handler()
     -- Get discovery service to validate against provider schema
     local discovery_service, err = contract.get(DISCOVERY_SERVICE_CONTRACT)
     if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Discovery service not available: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Discovery service not available", err)
         return
     end
 
     local discovery_instance, err = discovery_service:open()
     if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to open discovery service: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to open discovery service", err)
         return
     end
 
@@ -163,11 +149,7 @@ local function handler()
     })
 
     if err then
-        res:set_status(STATUS.NOT_FOUND)
-        res:write_json({
-            success = false,
-            error = "Provider not found: " .. err
-        })
+        api_error.fail(res, STATUS.NOT_FOUND, "Provider not found", err)
         return
     end
 
@@ -199,20 +181,12 @@ local function handler()
 
     local store_result, store_err = cred_component:store_credentials(store_request)
     if store_err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to update credentials: " .. store_err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to update credentials", store_err)
         return
     end
 
     if not store_result.success then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = store_result.error or "Failed to update credentials"
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to update credentials", store_result.error)
         return
     end
 
@@ -220,11 +194,7 @@ local function handler()
     -- Use component.get_service() shortcut instead of manual contract getting
     local service, err = component.get_service()
     if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to get component service: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to get component service", err)
         return
     end
 
@@ -245,11 +215,7 @@ local function handler()
     })
 
     if update_err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to update component metadata: " .. update_err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to update component metadata", update_err)
         return
     end
 
