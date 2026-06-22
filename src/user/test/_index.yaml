@@ -56,6 +56,19 @@ entries:
       user_repo: userspace.user.persist:user_repo
       user_groups_repo: userspace.user.persist:user_groups_repo
 
+  - name: api_error_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: user.api_error
+    source: file://api_error_test.lua
+    method: run
+    modules:
+      - json
+    imports:
+      test: wippy.test:test
+      api_error: userspace.user.api:api_error
+
   - name: dep.userspace.users
     kind: ns.dependency
     meta:

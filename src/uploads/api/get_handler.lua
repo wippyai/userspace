@@ -4,6 +4,7 @@ local json = require("json")
 local time = require("time")
 
 local upload_repo = require("upload_repo")
+local api_error = require("api_error")
 
 -- Format Unix timestamp for frontend
 local function format_date(timestamp)
@@ -70,12 +71,7 @@ local function get_handler()
     -- Get upload by ID
     local upload, err = upload_repo.get(uuid)
     if err then
-        res:set_status(http.STATUS.NOT_FOUND)
-        res:write_json({
-            success = false,
-            error = "Upload not found",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.NOT_FOUND, "Upload not found", err)
         return
     end
 
