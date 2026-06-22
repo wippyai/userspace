@@ -54,3 +54,21 @@ entries:
     method: GET
     func: oauth_callback_page
     path: /userspace/oauth/callback
+
+  # userspace.oauth.api.public:oauth_callback_handler_test
+  - name: oauth_callback_handler_test
+    kind: function.lua
+    meta:
+      name: OAuth Callback Handler Test
+      type: test
+      comment: Tests OAuth callback parameter extraction, including empty-param normalization
+      group: Components / OAuth
+      tags:
+        - oauth
+        - callback
+        - tests
+    source: file://oauth_callback_handler_test.lua
+    imports:
+      callback_handler: userspace.oauth.api.public:oauth_callback_handler
+      test: wippy.test:test
+    method: run_tests

@@ -292,8 +292,9 @@ local function run(args)
         return
     end
 
-    -- Check OAuth errors
-    if callback_data.error then
+    -- Check OAuth errors (guard empty string: a missing param can arrive as
+    -- "" which is truthy in Lua, so only a non-empty value is a real error)
+    if callback_data.error and callback_data.error ~= "" then
         send_response({
             success = false,
             error = "OAuth provider error: " .. callback_data.error,

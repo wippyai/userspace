@@ -26,24 +26,35 @@ local ERRORS = {
 ---@field error string?
 ---@field error_description string?
 
+-- A missing query param reads back as "" (empty string), which is truthy in
+-- Lua. Normalize blanks to nil so presence checks (`if error then`) and the
+-- negotiator that receives this data treat a successful callback (code, no
+-- error) as having no error rather than an empty "OAuth provider error".
+local function blank_to_nil(value)
+    if value == nil or value == "" then
+        return nil
+    end
+    return value
+end
+
 ---@param req any
 ---@return CallbackParameters
 local function extract_callback_parameters(req)
     local callback_data = {
-        code = req:query("code"),
-        state = req:query("state"),
-        error = req:query("error"),
-        error_description = req:query("error_description")
+        code = blank_to_nil(req:query("code")),
+        state = blank_to_nil(req:query("state")),
+        error = blank_to_nil(req:query("error")),
+        error_description = blank_to_nil(req:query("error_description"))
     }
 
     -- Also check POST body if present
     if req:method() == "POST" and req:is_content_type(CONTENT.JSON) then
         local body, err = req:body_json()
         if not err and body then
-            callback_data.code = callback_data.code or body.code
-            callback_data.state = callback_data.state or body.state
-            callback_data.error = callback_data.error or body.error
-            callback_data.error_description = callback_data.error_description or body.error_description
+            callback_data.code = callback_data.code or blank_to_nil(body.code)
+            callback_data.state = callback_data.state or blank_to_nil(body.state)
+            callback_data.error = callback_data.error or blank_to_nil(body.error)
+            callback_data.error_description = callback_data.error_description or blank_to_nil(body.error_description)
         end
     end
 
@@ -155,5 +166,8 @@ local function handler()
 end
 
 return {
-    handler = handler
+    handler = handler,
+    -- exported for tests
+    _extract_callback_parameters = extract_callback_parameters,
+    _blank_to_nil = blank_to_nil
 }

@@ -151,8 +151,9 @@ local function handle(request_dto)
         }
     end
 
-    -- Parse token response
-    local token_data, err = json.decode(token_response.body)
+    -- Parse token response (body is string?; default to "" so the decode error
+    -- path handles a missing body instead of passing nil to json.decode)
+    local token_data, err = json.decode(token_response.body or "")
     if err then
         logger:debug("Failed to parse token refresh response", {
             error = err,
