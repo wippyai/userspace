@@ -1,7 +1,6 @@
 local http = require("http")
 local json = require("json")
 local contract = require("contract")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -38,14 +37,22 @@ local function handler()
     -- Get discovery service
     local discovery_service, err = contract.get("userspace.credentials.discovery:provider_discovery")
     if not discovery_service then
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Discovery service not available", err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Discovery service not available: " .. (err or "unknown error")
+        })
         return
     end
 
     -- Open service instance
     local service, err = discovery_service:open()
     if not service then
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to open discovery service", err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to open discovery service: " .. (err or "unknown error")
+        })
         return
     end
 
@@ -55,7 +62,11 @@ local function handler()
     })
 
     if not result then
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Service call failed", err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Service call failed: " .. (err or "unknown error")
+        })
         return
     end
 

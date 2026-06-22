@@ -41,19 +41,6 @@ entries:
       server: gateway
     prefix: /api
 
-  - name: api_error_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: uploads.api_error
-    source: file://api_error_test.lua
-    method: run
-    modules:
-      - json
-    imports:
-      test: wippy.test:test
-      api_error: userspace.uploads.api:api_error
-
   - name: dep.userspace.uploads
     kind: ns.dependency
     meta:

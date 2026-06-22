@@ -1,7 +1,6 @@
 local http = require("http")
 local json = require("json")
 local contract = require("contract")
-local api_error = require("api_error")
 
 local function validate_implementation_options(binding_id, target_contract, options)
     -- Get the target contract definition (embed or query)
@@ -113,7 +112,11 @@ local function handler()
 
     if not embed_valid then
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.BAD_REQUEST, "Embed contract validation failed", embed_err)
+        res:set_status(http.STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "Embed contract validation failed: " .. (embed_err or "unknown error")
+        })
         return
     end
 
@@ -126,7 +129,11 @@ local function handler()
 
     if not query_valid then
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.BAD_REQUEST, "Query contract validation failed", query_err)
+        res:set_status(http.STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "Query contract validation failed: " .. (query_err or "unknown error")
+        })
         return
     end
 
@@ -134,7 +141,11 @@ local function handler()
     local kb_service_contract, contract_err = contract.get("userspace.kb9:kb_service_contract")
     if contract_err then
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get KB service contract", contract_err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to get KB service contract: " .. contract_err
+        })
         return
     end
 
@@ -142,7 +153,11 @@ local function handler()
     local kb_service, service_err = kb_service_contract:open()
     if service_err then
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to open KB service", service_err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to open KB service: " .. service_err
+        })
         return
     end
 
@@ -150,7 +165,11 @@ local function handler()
     local result, call_err = kb_service:create_kb9(request_data)
     if call_err then
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create KB9", call_err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to create KB9: " .. call_err
+        })
         return
     end
 

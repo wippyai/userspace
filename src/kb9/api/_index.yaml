@@ -2,15 +2,6 @@ version: "1.0"
 namespace: userspace.kb9.api
 
 entries:
-  # userspace.kb9.api:api_error
-  - name: api_error
-    kind: library.lua
-    meta:
-      comment: Shared API error helper that logs raw errors server-side and returns sanitized client messages
-    source: file://api_error.lua
-    modules:
-      - logger
-
   # userspace.kb9.api:browse
   - name: browse
     kind: function.lua
@@ -27,7 +18,6 @@ entries:
       - json
     imports:
       component: userspace.component:component
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:browse.endpoint
@@ -60,8 +50,6 @@ entries:
       - json
       - uuid
       - contract
-    imports:
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:create_kb9.endpoint
@@ -95,7 +83,6 @@ entries:
       - sql
     imports:
       component: userspace.component:component
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:delete_node.endpoint
@@ -128,7 +115,6 @@ entries:
       - json
     imports:
       component: userspace.component:component
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:embed_content.endpoint
@@ -191,7 +177,6 @@ entries:
       - json
     imports:
       component: userspace.component:component
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:get_info.endpoint
@@ -224,7 +209,6 @@ entries:
       - json
     imports:
       component: userspace.component:component
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:get_stats.endpoint
@@ -257,7 +241,6 @@ entries:
       - json
     imports:
       component: userspace.component:component
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:query.endpoint
@@ -289,7 +272,6 @@ entries:
       - json
     imports:
       component: userspace.component:component
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:update_config.endpoint
@@ -325,7 +307,6 @@ entries:
       component: userspace.component:component
       userspace_consts: userspace.kb9:consts
       userspace_store: userspace.kb9.persist:store
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:upload.endpoint
@@ -353,7 +334,6 @@ entries:
     imports:
       component: userspace.component:component
       userspace_reader: userspace.kb9.persist:reader
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:upload_status.endpoint
@@ -377,7 +357,6 @@ entries:
     imports:
       component: userspace.component:component
       userspace_reader: userspace.kb9.persist:reader
-      api_error: userspace.kb9.api:api_error
     method: handler
 
   # userspace.kb9.api:operations_list.endpoint

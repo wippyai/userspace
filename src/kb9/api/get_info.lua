@@ -1,7 +1,6 @@
 local http = require("http")
 local json = require("json")
 local component = require("component")
-local api_error = require("api_error")
 
 -- Access level descriptions
 local ACCESS_DESCRIPTIONS = {
@@ -62,16 +61,24 @@ local function handler()
             status_code = http.STATUS.FORBIDDEN
         end
 
+        res:set_status(status_code)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, status_code, "Failed to validate access", access_err)
+        res:write_json({
+            success = false,
+            error = access_err or "Failed to validate access"
+        })
         return
     end
 
     -- Get component service to fetch component metadata
     local service, service_err = component.get_service()
     if service_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get component service", service_err)
+        res:write_json({
+            success = false,
+            error = "Failed to get component service: " .. service_err
+        })
         return
     end
 
@@ -80,24 +87,36 @@ local function handler()
         component_id = component_id
     })
     if component_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get component info", component_err)
+        res:write_json({
+            success = false,
+            error = "Failed to get component info: " .. component_err
+        })
         return
     end
 
     -- Open KB9 component to get config
     local kb9_instance, kb9_err = component.open(component_id, component.ACCESS.READ, "userspace.kb9:kb9_contract")
     if not kb9_instance then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to open KB9 component", kb9_err)
+        res:write_json({
+            success = false,
+            error = kb9_err or "Failed to open KB9 component"
+        })
         return
     end
 
     -- Get config from KB9
     local config_result, config_err = kb9_instance:get_config()
     if config_err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get KB9 config", config_err)
+        res:write_json({
+            success = false,
+            error = "Failed to get KB9 config: " .. config_err
+        })
         return
     end
 

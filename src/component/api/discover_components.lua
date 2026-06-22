@@ -1,7 +1,6 @@
 local http = require("http")
 local json = require("json")
 local contract = require("contract")
-local api_error = require("api_error")
 
 -- Constants
 local DISCOVERY_SERVICE_CONTRACT = "userspace.component.discovery:component_discovery"
@@ -17,16 +16,24 @@ local function handler()
     -- Get discovery service contract
     local discovery_service, err = contract.get(DISCOVERY_SERVICE_CONTRACT)
     if not discovery_service then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get discovery service", err)
+        res:write_json({
+            success = false,
+            error = "Failed to get discovery service: " .. (err or "unknown error")
+        })
         return
     end
 
     -- Open the service (uses default binding)
     local service, err = discovery_service:open()
     if not service then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to open discovery service", err)
+        res:write_json({
+            success = false,
+            error = "Failed to open discovery service: " .. (err or "unknown error")
+        })
         return
     end
 
@@ -69,8 +76,12 @@ local function handler()
     -- Call the discovery service
     local result, err = service:list_available_components(request_dto)
     if not result then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Service call failed", err)
+        res:write_json({
+            success = false,
+            error = "Service call failed: " .. (err or "unknown error")
+        })
         return
     end
 

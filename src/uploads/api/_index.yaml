@@ -2,14 +2,6 @@ version: "1.0"
 namespace: userspace.uploads.api
 
 entries:
-  - name: api_error
-    kind: library.lua
-    meta:
-      comment: Sanitized API error responses with server-side logging
-    source: file://api_error.lua
-    modules:
-      - logger
-
   # userspace.uploads.api:complete_handler
   - name: complete_handler
     kind: function.lua
@@ -21,7 +13,6 @@ entries:
       - security
       - json
     imports:
-      api_error: userspace.uploads.api:api_error
       upload_lib: userspace.uploads:upload_lib
     method: handler
     pool:
@@ -48,7 +39,6 @@ entries:
       - security
       - json
     imports:
-      api_error: userspace.uploads.api:api_error
       upload_repo: userspace.uploads:upload_repo
     method: delete_handler
     pool:
@@ -76,7 +66,6 @@ entries:
       - json
       - time
     imports:
-      api_error: userspace.uploads.api:api_error
       upload_repo: userspace.uploads:upload_repo
     method: get_handler
     pool:
@@ -104,7 +93,6 @@ entries:
       - json
       - time
     imports:
-      api_error: userspace.uploads.api:api_error
       upload_repo: userspace.uploads:upload_repo
     method: list_handler
     pool:
@@ -131,7 +119,6 @@ entries:
       - security
       - json
     imports:
-      api_error: userspace.uploads.api:api_error
       upload_lib: userspace.uploads:upload_lib
     method: handler
     pool:
@@ -158,7 +145,6 @@ entries:
       - security
       - json
     imports:
-      api_error: userspace.uploads.api:api_error
       upload_lib: userspace.uploads:upload_lib
     method: handler
     pool:

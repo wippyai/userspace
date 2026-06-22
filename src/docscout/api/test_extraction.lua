@@ -1,7 +1,6 @@
 local http = require("http")
 local json = require("json")
 local extractor = require("extractor")
-local api_error = require("api_error")
 
 local function handler()
     -- Get response and request objects
@@ -25,8 +24,12 @@ local function handler()
     -- Parse JSON body
     local data, err = req:body_json()
     if err then
+        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.BAD_REQUEST, "Failed to parse JSON body", err)
+        res:write_json({
+            success = false,
+            error = "Failed to parse JSON body: " .. err
+        })
         return
     end
 
@@ -69,8 +72,12 @@ local function handler()
 
     -- Check if extractor creation succeeded
     if not extraction then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create extractor", init_err)
+        res:write_json({
+            success = false,
+            error = "Failed to create extractor: " .. (init_err or "Unknown error")
+        })
         return
     end
 
@@ -78,8 +85,12 @@ local function handler()
     local result, err = extraction:run()
 
     if err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Extraction process failed", err)
+        res:write_json({
+            success = false,
+            error = "Extraction process failed: " .. err
+        })
         return
     end
 

@@ -4,7 +4,6 @@ local contract = require("contract")
 local time = require("time")
 local env = require("env")
 local logger = require("logger"):named("userspace.oauth.api.init")
-local api_error = require("api_error")
 
 -- Constants
 local STATUS = http.STATUS
@@ -65,7 +64,11 @@ local function handler()
     -- Parse request body
     local body, parse_err = req:body_json()
     if parse_err then
-        api_error.fail(res, STATUS.BAD_REQUEST, "Invalid JSON request body", parse_err)
+        res:set_status(STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "Invalid JSON request body: " .. parse_err
+        })
         return
     end
 
@@ -102,21 +105,33 @@ local function handler()
     -- Build redirect URI
     local redirect_uri, uri_err = build_redirect_uri(provider_name)
     if uri_err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to build redirect URI", uri_err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to build redirect URI: " .. uri_err
+        })
         return
     end
 
     -- Get provider discovery service to find the provider
     local discovery_service, err = contract.get(PROVIDER_DISCOVERY_CONTRACT)
     if err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Discovery service not available", err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Discovery service not available: " .. err
+        })
         return
     end
 
     -- Open discovery service
     local discovery_instance, err = discovery_service:open()
     if err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to open discovery service", err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to open discovery service: " .. err
+        })
         return
     end
 
@@ -126,7 +141,11 @@ local function handler()
     })
 
     if err then
-        api_error.fail(res, STATUS.NOT_FOUND, "Provider not found", err)
+        res:set_status(STATUS.NOT_FOUND)
+        res:write_json({
+            success = false,
+            error = "Provider not found: " .. err
+        })
         return
     end
 
@@ -136,14 +155,22 @@ local function handler()
     })
 
     if err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to get connector contract", err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to get connector contract: " .. err
+        })
         return
     end
 
     -- Get the OAuth connector contract
     local oauth_contract, err = contract.get(OAUTH_CONNECTOR_CONTRACT)
     if err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "OAuth contract not available", err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "OAuth contract not available: " .. err
+        })
         return
     end
 
@@ -153,7 +180,11 @@ local function handler()
         :open(connector_info.implementation_id :: string)
 
     if err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to open OAuth implementation", err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to open OAuth implementation: " .. err
+        })
         return
     end
 
@@ -195,7 +226,11 @@ local function handler()
     })
 
     if err then
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to initialize OAuth flow", err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to initialize OAuth flow: " .. err
+        })
         return
     end
 
@@ -236,7 +271,11 @@ local function handler()
             host = PROCESS_HOST,
             spawn_error = spawn_err or "No error message"
         })
-        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to create OAuth session", spawn_err)
+        res:set_status(STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to create OAuth session: " .. (spawn_err or "Unknown spawn error")
+        })
         return
     end
 

@@ -1,7 +1,6 @@
 local http = require("http")
 local component = require("component")
 local reader = require("userspace_reader")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -52,15 +51,23 @@ local function handler()
             status_code = http.STATUS.FORBIDDEN
         end
 
+        res:set_status(status_code)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, status_code, "Failed to open KB9 component", kb9_err)
+        res:write_json({
+            success = false,
+            error = kb9_err or "Failed to open KB9 component"
+        })
         return
     end
 
     local operation, get_err = reader.get_operation(operation_id)
     if get_err then
+        res:set_status(http.STATUS.NOT_FOUND)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.NOT_FOUND, "Failed to get operation", get_err)
+        res:write_json({
+            success = false,
+            error = get_err
+        })
         return
     end
 

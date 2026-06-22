@@ -2,15 +2,6 @@ version: "1.0"
 namespace: userspace.drafling.api
 
 entries:
-  # userspace.drafling.api:api_error
-  - name: api_error
-    kind: library.lua
-    meta:
-      comment: Shared API error helper that logs and returns sanitized client errors
-    source: file://api_error.lua
-    modules:
-      - logger
-
   # userspace.drafling.api:create_entry
   - name: create_entry
     kind: function.lua
@@ -22,7 +13,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       writer: userspace.drafling.persist:writer
     method: handler
     
@@ -46,7 +36,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       template_registry: userspace.drafling.discovery:template_registry
       writer: userspace.drafling.persist:writer
     method: handler
@@ -71,7 +60,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       writer: userspace.drafling.persist:writer
     method: handler
     
@@ -95,7 +83,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       writer: userspace.drafling.persist:writer
     method: handler
     
@@ -120,7 +107,6 @@ entries:
       - security
     imports:
       agent_registry: wippy.agent.discovery:registry
-      api_error: userspace.drafling.api:api_error
       doc_repo: userspace.drafling.persist:doc_repo
       start_tokens: wippy.session:start_tokens
       template_registry: userspace.drafling.discovery:template_registry
@@ -146,7 +132,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       doc_repo: userspace.drafling.persist:doc_repo
     method: handler
     
@@ -170,7 +155,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       doc_repo: userspace.drafling.persist:doc_repo
       history_repo: userspace.drafling.persist:history_repo
     method: handler
@@ -195,7 +179,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       doc_reader: userspace.drafling.persist:doc_reader
       template_registry: userspace.drafling.discovery:template_registry
     method: handler
@@ -219,7 +202,6 @@ entries:
       - http
       - json
     imports:
-      api_error: userspace.drafling.api:api_error
       template_registry: userspace.drafling.discovery:template_registry
     method: handler
     
@@ -243,7 +225,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       doc_repo: userspace.drafling.persist:doc_repo
     method: handler
     
@@ -266,7 +247,6 @@ entries:
       - http
       - json
     imports:
-      api_error: userspace.drafling.api:api_error
       template_registry: userspace.drafling.discovery:template_registry
     method: handler
     
@@ -290,7 +270,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       writer: userspace.drafling.persist:writer
     method: handler
     
@@ -314,7 +293,6 @@ entries:
       - json
       - security
     imports:
-      api_error: userspace.drafling.api:api_error
       writer: userspace.drafling.persist:writer
     method: handler
     

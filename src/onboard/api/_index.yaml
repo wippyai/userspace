@@ -2,15 +2,6 @@ version: "1.0"
 namespace: userspace.onboard.api
 
 entries:
-  # userspace.onboard.api:api_error
-  - name: api_error
-    kind: library.lua
-    meta:
-      comment: Helper for safe API error responses without leaking internals
-    source: file://api_error.lua
-    modules:
-      - logger
-
   # userspace.onboard.api:list_steps
   - name: list_steps
     kind: function.lua
@@ -24,7 +15,6 @@ entries:
       - security
     imports:
       onboard_registry: userspace.onboard:registry
-      api_error: userspace.onboard.api:api_error
     method: handler
 
   # userspace.onboard.api:list_steps.endpoint
@@ -52,7 +42,6 @@ entries:
       - env
     imports:
       onboard_registry: userspace.onboard:registry
-      api_error: userspace.onboard.api:api_error
     method: handler
 
   # userspace.onboard.api:render_step.endpoint

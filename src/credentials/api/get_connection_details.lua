@@ -3,7 +3,6 @@ local json = require("json")
 local contract = require("contract")
 local component = require("component")
 local credentials_repo = require("credentials_repo")
-local api_error = require("api_error")
 
 local DISCOVERY_SERVICE_CONTRACT = "userspace.credentials.discovery:provider_discovery"
 
@@ -117,13 +116,21 @@ local function handler()
 
     local access_level, access_err = component.validate_access(component_id, 1)
     if not access_level or access_level == 0 then
-        api_error.fail(res, http.STATUS.FORBIDDEN, "Insufficient permissions to view this connection", access_err)
+        res:set_status(http.STATUS.FORBIDDEN)
+        res:write_json({
+            success = false,
+            error = access_err or "Insufficient permissions to view this connection"
+        })
         return
     end
 
     local connection, err = credentials_repo.get_credentials(component_id)
     if err then
-        api_error.fail(res, http.STATUS.NOT_FOUND, "Credential connection not found", err)
+        res:set_status(http.STATUS.NOT_FOUND)
+        res:write_json({
+            success = false,
+            error = "Credential connection not found: " .. err
+        })
         return
     end
 
@@ -139,13 +146,21 @@ local function handler()
 
     local discovery_service, err = contract.get(DISCOVERY_SERVICE_CONTRACT)
     if err then
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Discovery service not available", err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Discovery service not available: " .. err
+        })
         return
     end
 
     local discovery_instance, err = discovery_service:open()
     if err then
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to open discovery service", err)
+        res:set_status(http.STATUS.INTERNAL_ERROR)
+        res:write_json({
+            success = false,
+            error = "Failed to open discovery service: " .. err
+        })
         return
     end
 

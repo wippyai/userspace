@@ -3,7 +3,6 @@ local json = require("json")
 local security = require("security")
 local env = require("env")
 local http_client = require("http_client")
-local api_error = require("api_error")
 
 local function validate_openrouter_key(api_key)
     if not api_key or api_key == "" then
@@ -99,8 +98,12 @@ local function handler()
 
     local body, err = req:body_json()
     if err then
+        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.BAD_REQUEST, "Invalid JSON", err)
+        res:write_json({
+            success = false,
+            error = "Invalid JSON: " .. err
+        })
         return
     end
 

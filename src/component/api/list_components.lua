@@ -1,7 +1,6 @@
 local http = require("http")
 local json = require("json")
 local component = require("component")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -12,8 +11,9 @@ local function handler()
 
     local service, err = component.get_service()
     if err or not service then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get component service", err)
+        res:write_json({ success = false, error = "Failed to get component service: " .. tostring(err) })
         return
     end
 
@@ -57,8 +57,9 @@ local function handler()
 
     local result, call_err = service:list_components(request_dto)
     if not result then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Service call failed", call_err)
+        res:write_json({ success = false, error = "Service call failed: " .. (call_err or "unknown error") })
         return
     end
 

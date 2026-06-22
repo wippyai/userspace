@@ -2,7 +2,6 @@ local http = require("http")
 local json = require("json")
 local security = require("security")
 local doc_repo = require("doc_repo")
-local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -60,8 +59,12 @@ local function handler()
 
     local projects, err = doc_repo.list_by_user(user_id, options)
     if err then
+        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to list projects", err)
+        res:write_json({
+            success = false,
+            error = "Failed to list projects: " .. err
+        })
         return
     end
 

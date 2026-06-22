@@ -2,15 +2,6 @@ version: "1.0"
 namespace: userspace.oauth.api
 
 entries:
-  # userspace.oauth.api:api_error
-  - name: api_error
-    kind: library.lua
-    meta:
-      comment: Shared API error helper that logs errors server-side and returns safe client messages
-    source: file://api_error.lua
-    modules:
-      - logger
-
   # userspace.oauth.api:discover_providers
   - name: discover_providers
     kind: function.lua
@@ -47,7 +38,6 @@ entries:
     imports:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
-      api_error: userspace.oauth.api:api_error
     method: handler
 
   # userspace.oauth.api:get_connection_details.endpoint
@@ -95,8 +85,6 @@ entries:
       - time
       - env
       - logger
-    imports:
-      api_error: userspace.oauth.api:api_error
     method: handler
 
   # userspace.oauth.api:init_connection.endpoint
@@ -122,7 +110,6 @@ entries:
     imports:
       component: userspace.component:component
       oauth_repo: userspace.oauth.persist:oauth_repo
-      api_error: userspace.oauth.api:api_error
     method: handler
 
   # userspace.oauth.api:update_connection.endpoint
