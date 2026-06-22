@@ -38,6 +38,7 @@ entries:
     modules:
       - http
       - json
+      - logger
     imports:
       renderer: wippy.views:renderer
     method: handler

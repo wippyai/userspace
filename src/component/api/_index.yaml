@@ -2,6 +2,15 @@ version: "1.0"
 namespace: userspace.component.api
 
 entries:
+  # userspace.component.api:api_error
+  - name: api_error
+    kind: library.lua
+    meta:
+      comment: Helper for client-safe error responses with server-side logging
+    source: file://api_error.lua
+    modules:
+      - logger
+
   # userspace.component.api:delete_component
   - name: delete_component
     kind: function.lua
@@ -13,6 +22,7 @@ entries:
       - json
     imports:
       component: userspace.component:component
+      api_error: userspace.component.api:api_error
     method: handler
 
   # userspace.component.api:delete_component.endpoint
@@ -34,6 +44,8 @@ entries:
       - http
       - json
       - contract
+    imports:
+      api_error: userspace.component.api:api_error
     method: handler
 
   # userspace.component.api:discover_components.endpoint
@@ -56,6 +68,7 @@ entries:
       - json
     imports:
       component: userspace.component:component
+      api_error: userspace.component.api:api_error
     method: handler
 
   # userspace.component.api:list_components.endpoint
@@ -78,6 +91,7 @@ entries:
       - json
     imports:
       component: userspace.component:component
+      api_error: userspace.component.api:api_error
     method: handler
 
   # userspace.component.api:update_component.endpoint

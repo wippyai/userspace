@@ -3,6 +3,7 @@ local security = require("security")
 local json = require("json")
 
 local upload_lib = require("upload_lib")
+local api_error = require("api_error")
 
 -- Complete S3 direct upload handler
 local function handler()
@@ -10,14 +11,8 @@ local function handler()
     local res = http.response()
 
     if err then
-        -- Handle request creation error
         if res then
-            res:set_status(http.STATUS.INTERNAL_ERROR)
-            res:write_json({
-                success = false,
-                error = "Failed to create request context",
-                details = err
-            })
+            api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create request context", err)
         end
         return
     end
@@ -64,12 +59,7 @@ local function handler()
     -- Parse JSON request body
     local body, err = req:body_json()
     if err then
-        res:set_status(http.STATUS.BAD_REQUEST)
-        res:write_json({
-            success = false,
-            error = "Failed to parse JSON body",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.BAD_REQUEST, "Failed to parse JSON body", err)
         return
     end
 
@@ -97,13 +87,7 @@ local function handler()
     upload, err = upload_lib.complete_presigned_url(user_id, upload_id, etag, metadata_updates)
 
     if err then
-        -- Handle specific error cases
-        res:set_status(http.STATUS.NOT_FOUND)
-        res:write_json({
-            success = false,
-            error = "Upload not found",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.NOT_FOUND, "Upload not found", err)
         return
     end
 

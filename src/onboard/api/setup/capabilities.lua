@@ -3,6 +3,7 @@ local json = require("json")
 local security = require("security")
 local env = require("env")
 local http_client = require("http_client")
+local api_error = require("api_error")
 
 local function validate_credential_format(service, credential_type, value)
     if not value or value == "" then
@@ -181,12 +182,8 @@ local function handler()
 
     local body, err = req:body_json()
     if err then
-        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Invalid JSON: " .. err
-        })
+        api_error.fail(res, http.STATUS.BAD_REQUEST, "Invalid JSON", err)
         return
     end
 

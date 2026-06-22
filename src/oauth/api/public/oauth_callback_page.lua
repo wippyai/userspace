@@ -2,6 +2,7 @@
 local http = require("http")
 local json = require("json")
 local renderer = require("renderer")
+local log = require("logger"):named("userspace.oauth.api.public")
 
 -- Constants
 local STATUS = http.STATUS
@@ -37,8 +38,9 @@ local function handler()
     local content, err = renderer.render(VIEW_ID, params, query)
 
     if err then
+        log:error("View not found", { error = tostring(err) })
         res:set_status(STATUS.INTERNAL_ERROR)
-        res:write("View not found: " .. err)
+        res:write("View not found")
         return
     end
 

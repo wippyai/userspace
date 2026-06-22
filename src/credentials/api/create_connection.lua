@@ -4,6 +4,9 @@ local contract = require("contract")
 local uuid = require("uuid")
 local component = require("component")
 local credentials_repo = require("credentials_repo")
+local api_error = require("api_error")
+
+local log = require("logger"):named("userspace.credentials.api")
 
 local STATUS = http.STATUS
 local CONTENT = http.CONTENT
@@ -17,25 +20,28 @@ local function call_provider_validator(provider_info, form_credentials)
 
     local validator_contract, err = contract.get(CREDENTIAL_VALIDATOR_CONTRACT)
     if err then
+        log:error("Failed to get credential validator contract", { error = tostring(err) })
         return nil, {
             field = "connection",
-            error = "Failed to get credential validator contract: " .. err
+            error = "Failed to get credential validator contract"
         }
     end
 
     local validator_instance, err = validator_contract:open(provider_info.validation_contract_id)
     if err then
+        log:error("Failed to initialize credential validator", { error = tostring(err) })
         return nil, {
             field = "connection",
-            error = "Failed to initialize credential validator: " .. err
+            error = "Failed to initialize credential validator"
         }
     end
 
     local result, err = validator_instance:normalize_and_validate(form_credentials)
     if err then
+        log:error("Validator error", { error = tostring(err) })
         return nil, {
             field = "connection",
-            error = "Validator error: " .. err
+            error = "Validator error"
         }
     end
 
@@ -80,11 +86,7 @@ local function handler()
 
     local body, parse_err = req:body_json()
     if parse_err then
-        res:set_status(STATUS.BAD_REQUEST)
-        res:write_json({
-            success = false,
-            error = "Invalid JSON request body: " .. parse_err
-        })
+        api_error.fail(res, STATUS.BAD_REQUEST, "Invalid JSON request body", parse_err)
         return
     end
 
@@ -108,21 +110,13 @@ local function handler()
 
     local discovery_service, err = contract.get(DISCOVERY_SERVICE_CONTRACT)
     if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Discovery service not available: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Discovery service not available", err)
         return
     end
 
     local discovery_instance, err = discovery_service:open()
     if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to open discovery service: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to open discovery service", err)
         return
     end
 
@@ -131,11 +125,7 @@ local function handler()
     })
 
     if err then
-        res:set_status(STATUS.NOT_FOUND)
-        res:write_json({
-            success = false,
-            error = "Provider not found: " .. err
-        })
+        api_error.fail(res, STATUS.NOT_FOUND, "Provider not found", err)
         return
     end
 
@@ -155,11 +145,7 @@ local function handler()
     })
 
     if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to get component contract: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to get component contract", err)
         return
     end
 
@@ -183,11 +169,7 @@ local function handler()
 
     local store_result, store_err = credentials_repo.store_credentials(component_id, connection_data)
     if store_err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to store credentials: " .. store_err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to store credentials", store_err)
         return
     end
 
@@ -195,11 +177,7 @@ local function handler()
     local service, err = component.get_service()
     if err then
         credentials_repo.delete_credentials(component_id)
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to get component service: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to get component service", err)
         return
     end
 
@@ -223,22 +201,13 @@ local function handler()
     local result, err = service:register_component(register_request)
     if err then
         credentials_repo.delete_credentials(component_id)
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to register component: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to register component", err)
         return
     end
 
     if not result or not result.success then
-        local error_msg = (result and result.error) or "Component registration failed"
         credentials_repo.delete_credentials(component_id)
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to register component: " .. error_msg
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to register component", result and result.error)
         return
     end
 

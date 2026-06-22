@@ -3,6 +3,7 @@ local json = require("json")
 local security = require("security")
 local doc_reader = require("doc_reader")
 local template_registry = require("template_registry")
+local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -39,12 +40,8 @@ local function handler()
     -- Use doc_reader to get complete project state with categories and entries
     local reader, reader_err = doc_reader.with_user(user_id)
     if reader_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to create reader: " .. reader_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create reader", reader_err)
         return
     end
 
@@ -55,12 +52,8 @@ local function handler()
         :one()
 
     if project_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to get project data: " .. project_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get project data", project_err)
         return
     end
 

@@ -2,6 +2,15 @@ version: "1.0"
 namespace: userspace.scheduler.api
 
 entries:
+  # userspace.scheduler.api:api_error
+  - name: api_error
+    kind: library.lua
+    meta:
+      comment: Helper that logs raw errors server-side and returns sanitized client responses
+    source: file://api_error.lua
+    modules:
+      - logger
+
   # userspace.scheduler.api:delete_schedule
   - name: delete_schedule
     kind: function.lua
@@ -12,6 +21,8 @@ entries:
       - http
       - json
       - contract
+    imports:
+      api_error: userspace.scheduler.api:api_error
     method: handler
     pool:
       size: 4
@@ -36,6 +47,8 @@ entries:
       - http
       - json
       - contract
+    imports:
+      api_error: userspace.scheduler.api:api_error
     method: handler
     pool:
       size: 4

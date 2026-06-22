@@ -1,6 +1,7 @@
 local http = require("http")
 local json = require("json")
 local template_registry = require("template_registry")
+local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -28,12 +29,8 @@ local function handler()
 
     local templates, err = template_registry.list_templates(filters)
     if not templates then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = err or "Failed to list templates"
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to list templates", err)
         return
     end
 

@@ -3,6 +3,7 @@ local json = require("json")
 local contract = require("contract")
 local component = require("component")
 local oauth_repo = require("oauth_repo")
+local api_error = require("api_error")
 
 local STATUS = http.STATUS
 local CONTENT = http.CONTENT
@@ -39,11 +40,7 @@ local function handler()
 
     local body, parse_err = req:body_json()
     if parse_err then
-        res:set_status(STATUS.BAD_REQUEST)
-        res:write_json({
-            success = false,
-            error = "Invalid JSON request body: " .. parse_err
-        })
+        api_error.fail(res, STATUS.BAD_REQUEST, "Invalid JSON request body", parse_err)
         return
     end
 
@@ -59,33 +56,21 @@ local function handler()
     -- Validate component access with WRITE permissions (bitmask value 2)
     local access_level, access_err = component.validate_access(component_id, component.ACCESS.WRITE)
     if not access_level or access_level == 0 then
-        res:set_status(STATUS.FORBIDDEN)
-        res:write_json({
-            success = false,
-            error = access_err or "Insufficient permissions to update this connection"
-        })
+        api_error.fail(res, STATUS.FORBIDDEN, "Insufficient permissions to update this connection", access_err)
         return
     end
 
     -- Get existing OAuth connection to verify it exists
     local connection, err = oauth_repo.get_connection(component_id)
     if err then
-        res:set_status(STATUS.NOT_FOUND)
-        res:write_json({
-            success = false,
-            error = "OAuth connection not found: " .. err
-        })
+        api_error.fail(res, STATUS.NOT_FOUND, "OAuth connection not found", err)
         return
     end
 
     -- Update component metadata (title and description) using component service
     local service, err = component.get_service()
     if err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to get component service: " .. err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to get component service", err)
         return
     end
 
@@ -106,11 +91,7 @@ local function handler()
     })
 
     if update_err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to update component metadata: " .. update_err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to update component metadata", update_err)
         return
     end
 
@@ -131,11 +112,7 @@ local function handler()
 
     local repo_result, repo_err = oauth_repo.update_connection(component_id, connection_update)
     if repo_err then
-        res:set_status(STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to update connection data: " .. repo_err
-        })
+        api_error.fail(res, STATUS.INTERNAL_ERROR, "Failed to update connection data", repo_err)
         return
     end
 

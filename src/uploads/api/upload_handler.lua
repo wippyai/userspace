@@ -3,6 +3,7 @@ local security = require("security")
 local json = require("json")
 
 local upload_lib = require("upload_lib")
+local api_error = require("api_error")
 
 -- Upload file handler
 local function handler()
@@ -10,14 +11,8 @@ local function handler()
     local res = http.response()
 
     if err then
-        -- Handle request creation error
         if res then
-            res:set_status(http.STATUS.INTERNAL_ERROR)
-            res:write_json({
-                success = false,
-                error = "Failed to create request context",
-                details = err
-            })
+            api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create request context", err)
         end
         return
     end
@@ -65,12 +60,7 @@ local function handler()
     local max_size = 50 * 1024 * 1024 -- 50MB limit
     local form, err = req:parse_multipart(max_size)
     if err then
-        res:set_status(http.STATUS.BAD_REQUEST)
-        res:write_json({
-            success = false,
-            error = "Failed to parse form data",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.BAD_REQUEST, "Failed to parse form data", err)
         return
     end
 
@@ -105,12 +95,7 @@ local function handler()
     -- Get file stream
     local stream, err = file_part:stream()
     if err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to create file stream",
-            details = tostring(err)
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create file stream", err)
         return
     end
 
@@ -149,12 +134,7 @@ local function handler()
     )
 
     if err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to upload file",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to upload file", err)
         return
     end
 

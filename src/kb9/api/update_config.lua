@@ -2,6 +2,7 @@ local http = require("http")
 local json = require("json")
 local component = require("component")
 local contract = require("contract")
+local api_error = require("api_error")
 
 local function validate_implementation_options(binding_id, target_contract, options)
     -- Get the target contract definition (embed or query)
@@ -85,12 +86,8 @@ local function handler()
 
     local update_data, decode_err = json.decode(body_str)
     if decode_err then
-        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Invalid JSON in request body: " .. decode_err
-        })
+        api_error.fail(res, http.STATUS.BAD_REQUEST, "Invalid JSON in request body", decode_err)
         return
     end
 
@@ -113,12 +110,8 @@ local function handler()
         )
 
         if not embed_valid then
-            res:set_status(http.STATUS.BAD_REQUEST)
             res:set_content_type(http.CONTENT.JSON)
-            res:write_json({
-                success = false,
-                error = "Embed contract validation failed: " .. (embed_err or "unknown error")
-            })
+            api_error.fail(res, http.STATUS.BAD_REQUEST, "Embed contract validation failed", embed_err)
             return
         end
     end
@@ -142,12 +135,8 @@ local function handler()
         )
 
         if not query_valid then
-            res:set_status(http.STATUS.BAD_REQUEST)
             res:set_content_type(http.CONTENT.JSON)
-            res:write_json({
-                success = false,
-                error = "Query contract validation failed: " .. (query_err or "unknown error")
-            })
+            api_error.fail(res, http.STATUS.BAD_REQUEST, "Query contract validation failed", query_err)
             return
         end
     end
@@ -162,24 +151,16 @@ local function handler()
             status_code = http.STATUS.FORBIDDEN
         end
 
-        res:set_status(status_code)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = kb9_err or "Failed to open KB9 component"
-        })
+        api_error.fail(res, status_code, "Failed to open KB9 component", kb9_err)
         return
     end
 
     -- Update config
     local result, update_err = kb9_instance:update_config(update_data)
     if update_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to update KB9 config: " .. update_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to update KB9 config", update_err)
         return
     end
 

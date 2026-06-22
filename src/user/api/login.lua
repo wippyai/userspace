@@ -6,6 +6,7 @@ local time = require("time")
 local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
+local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -19,12 +20,7 @@ local function handler()
 
     local body, err = req:body_json()
     if err then
-        res:set_status(http.STATUS.BAD_REQUEST)
-        res:write_json({
-            success = false,
-            error = "Invalid JSON request",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.BAD_REQUEST, "Invalid JSON request", err)
         return
     end
 
@@ -59,12 +55,7 @@ local function handler()
             return
         end
 
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Authentication system error",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Authentication system error", err)
         return
     end
 
@@ -128,23 +119,13 @@ local function handler()
 
     local scope, err = security.named_scope(tostring(scope_id))
     if not scope then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to get security scope",
-            details = err or "Scope not found"
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get security scope", err)
         return
     end
 
     local token_store, err = security.token_store(config.token_store)
     if not token_store then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to get token store",
-            details = err or "Unknown error"
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get token store", err)
         return
     end
 
@@ -165,12 +146,7 @@ local function handler()
     token_store:close()
 
     if not token then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = consts.ERROR.TOKEN_CREATION_FAILED,
-            details = err or "Unknown error"
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, consts.ERROR.TOKEN_CREATION_FAILED, err)
         return
     end
 

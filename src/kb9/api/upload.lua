@@ -5,6 +5,7 @@ local component = require("component")
 local consts = require("userspace_consts")
 local store = require("userspace_store")
 local security = require("security")
+local api_error = require("api_error")
 
 local CONTENT_PROVIDER_BINDING_ID = "userspace.uploads:content_provider"
 
@@ -51,12 +52,8 @@ local function handler()
 
     local request_data, decode_err = json.decode(body_str)
     if decode_err then
-        res:set_status(http.STATUS.BAD_REQUEST)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Invalid JSON in request body: " .. decode_err
-        })
+        api_error.fail(res, http.STATUS.BAD_REQUEST, "Invalid JSON in request body", decode_err)
         return
     end
 
@@ -81,12 +78,8 @@ local function handler()
             status_code = http.STATUS.FORBIDDEN
         end
 
-        res:set_status(status_code)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = kb9_err or "Failed to open KB9 component"
-        })
+        api_error.fail(res, status_code, "Failed to open KB9 component", kb9_err)
         return
     end
 
@@ -105,12 +98,8 @@ local function handler()
     }):execute()
 
     if create_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to create operation record: " .. create_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create operation record", create_err)
         return
     end
 
@@ -146,17 +135,13 @@ local function handler()
                     id = operation_id,
                     status = consts.OPERATION_STATUS.FAILED,
                     ops_executed = 0,
-                    error = "Failed to send command: " .. (send_err or "unknown error")
+                    error = "Failed to send command"
                 }
             }
         }):execute()
 
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to send embed command: " .. (send_err or "unknown error")
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to send embed command", send_err)
         return
     end
 

@@ -6,6 +6,7 @@ local time = require("time")
 -- Import our repositories and constants
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
+local api_error = require("api_error")
 
 -- User profile endpoint handler - returns current authenticated user info with security groups
 local function handler()
@@ -58,12 +59,7 @@ local function handler()
     -- Get fresh user security groups from database
     local user_groups, err = user_groups_repo.get_user_groups(user_id)
     if err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to retrieve user security groups",
-            details = err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to retrieve user security groups", err)
         return
     end
 

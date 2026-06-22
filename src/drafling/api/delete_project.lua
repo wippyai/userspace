@@ -2,6 +2,7 @@ local http = require("http")
 local json = require("json")
 local security = require("security")
 local writer = require("writer")
+local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -37,34 +38,22 @@ local function handler()
 
     local batch, batch_err = writer.for_project(user_id, project_id)
     if batch_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to create batch: " .. batch_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to create batch", batch_err)
         return
     end
 
     batch, batch_err = batch:delete_project()
     if batch_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to add delete command: " .. batch_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to add delete command", batch_err)
         return
     end
 
     local result, exec_err = batch:execute()
     if exec_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to execute delete: " .. exec_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to execute delete", exec_err)
         return
     end
 

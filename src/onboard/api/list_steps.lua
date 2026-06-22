@@ -2,6 +2,7 @@ local http = require("http")
 local json = require("json")
 local security = require("security")
 local onboard_registry = require("onboard_registry")
+local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -26,12 +27,8 @@ local function handler()
     -- Get steps from registry
     local steps, err = onboard_registry.find_all()
     if err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to list steps", err)
         return
     end
 

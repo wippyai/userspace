@@ -1,6 +1,7 @@
 local http = require("http")
 local json = require("json")
 local contract = require("contract")
+local api_error = require("api_error")
 
 -- Constants
 local SCHEDULER_SERVICE_CONTRACT = "userspace.scheduler:scheduler"
@@ -16,24 +17,16 @@ local function handler()
     -- Get scheduler service contract
     local scheduler_service, err = contract.get(SCHEDULER_SERVICE_CONTRACT)
     if not scheduler_service then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to get scheduler service: " .. (err or "unknown error")
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get scheduler service", err)
         return
     end
 
     -- Open the service (uses default binding)
     local service, err = scheduler_service:open()
     if not service then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to open scheduler service: " .. (err or "unknown error")
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to open scheduler service", err)
         return
     end
 
@@ -155,12 +148,8 @@ local function handler()
     -- Call the service
     local result, err = service:list_schedules(request_dto)
     if not result then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Service call failed: " .. (err or "unknown error")
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Service call failed", err)
         return
     end
 

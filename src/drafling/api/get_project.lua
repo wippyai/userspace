@@ -2,6 +2,7 @@ local http = require("http")
 local json = require("json")
 local security = require("security")
 local doc_repo = require("doc_repo")
+local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -47,12 +48,8 @@ local function handler()
             return
         end
 
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = "Failed to get project: " .. err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get project", err)
         return
     end
 
@@ -60,12 +57,8 @@ local function handler()
     if include_categories == "true" then
         local categories, cat_err = doc_repo.get_categories(project_id)
         if cat_err then
-            res:set_status(http.STATUS.INTERNAL_ERROR)
             res:set_content_type(http.CONTENT.JSON)
-            res:write_json({
-                success = false,
-                error = "Failed to get categories: " .. cat_err
-            })
+            api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to get categories", cat_err)
             return
         end
         project.categories = categories

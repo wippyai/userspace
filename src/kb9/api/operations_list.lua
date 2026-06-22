@@ -1,6 +1,7 @@
 local http = require("http")
 local component = require("component")
 local reader = require("userspace_reader")
+local api_error = require("api_error")
 
 local function handler()
     local res = http.response()
@@ -39,12 +40,8 @@ local function handler()
             status_code = http.STATUS.FORBIDDEN
         end
 
-        res:set_status(status_code)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = kb9_err or "Failed to open KB9 component"
-        })
+        api_error.fail(res, status_code, "Failed to open KB9 component", kb9_err)
         return
     end
 
@@ -63,24 +60,16 @@ local function handler()
     local operations, list_err = ops_reader:limit(limit):offset(offset):all()
 
     if list_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = list_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to list operations", list_err)
         return
     end
 
     local total, count_err = ops_reader:count()
 
     if count_err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
         res:set_content_type(http.CONTENT.JSON)
-        res:write_json({
-            success = false,
-            error = count_err
-        })
+        api_error.fail(res, http.STATUS.INTERNAL_ERROR, "Failed to count operations", count_err)
         return
     end
 
