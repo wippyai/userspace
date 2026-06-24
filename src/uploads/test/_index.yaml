@@ -41,6 +41,19 @@ entries:
       server: gateway
     prefix: /api
 
+  - name: api.public
+    kind: http.router
+    meta:
+      comment: Test public API router
+      server: gateway
+    prefix: /api/public
+
+  - name: encryption_key
+    kind: env.variable
+    readonly: false
+    storage: app:env_storage
+    default: "046e5a0594bb339ef5ddcd8c3a9b9b828ed066d53ee99138ec6da8795e38b55d"
+
   - name: dep.userspace.uploads
     kind: ns.dependency
     meta:
@@ -56,6 +69,41 @@ entries:
       - name: router
         value: app:api
 
+  - name: dep.wippy.session
+    kind: ns.dependency
+    meta:
+      description: "Session module configuration for testing (wires env_storage so the file_provider contract loads)"
+    component: "wippy/session"
+    parameters:
+      - name: database_resource
+        value: app:db
+      - name: env_storage
+        value: app:env_storage
+      - name: api_router
+        value: app:api.public
+
+  - name: dep.wippy.llm
+    kind: ns.dependency
+    meta:
+      description: "LLM module configuration for testing"
+    component: "wippy/llm"
+    parameters:
+      - name: process_host
+        value: app:processes
+      - name: env_storage
+        value: app:env_storage
+
+  - name: dep.wippy.views
+    kind: ns.dependency
+    meta:
+      description: "Views module for rendering"
+    component: "wippy/views"
+    parameters:
+      - name: api_router
+        value: app:api.public
+      - name: env_storage
+        value: app:env_storage
+
   - name: dep.wippy.bootloader
     kind: ns.dependency
     meta:
@@ -66,3 +114,16 @@ entries:
         value: app:processes
       - name: env_storage
         value: app:env_storage
+
+  - name: file_provider_test
+    kind: function.lua
+    meta:
+      name: Uploads file_provider compliance
+      type: test
+      suite: uploads
+    source: file://file_provider_test.lua
+    modules:
+      - contract
+    imports:
+      test: wippy.test:test
+    method: run
