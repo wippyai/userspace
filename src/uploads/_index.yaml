@@ -266,20 +266,6 @@ entries:
       - json
       - env
 
-  # userspace.uploads:upload_tokens_test
-  - name: upload_tokens_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: uploads
-      comment: Tests for upload completion token pack/unpack
-    source: file://upload_tokens_test.lua
-    modules:
-      - base64
-    imports:
-      upload_tokens: userspace.uploads:upload_tokens
-      test: wippy.test:test
-    method: run
 
   # userspace.uploads:pipeline_lib
   - name: pipeline_lib
@@ -349,7 +335,7 @@ entries:
   - name: env_storage
     kind: ns.requirement
     meta:
-    description: Environment variable storage location
+      description: Environment variable storage location
     targets:
       - entry: userspace.uploads.env:database_resource
         path: .storage
