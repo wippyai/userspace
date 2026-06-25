@@ -109,6 +109,32 @@ entries:
           count_resources: userspace.uploads:count_resources_func
           list_resources: userspace.uploads:list_resources_func
 
+  # userspace.uploads:file_provider_func
+  - name: file_provider_func
+    kind: function.lua
+    meta:
+      comment: file_provider.get_info -- resolve a file_uuid to its upload record for session prompt building.
+    source: file://file_provider_func.lua
+    method: get_info
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+
+  # userspace.uploads:file_provider -- default implementation of the session-owned contract
+  - name: file_provider
+    kind: contract.binding
+    meta:
+      comment: Default implementation of wippy.session:file_provider over the upload repository.
+      tags:
+        - uploads
+        - session
+        - file_provider
+        - binding
+    contracts:
+      - contract: wippy.session:file_provider
+        default: true
+        methods:
+          get_info: userspace.uploads:file_provider_func
+
   # userspace.uploads:content_repo
   - name: content_repo
     kind: library.lua
@@ -376,6 +402,7 @@ entries:
     modules:
       - json
       - time
+      - sql
     imports:
       uploads_resources: userspace.uploads:uploads_resources
 
