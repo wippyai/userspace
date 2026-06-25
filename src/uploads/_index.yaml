@@ -109,6 +109,34 @@ entries:
           count_resources: userspace.uploads:count_resources_func
           list_resources: userspace.uploads:list_resources_func
 
+  # userspace.uploads:file_provider_func
+  - name: file_provider_func
+    kind: function.lua
+    meta:
+      comment: file_provider.get_info -- resolve a file_uuid to its upload record for session prompt building.
+    source: file://file_provider_func.lua
+    method: get_info
+    imports:
+      upload_repo: userspace.uploads:upload_repo
+
+  # userspace.uploads:file_provider -- default implementation of the session-owned
+  # wippy.session:file_provider contract, so the session resolves message attachments
+  # through uploads. An app may bind its own provider instead.
+  - name: file_provider
+    kind: contract.binding
+    meta:
+      comment: Default implementation of wippy.session:file_provider over the upload repository.
+      tags:
+        - uploads
+        - session
+        - file_provider
+        - binding
+    contracts:
+      - contract: wippy.session:file_provider
+        default: true
+        methods:
+          get_info: userspace.uploads:file_provider_func
+
   # userspace.uploads:content_repo
   - name: content_repo
     kind: library.lua
@@ -238,20 +266,6 @@ entries:
       - json
       - env
 
-  # userspace.uploads:upload_tokens_test
-  - name: upload_tokens_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: uploads
-      comment: Tests for upload completion token pack/unpack
-    source: file://upload_tokens_test.lua
-    modules:
-      - base64
-    imports:
-      upload_tokens: userspace.uploads:upload_tokens
-      test: wippy.test:test
-    method: run
 
   # userspace.uploads:pipeline_lib
   - name: pipeline_lib
@@ -321,7 +335,7 @@ entries:
   - name: env_storage
     kind: ns.requirement
     meta:
-    description: Environment variable storage location
+      description: Environment variable storage location
     targets:
       - entry: userspace.uploads.env:database_resource
         path: .storage
