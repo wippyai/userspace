@@ -304,6 +304,7 @@ entries:
       comment: Repository for managing file uploads
     source: file://upload_repo.lua
     modules:
+      - sql
       - json
       - time
     imports:
