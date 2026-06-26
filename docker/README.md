@@ -245,4 +245,4 @@ end
 
 ## License
 
-Apache-2.0
+MPL-2.0
