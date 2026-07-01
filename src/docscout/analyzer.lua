@@ -1,7 +1,6 @@
 local llm = require("llm")
 local prompt = require("prompt")
 local embeddings = require("embeddings")
-local json = require("json")
 
 local MODELS = {
     QUERY_GENERATION = "gpt-4.1",

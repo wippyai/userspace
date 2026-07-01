@@ -1,4 +1,3 @@
-local json = require("json")
 local extractor = require("extractor")
 
 -- Helper function for consistent logging

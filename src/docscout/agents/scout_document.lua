@@ -1,6 +1,5 @@
 local embeddings = require("embeddings")
 local security = require("security")
-local json = require("json")
 
 local function execute(params)
     -- Validate required parameters
