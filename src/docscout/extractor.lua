@@ -3,7 +3,6 @@ local prompter_module = require("prompter")
 local registry = require("config_registry")
 local llm = require("llm")
 local funcs = require("funcs")
-local json = require("json")
 
 local ANALYZER_FUNCTION_ID = "userspace.docscout:analyzer"
 
