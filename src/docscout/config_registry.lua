@@ -1,5 +1,4 @@
 local internal_registry = require("registry")
-local json = require("json")
 
 -- Create registry utilities helper module
 local registry = {}

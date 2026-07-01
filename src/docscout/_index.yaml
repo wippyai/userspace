@@ -20,7 +20,7 @@ entries:
       embeddings: wippy.embeddings:embeddings
       llm: wippy.llm:llm
     method: analyze_document_chunks
-    
+
   # userspace.docscout:config_registry
   - name: config_registry
     kind: library.lua
@@ -29,7 +29,7 @@ entries:
     source: file://config_registry.lua
     modules:
       - registry
-    
+
   # userspace.docscout:extractor
   - name: extractor
     kind: library.lua
@@ -37,13 +37,13 @@ entries:
       comment: High-level extraction orchestration
     source: file://extractor.lua
     modules:
-      - json
       - funcs
     imports:
       llm: wippy.llm:llm
       prompter: userspace.docscout:prompter
       state: userspace.docscout:state
-    
+      config_registry: userspace.docscout:config_registry
+
   # userspace.docscout:prompter
   - name: prompter
     kind: library.lua
@@ -52,7 +52,7 @@ entries:
     source: file://prompter.lua
     modules:
       - json
-    
+
   # userspace.docscout:state
   - name: state
     kind: library.lua
@@ -64,4 +64,3 @@ entries:
     imports:
       config_registry: userspace.docscout:config_registry
       embeddings: wippy.embeddings:embeddings
-    
