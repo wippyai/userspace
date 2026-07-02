@@ -40,6 +40,7 @@ entries:
       - env
       - hash
       - crypto
+      - sql
 
   # userspace.user.migrations:03_create_token_store_table
   - name: 03_create_token_store_table
