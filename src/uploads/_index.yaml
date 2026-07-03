@@ -109,34 +109,6 @@ entries:
           count_resources: userspace.uploads:count_resources_func
           list_resources: userspace.uploads:list_resources_func
 
-  # userspace.uploads:file_provider_func
-  - name: file_provider_func
-    kind: function.lua
-    meta:
-      comment: file_provider.get_info -- resolve a file_uuid to its upload record for session prompt building.
-    source: file://file_provider_func.lua
-    method: get_info
-    imports:
-      upload_repo: userspace.uploads:upload_repo
-
-  # userspace.uploads:file_provider -- default implementation of the session-owned
-  # wippy.session:file_provider contract, so the session resolves message attachments
-  # through uploads. An app may bind its own provider instead.
-  - name: file_provider
-    kind: contract.binding
-    meta:
-      comment: Default implementation of wippy.session:file_provider over the upload repository.
-      tags:
-        - uploads
-        - session
-        - file_provider
-        - binding
-    contracts:
-      - contract: wippy.session:file_provider
-        default: true
-        methods:
-          get_info: userspace.uploads:file_provider_func
-
   # userspace.uploads:content_repo
   - name: content_repo
     kind: library.lua
@@ -221,38 +193,99 @@ entries:
       upload_repo: userspace.uploads:upload_repo
     method: handle
 
-  # userspace.uploads:pipeline
-  - name: pipeline
+  # Queue configuration requirements
+  - name: queue_max_length
+    kind: ns.requirement
+    meta:
+      description: Maximum capacity of the upload processing queue
+    default: "10000"
+    targets:
+      - entry: userspace.uploads.env:queue_max_length
+        path: .default
+
+  - name: queue_concurrency
+    kind: ns.requirement
+    meta:
+      description: Number of concurrent workers processing uploads
+    default: "20"
+    targets:
+      - entry: userspace.uploads.env:queue_concurrency
+        path: .default
+
+  - name: queue_prefetch
+    kind: ns.requirement
+    meta:
+      description: Message buffer size for the upload consumer
+    default: "50"
+    targets:
+      - entry: userspace.uploads.env:queue_prefetch
+        path: .default
+
+  # Queue infrastructure for upload processing
+  - name: queue_driver
+    kind: queue.driver.memory
+    lifecycle:
+      auto_start: true
+
+  - name: process_queue
+    kind: queue.queue
+    driver: userspace.uploads:queue_driver
+    options:
+      queue_name: upload_processing
+      max_length: 10000
+
+  # userspace.uploads:process_worker
+  - name: process_worker
+    kind: function.lua
+    meta:
+      comment: Queue worker that processes uploaded files through type-specific pipelines
+    source: file://process_worker.lua
+    modules:
+      - json
+      - logger
+    imports:
+      pipeline_lib: userspace.uploads:pipeline_lib
+      upload_repo: userspace.uploads:upload_repo
+    method: handler
+
+  - name: process_consumer
+    kind: queue.consumer
+    queue: userspace.uploads:process_queue
+    func: userspace.uploads:process_worker
+    concurrency: 20
+    prefetch: 50
+    lifecycle:
+      auto_start: true
+      depends_on:
+        - userspace.uploads:process_queue
+
+  # userspace.uploads:recover_pending
+  - name: recover_pending
     kind: process.lua
     meta:
-      comment: Process that manages upload processing pipeline
-    source: file://pipeline.lua
+      comment: Startup function that re-publishes pending uploads to the queue
+    source: file://recover_pending.lua
     modules:
-      - time
+      - json
+      - queue
       - logger
-      - env
     imports:
-      content_repo: userspace.uploads:content_repo
-      pipeline_lib: userspace.uploads:pipeline_lib
-      upload_lib: userspace.uploads:upload_lib
       upload_repo: userspace.uploads:upload_repo
-      upload_type: userspace.uploads:upload_type
     method: run
 
-  # userspace.uploads:pipeline.service
-  - name: pipeline.service
+  - name: recover_pending.service
     kind: process.service
     meta:
-      comment: Upload Processing Pipeline Service
+      comment: Re-enqueue pending uploads on startup
     host: app:processes
     lifecycle:
       depends_on:
-        - app:processes
+        - userspace.uploads:process_consumer
       auto_start: true
       security:
         groups:
           - wippy.security:process
-    process: pipeline
+    process: recover_pending
 
   # userspace.uploads:upload_tokens
   - name: upload_tokens
@@ -266,6 +299,20 @@ entries:
       - json
       - env
 
+  # userspace.uploads:upload_tokens_test
+  - name: upload_tokens_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: uploads
+      comment: Tests for upload completion token pack/unpack
+    source: file://upload_tokens_test.lua
+    modules:
+      - base64
+    imports:
+      upload_tokens: userspace.uploads:upload_tokens
+      test: wippy.test:test
+    method: run
 
   # userspace.uploads:pipeline_lib
   - name: pipeline_lib
@@ -292,10 +339,15 @@ entries:
       - uuid
       - json
       - time
+      - queue
+      - funcs
+      - security
+      - logger
     imports:
       upload_repo: userspace.uploads:upload_repo
       upload_type: userspace.uploads:upload_type
       uploads_resources: userspace.uploads:uploads_resources
+      content_repo: userspace.uploads:content_repo
 
   # userspace.uploads:upload_repo
   - name: upload_repo
@@ -304,7 +356,6 @@ entries:
       comment: Repository for managing file uploads
     source: file://upload_repo.lua
     modules:
-      - sql
       - json
       - time
     imports:
@@ -336,11 +387,17 @@ entries:
   - name: env_storage
     kind: ns.requirement
     meta:
-      description: Environment variable storage location
+    description: Environment variable storage location
     targets:
       - entry: userspace.uploads.env:database_resource
         path: .storage
       - entry: userspace.uploads.env:storage_id
         path: .storage
       - entry: userspace.uploads.env:storage_s3
+        path: .storage
+      - entry: userspace.uploads.env:queue_max_length
+        path: .storage
+      - entry: userspace.uploads.env:queue_concurrency
+        path: .storage
+      - entry: userspace.uploads.env:queue_prefetch
         path: .storage

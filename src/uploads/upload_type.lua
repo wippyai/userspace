@@ -107,6 +107,19 @@ function upload_type.get_processors(type_id)
     return processors
 end
 
+function upload_type.get_on_delete(type_id)
+    local entry, err = upload_type.get_by_id(type_id)
+    if not entry then
+        return nil, err
+    end
+
+    if not entry.data or not entry.data.on_delete or #entry.data.on_delete == 0 then
+        return nil
+    end
+
+    return entry.data.on_delete
+end
+
 -- Get all available upload types
 function upload_type.list_all()
     -- Find all upload type entries
