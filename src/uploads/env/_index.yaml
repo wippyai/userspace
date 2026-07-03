@@ -28,30 +28,3 @@ entries:
       icon: tabler:cloud-upload
       private: true
     default: app:uploads.s3
-
-  # userspace.uploads.env:queue_max_length
-  - name: queue_max_length
-    kind: env.variable
-    meta:
-      comment: Maximum capacity of the upload processing queue
-      icon: tabler:stack
-      private: true
-    default: "10000"
-
-  # userspace.uploads.env:queue_concurrency
-  - name: queue_concurrency
-    kind: env.variable
-    meta:
-      comment: Number of concurrent workers processing uploads
-      icon: tabler:users
-      private: true
-    default: "20"
-
-  # userspace.uploads.env:queue_prefetch
-  - name: queue_prefetch
-    kind: env.variable
-    meta:
-      comment: Message buffer size for the upload consumer
-      icon: tabler:package
-      private: true
-    default: "50"

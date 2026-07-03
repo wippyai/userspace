@@ -225,28 +225,30 @@ entries:
     kind: ns.requirement
     meta:
       description: Maximum capacity of the upload processing queue
-    default: "10000"
+    default: 10000
     targets:
-      - entry: userspace.uploads.env:queue_max_length
-        path: .default
+      - entry: userspace.uploads:process_queue
+        path: .driver_options.memory.max_length
+      - entry: userspace.uploads:process_queue
+        path: .driver_options.amqp.max_length
 
   - name: queue_concurrency
     kind: ns.requirement
     meta:
       description: Number of concurrent workers processing uploads
-    default: "20"
+    default: 20
     targets:
-      - entry: userspace.uploads.env:queue_concurrency
-        path: .default
+      - entry: userspace.uploads:process_consumer
+        path: .concurrency
 
   - name: queue_prefetch
     kind: ns.requirement
     meta:
       description: Message buffer size for the upload consumer
-    default: "50"
+    default: 50
     targets:
-      - entry: userspace.uploads.env:queue_prefetch
-        path: .default
+      - entry: userspace.uploads:process_consumer
+        path: .prefetch
 
   # Queue infrastructure for upload processing
   - name: queue_driver
@@ -257,9 +259,12 @@ entries:
   - name: process_queue
     kind: queue.queue
     driver: userspace.uploads:queue_driver
-    options:
-      queue_name: upload_processing
-      max_length: 10000
+    queue_name: upload_processing
+    driver_options:
+      memory:
+        max_length: 10000
+      amqp:
+        max_length: 10000
 
   # userspace.uploads:process_worker
   - name: process_worker
@@ -407,10 +412,4 @@ entries:
       - entry: userspace.uploads.env:storage_id
         path: .storage
       - entry: userspace.uploads.env:storage_s3
-        path: .storage
-      - entry: userspace.uploads.env:queue_max_length
-        path: .storage
-      - entry: userspace.uploads.env:queue_concurrency
-        path: .storage
-      - entry: userspace.uploads.env:queue_prefetch
         path: .storage
