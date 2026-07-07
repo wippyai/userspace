@@ -2,7 +2,7 @@ organization: userspace
 module: component
 version: 0.4.9
 description: Component service and registry for user-owned resources
-license: Apache-2.0
+license: MPL-2.0
 repository: https://github.com/wippyai/userspace
 homepage: https://wippy.ai
 keywords:

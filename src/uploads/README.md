@@ -85,4 +85,4 @@ Provides content_provider and resource_registry contract implementations:
 
 ## License
 
-Apache-2.0
+MPL-2.0

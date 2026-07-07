@@ -1,7 +1,7 @@
 organization: userspace
 module: knowledge
 description: Knowledge system interface contracts
-license: Apache-2.0
+license: MPL-2.0
 repository: https://github.com/wippyai/userspace
 homepage: https://wippy.ai
 keywords:

@@ -42,4 +42,4 @@ Userspace components for user management, authentication, and service integratio
 
 ## License
 
-Apache-2.0
+MPL-2.0
