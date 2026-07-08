@@ -1,16 +1,10 @@
 local json = require("json")
 local time = require("time")
-
+local sql = require("sql")
 local resources = require("uploads_resources")
 
 local upload_repo = {}
 
--- Get current Unix timestamp (seconds since epoch)
-local function current_timestamp()
-    return time.now():unix()
-end
-
--- Create a new upload record
 function upload_repo.create(uuid, user_id, size, mime_type, storage_id, storage_path, type_id, metadata, status)
     if status == nil then status = "uploaded" end
 

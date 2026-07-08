@@ -1,15 +1,10 @@
 local json = require("json")
 local time = require("time")
 local uuid = require("uuid")
-
+local sql = require("sql")
 local resources = require("uploads_resources")
 
 local content_repo = {}
-
--- Get current Unix timestamp (seconds since epoch)
-local function current_timestamp()
-    return time.now():unix()
-end
 
 -- Create a new content record
 function content_repo.create(upload_id, mime_type, content, metadata)
