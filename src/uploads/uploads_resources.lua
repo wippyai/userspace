@@ -42,9 +42,12 @@ function resources.get_storage(storage_id)
     return storage
 end
 
+function resources.get_s3_id()
+    return env.get(ENV.STORAGE_S3) or DEFAULTS.STORAGE_S3
+end
+
 function resources.get_s3()
-    local id = env.get(ENV.STORAGE_S3) or DEFAULTS.STORAGE_S3
-    local s3, err = cloudstorage.get(id)
+    local s3, err = cloudstorage.get(resources.get_s3_id())
     if err then
         return nil, "Failed to get S3 storage: " .. err
     end

@@ -344,7 +344,7 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
         user_id,
         size,
         mime_type,
-        "uploads.s3",
+        resources.get_s3_id(),
         object_key,
         type_id,
         metadata,
