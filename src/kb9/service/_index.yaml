@@ -33,6 +33,7 @@ entries:
     modules:
       - time
       - logger
+      - json
     imports:
       consts: userspace.kb9:consts
       embed_lib: userspace.kb9.service:embed_lib
