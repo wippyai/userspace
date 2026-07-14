@@ -1,5 +1,3 @@
-local ctx = require("ctx")
-local json = require("json")
 local uuid = require("uuid")
 local time = require("time")
 local component = require("component")
