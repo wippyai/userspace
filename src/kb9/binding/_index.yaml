@@ -31,8 +31,7 @@ entries:
         - service
     source: file://create_kb9_func.lua
     modules:
-      - ctx
-      - json
+      - time
       - uuid
     imports:
       component: userspace.component:component
