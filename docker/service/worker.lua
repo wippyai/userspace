@@ -187,6 +187,7 @@ local function run_managed(docker, db_id, c, root_pid)
         group_add = cfg.group_add :: {string}?,
         devices = cfg.devices :: {table}?,
         device_requests = cfg.device_requests :: {table}?,
+        runtime = cfg.runtime and tostring(cfg.runtime) or nil,
         args = cfg.args :: {string}?,
         entrypoint = cfg.entrypoint :: {string}?,
     })
@@ -205,48 +206,64 @@ local function run_managed(docker, db_id, c, root_pid)
     end
 
     local create_params = {}
+    local docker_id: string = ""
+    local adopted = false
     if c.name then
         create_params.name = c.name
-        -- A container left by an ungraceful shutdown keeps this name and its host
-        -- ports, which makes create conflict. Reclaim it first; a failure here is
-        -- logged and left for create to surface.
-        local _, reclaim_err = reclaim.reclaim_existing(docker, tostring(c.name))
-        if reclaim_err then
-            logger:warn("reclaim existing container failed before create", {
-                name = tostring(c.name),
-                error = tostring(reclaim_err),
-            })
+        -- A same-name container from a prior run may survive a host or service
+        -- restart. The name is the workload's identity: when the survivor is
+        -- RUNNING, adopt it into this row instead of removing a healthy workload
+        -- just to recreate it (which drops availability for the whole start
+        -- window). Anything not running is reclaimed so create can rebind the
+        -- name and its host ports; a reclaim failure is logged and left for
+        -- create to surface.
+        local info, ierr = docker:inspect_container(tostring(c.name))
+        if not ierr and info and info.Id and info.State and info.State.Running then
+            docker_id = tostring(info.Id)
+            adopted = true
+        else
+            local _, reclaim_err = reclaim.reclaim_existing(docker, tostring(c.name))
+            if reclaim_err then
+                logger:warn("reclaim existing container failed before create", {
+                    name = tostring(c.name),
+                    error = tostring(reclaim_err),
+                })
+            end
         end
     end
 
-    local created, create_err = docker:create_container(container_config, create_params)
-    if create_err then
-        containers_repo.update_status(db, cid, consts.status.FAILED, {
-            error = "create: " .. tostring(create_err),
-            stopped_at = os.time(),
-        })
-        db:release()
-        notify_status(root_pid, cid, consts.status.FAILED, { error = "create: " .. tostring(create_err) })
-        return
+    if not adopted then
+        local created, create_err = docker:create_container(container_config, create_params)
+        if create_err then
+            containers_repo.update_status(db, cid, consts.status.FAILED, {
+                error = "create: " .. tostring(create_err),
+                stopped_at = os.time(),
+            })
+            db:release()
+            notify_status(root_pid, cid, consts.status.FAILED, { error = "create: " .. tostring(create_err) })
+            return
+        end
+        docker_id = tostring(created.Id)
     end
 
-    local docker_id: string = tostring(created.Id)
     containers_repo.update_status(db, cid, consts.status.RUNNING, {
         docker_id = docker_id,
         started_at = os.time(),
     })
     notify_status(root_pid, cid, consts.status.RUNNING, { docker_id = docker_id })
 
-    local _, start_err = docker:start_container(docker_id)
-    if start_err then
-        containers_repo.update_status(db, cid, consts.status.FAILED, {
-            error = "start: " .. tostring(start_err),
-            stopped_at = os.time(),
-        })
-        db:release()
-        notify_status(root_pid, cid, consts.status.FAILED, { error = "start: " .. tostring(start_err) })
-        docker:remove_container(docker_id, true)
-        return
+    if not adopted then
+        local _, start_err = docker:start_container(docker_id)
+        if start_err then
+            containers_repo.update_status(db, cid, consts.status.FAILED, {
+                error = "start: " .. tostring(start_err),
+                stopped_at = os.time(),
+            })
+            db:release()
+            notify_status(root_pid, cid, consts.status.FAILED, { error = "start: " .. tostring(start_err) })
+            docker:remove_container(docker_id, true)
+            return
+        end
     end
 
     -- Release DB before blocking poll loop — reacquire after
