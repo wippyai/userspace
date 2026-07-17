@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/wippyai/userspace/compare/v0.4.0...v0.5.0) (2026-07-17)
+
+
+### Features
+
+* **docker:** OCI runtime passthrough + adopt running same-name containers ([616a151](https://github.com/wippyai/userspace/commit/616a151bbe73c7ea1418792ed621995848ebebeb))
+* **docker:** OCI runtime passthrough + adopt running same-name containers ([9fe25af](https://github.com/wippyai/userspace/commit/9fe25af845a8e68418b078847894819c85f2e512))
+
 ## [0.4.0](https://github.com/wippyai/userspace/compare/v0.3.13...v0.4.0) (2026-07-09)
 
 
