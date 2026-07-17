@@ -32,6 +32,7 @@ function spec.build_container_config(c: {
     group_add: {string}?,
     devices: {table}?,
     device_requests: {table}?,
+    runtime: string?,
     args: {string}?,
     entrypoint: {string}?,
 }): {[string]: any}
@@ -141,6 +142,13 @@ function spec.build_container_config(c: {
             })
         end
         if #requests > 0 then host_config.DeviceRequests = requests end
+    end
+
+    -- Run under a specific OCI runtime (e.g. "nvidia" for GPU workloads), so GPU
+    -- access does not require the daemon's default-runtime to be nvidia. On such
+    -- nodes DeviceRequests alone is a no-op; the runtime is what injects the GPU.
+    if c.runtime then
+        host_config.Runtime = c.runtime
     end
 
     -- args run as raw Cmd against the image entrypoint (e.g. an ENTRYPOINT-based
