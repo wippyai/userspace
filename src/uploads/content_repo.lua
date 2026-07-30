@@ -246,9 +246,9 @@ function content_repo.update_metadata(content_id, metadata)
 
     -- First get existing metadata
     local current, err = content_repo.get(content_id)
-    if err then
+    if err or not current then
         db:release()
-        return nil, "Failed to get current metadata: " .. err
+        return nil, "Failed to get current metadata: " .. tostring(err or "content not found")
     end
 
     local current_metadata = current.metadata or {}
