@@ -27,4 +27,71 @@ entries:
     store: userspace.user.security:token_storage
     token_key: ${ENV_TOKEN_KEY:-userspace-auth-key}
     token_length: 32
+
+  # userspace.user.security:login_db_access
+  - name: login_db_access
+    kind: security.policy
+    meta:
+      comment: Login may open only the users database supplied by the host application through target_db
+      description: Grants db.get on the database resource injected by the target_db requirement
+    policy:
+      resources: []
+      actions:
+        - db.get
+      effect: allow
+
+  # userspace.user.security:login_env_read
+  - name: login_env_read
+    kind: security.policy
+    meta:
+      comment: Login may read only the Users authentication configuration entries
+      description: Grants env.get on the module's own env entries and nothing else
+    policy:
+      resources:
+        - userspace.user.env:database_resource
+        - userspace.user.env:admin_group_id
+        - userspace.user.env:admin_init_enabled
+        - userspace.user.env:default_group_id
+        - userspace.user.env:token_expiration
+      actions:
+        - env.get
+      effect: allow
+
+  # userspace.user.security:login_actor_create
+  - name: login_actor_create
+    kind: security.policy
+    meta:
+      comment: Login may create the authenticated actor after credential verification
+      description: Grants security.actor.create so the verified user becomes the request actor
+    policy:
+      resources: "*"
+      actions:
+        - security.actor.create
+      effect: allow
+
+  # userspace.user.security:login_role_resolve
+  - name: login_role_resolve
+    kind: security.policy
+    meta:
+      comment: Login may resolve the security groups assigned to the authenticated user
+      description: Grants security.policy_group.get for group membership resolution at login
+    policy:
+      resources: "*"
+      actions:
+        - security.policy_group.get
+      effect: allow
+
+  # userspace.user.security:login_token_mint
+  - name: login_token_mint
+    kind: security.policy
+    meta:
+      comment: Login may issue sessions only through the Users token store
+      description: Grants token store access and token creation on the module's own store
+    policy:
+      resources:
+        - userspace.user.security:tokens
+      actions:
+        - security.token_store.get
+        - security.token.create
+      effect: allow
     

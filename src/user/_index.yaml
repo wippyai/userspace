@@ -30,6 +30,15 @@ entries:
         path: ".storage"
     default: "userspace.user.env:envs"
 
+  - name: target_db
+    kind: ns.requirement
+    meta:
+      description: Database resource holding the user tables; granted to the login handler's db.get policy
+    default: "app:db"
+    targets:
+      - entry: userspace.user.security:login_db_access
+        path: ".policy.resources +="
+
   - name: public_router
     kind: ns.requirement
     meta:
