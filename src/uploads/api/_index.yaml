@@ -15,8 +15,6 @@ entries:
     imports:
       upload_lib: userspace.uploads:upload_lib
     method: handler
-    pool:
-      size: 5
 
   # userspace.uploads.api:complete_handler.endpoint
   - name: complete_handler.endpoint
@@ -42,8 +40,6 @@ entries:
       upload_lib: userspace.uploads:upload_lib
       upload_repo: userspace.uploads:upload_repo
     method: delete_handler
-    pool:
-      size: 2
 
   # userspace.uploads.api:delete_handler.endpoint
   - name: delete_handler.endpoint
@@ -69,8 +65,6 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
     method: get_handler
-    pool:
-      size: 2
 
   # userspace.uploads.api:get_handler.endpoint
   - name: get_handler.endpoint
@@ -96,8 +90,6 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
     method: list_handler
-    pool:
-      size: 2
 
   # userspace.uploads.api:list_handler.endpoint
   - name: list_handler.endpoint
@@ -122,8 +114,6 @@ entries:
     imports:
       upload_lib: userspace.uploads:upload_lib
     method: handler
-    pool:
-      size: 5
 
   # userspace.uploads.api:presigned_handler.endpoint
   - name: presigned_handler.endpoint
@@ -148,8 +138,6 @@ entries:
     imports:
       upload_lib: userspace.uploads:upload_lib
     method: handler
-    pool:
-      size: 5
 
   # userspace.uploads.api:upload_handler.endpoint
   - name: upload_handler.endpoint
