@@ -8,6 +8,7 @@ local logger = require("logger")
 
 local upload_repo = require("upload_repo")
 local upload_type = require("upload_type")
+local pipeline_lib = require("pipeline_lib")
 local resources = require("uploads_resources")
 local content_repo = require("content_repo")
 
@@ -287,6 +288,8 @@ function upload_lib.upload_file(user_id: string, file_data: string | stream.Stre
 
     publish_to_queue(upload_uuid)
 
+    pipeline_lib.invoke_upload_token(upload, pipeline_lib.STATUS.UPLOADED)
+
     return upload
 end
 
@@ -432,6 +435,8 @@ function upload_lib.complete_presigned_url(user_id, upload_id, etag, metadata_up
     end
 
     publish_to_queue(upload_id)
+
+    pipeline_lib.invoke_upload_token(upload, pipeline_lib.STATUS.UPLOADED)
 
     return upload
 end
@@ -667,6 +672,8 @@ function upload_lib.complete_multipart_upload(user_id, upload_id, parts: {{part_
     upload.status = "uploaded"
     upload.updated_at = updated.updated_at
     upload.metadata = metadata
+
+    pipeline_lib.invoke_upload_token(upload, pipeline_lib.STATUS.UPLOADED)
 
     return upload
 end

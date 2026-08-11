@@ -739,7 +739,9 @@ function upload_repo.complete_s3_upload(user_id, upload_id, etag, key, metadata_
         return nil, "Failed to update upload record: " .. tostring(err)
     end
 
-    return updated
+    upload.status = updated.status
+    upload.updated_at = updated.updated_at
+    return upload
 end
 
 function upload_repo.list_with_filters(options)

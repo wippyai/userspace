@@ -48,6 +48,22 @@ local function define_tests()
             test.eq(result.actor_scope, "default")
             test.is_nil(result.on_error_id)
             test.is_nil(result.params)
+            -- Default contract: no early announce unless explicitly requested.
+            test.is_nil(result.announce_uploaded)
+        end)
+
+        it("should carry the opt-in announce_uploaded flag", function()
+            local token, err = upload_tokens.pack({
+                function_id = "my.module:handler",
+                actor_id = "user-123",
+                actor_scope = "default",
+                announce_uploaded = true,
+            })
+            test.is_nil(err)
+
+            local result, uerr = upload_tokens.unpack(token :: string)
+            test.is_nil(uerr)
+            test.eq(result.announce_uploaded, true)
         end)
 
         it("should error on missing function_id", function()

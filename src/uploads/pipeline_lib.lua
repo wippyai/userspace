@@ -78,8 +78,7 @@ function pipeline_lib.merge_metadata(existing_metadata, new_metadata)
     return merged
 end
 
--- Invoke upload completion token callback (fire-and-forget)
-function pipeline_lib.invoke_upload_token(upload, success, error_msg)
+function pipeline_lib.invoke_upload_token(upload, status, error_msg)
     if not upload or not upload.metadata or not upload.metadata.__upload_token then
         return
     end
@@ -90,7 +89,11 @@ function pipeline_lib.invoke_upload_token(upload, success, error_msg)
         return
     end
 
-    local func_id = tostring(success and payload.function_id or payload.on_error_id)
+    if status == STATUS.UPLOADED and not payload.announce_uploaded then
+        return
+    end
+
+    local func_id = tostring(status == STATUS.ERROR and payload.on_error_id or payload.function_id)
     if not func_id or func_id == "nil" then
         return
     end
@@ -118,7 +121,7 @@ function pipeline_lib.invoke_upload_token(upload, success, error_msg)
 
     local _, call_err = executor:call(tostring(func_id), {
         upload_id = upload.uuid,
-        status = success and "completed" or "error",
+        status = status,
         error = error_msg,
         mime_type = upload.mime_type,
         size = upload.size,
@@ -165,7 +168,7 @@ function pipeline_lib.process_upload(upload)
         -- Notify about error status
         pipeline_lib.notify_status_change(upload, STATUS.ERROR, nil, error_msg)
 
-        pipeline_lib.invoke_upload_token(upload, false, error_msg)
+        pipeline_lib.invoke_upload_token(upload, STATUS.ERROR, error_msg)
 
         return false, error_msg
     end
@@ -190,7 +193,7 @@ function pipeline_lib.process_upload(upload)
         -- Notify about error status
         pipeline_lib.notify_status_change(upload, STATUS.ERROR, nil, error_msg)
 
-        pipeline_lib.invoke_upload_token(upload, false, error_msg)
+        pipeline_lib.invoke_upload_token(upload, STATUS.ERROR, error_msg)
 
         return false, error_msg
     end
@@ -245,7 +248,7 @@ function pipeline_lib.process_upload(upload)
             -- Notify about error status with stage info
             pipeline_lib.notify_status_change(upload, STATUS.ERROR, stage_title, error_msg)
 
-            pipeline_lib.invoke_upload_token(upload, false, error_msg)
+            pipeline_lib.invoke_upload_token(upload, STATUS.ERROR, error_msg)
 
             return false, error_msg
         end
@@ -279,7 +282,7 @@ function pipeline_lib.process_upload(upload)
     -- Notify about completion status
     pipeline_lib.notify_status_change(upload, STATUS.COMPLETED)
 
-    pipeline_lib.invoke_upload_token(upload, true, nil)
+    pipeline_lib.invoke_upload_token(upload, STATUS.COMPLETED)
 
     return true
 end
