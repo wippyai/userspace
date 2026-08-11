@@ -56,6 +56,7 @@ local function pack(params)
         params = params.params,
         actor_id = params.actor_id,
         actor_scope = params.actor_scope,
+        announce_uploaded = params.announce_uploaded and true or nil,
         issued_at = os.time(),
     }
 

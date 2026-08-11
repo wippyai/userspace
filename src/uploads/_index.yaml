@@ -373,6 +373,7 @@ entries:
     imports:
       upload_repo: userspace.uploads:upload_repo
       upload_type: userspace.uploads:upload_type
+      pipeline_lib: userspace.uploads:pipeline_lib
       uploads_resources: userspace.uploads:uploads_resources
       content_repo: userspace.uploads:content_repo
 
