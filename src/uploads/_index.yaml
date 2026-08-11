@@ -24,6 +24,8 @@ entries:
         path: .meta.target_db
       - entry: userspace.uploads.migrations:03_create_content_table
         path: .meta.target_db
+      - entry: userspace.uploads.migrations:04_alter_uploads_size_bigint
+        path: .meta.target_db
 
   - name: storage_id
     kind: ns.requirement
@@ -59,6 +61,14 @@ entries:
       - entry: userspace.uploads.api:presigned_handler.endpoint
         path: .meta.router
       - entry: userspace.uploads.api:upload_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api.multipart:init_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api.multipart:parts_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api.multipart:complete_handler.endpoint
+        path: .meta.router
+      - entry: userspace.uploads.api.multipart:abort_handler.endpoint
         path: .meta.router
 
   # Dependencies
@@ -400,6 +410,7 @@ entries:
       - env
       - fs
       - cloudstorage
+      - registry
 
   # userspace.uploads:env_storage
   - name: env_storage

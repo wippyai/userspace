@@ -1,0 +1,105 @@
+version: "1.0"
+namespace: userspace.uploads.api.multipart
+
+entries:
+  # userspace.uploads.api.multipart:request_context
+  - name: request_context
+    kind: library.lua
+    meta:
+      comment: Authenticated JSON request context shared by multipart upload handlers
+    source: file://request_context.lua
+    modules:
+      - http
+      - security
+
+  # userspace.uploads.api.multipart:init_handler
+  - name: init_handler
+    kind: function.lua
+    meta:
+      comment: Start a presigned multipart upload (files beyond the single presigned PUT limit)
+    source: file://init_handler.lua
+    modules:
+      - http
+    imports:
+      request_context: userspace.uploads.api.multipart:request_context
+      upload_lib: userspace.uploads:upload_lib
+    method: handler
+
+  # userspace.uploads.api.multipart:init_handler.endpoint
+  - name: init_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Start multipart upload endpoint
+      router: router
+    method: POST
+    func: init_handler
+    path: /uploads/multipart
+
+  # userspace.uploads.api.multipart:parts_handler
+  - name: parts_handler
+    kind: function.lua
+    meta:
+      comment: Presign part upload URLs for a pending multipart upload
+    source: file://parts_handler.lua
+    modules:
+      - http
+    imports:
+      request_context: userspace.uploads.api.multipart:request_context
+      upload_lib: userspace.uploads:upload_lib
+    method: handler
+
+  # userspace.uploads.api.multipart:parts_handler.endpoint
+  - name: parts_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Presign multipart part URLs endpoint
+      router: router
+    method: POST
+    func: parts_handler
+    path: /uploads/multipart/parts
+
+  # userspace.uploads.api.multipart:complete_handler
+  - name: complete_handler
+    kind: function.lua
+    meta:
+      comment: Complete a multipart upload and enqueue processing
+    source: file://complete_handler.lua
+    modules:
+      - http
+    imports:
+      request_context: userspace.uploads.api.multipart:request_context
+      upload_lib: userspace.uploads:upload_lib
+    method: handler
+
+  # userspace.uploads.api.multipart:complete_handler.endpoint
+  - name: complete_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Complete multipart upload endpoint
+      router: router
+    method: POST
+    func: complete_handler
+    path: /uploads/multipart/complete
+
+  # userspace.uploads.api.multipart:abort_handler
+  - name: abort_handler
+    kind: function.lua
+    meta:
+      comment: Abort a pending multipart upload and discard stored parts
+    source: file://abort_handler.lua
+    modules:
+      - http
+    imports:
+      request_context: userspace.uploads.api.multipart:request_context
+      upload_lib: userspace.uploads:upload_lib
+    method: handler
+
+  # userspace.uploads.api.multipart:abort_handler.endpoint
+  - name: abort_handler.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Abort multipart upload endpoint
+      router: router
+    method: POST
+    func: abort_handler
+    path: /uploads/multipart/abort

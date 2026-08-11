@@ -2,6 +2,7 @@ local sql = require("sql")
 local env = require("env")
 local fs = require("fs")
 local cloudstorage = require("cloudstorage")
+local registry = require("registry")
 
 local ENV = table.freeze({
     DATABASE = "userspace.uploads.env:database_resource",
@@ -46,12 +47,31 @@ function resources.get_s3_id()
     return env.get(ENV.STORAGE_S3) or DEFAULTS.STORAGE_S3
 end
 
-function resources.get_s3()
-    local s3, err = cloudstorage.get(resources.get_s3_id())
+function resources.get_s3(storage_id)
+    local id = storage_id
+    if not id or id == "" then
+        id = resources.get_s3_id()
+    end
+
+    local s3, err = cloudstorage.get(id)
     if err then
         return nil, "Failed to get S3 storage: " .. err
     end
     return s3
+end
+
+function resources.is_cloud_storage(storage_id)
+    local id = resources.get_storage_id(storage_id)
+    if id == resources.get_s3_id() then
+        return true
+    end
+
+    local entry = registry.get(id)
+    if entry and entry.kind then
+        return tostring(entry.kind):find("cloudstorage.", 1, true) == 1
+    end
+
+    return false
 end
 
 return resources

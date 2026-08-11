@@ -263,6 +263,50 @@ function upload_repo.update_storage(uuid, storage_id, storage_path)
     }
 end
 
+-- Update upload size (e.g. after the storage backend reports the real size
+-- of a completed multipart upload)
+function upload_repo.update_size(uuid, size)
+    if not uuid or uuid == "" then
+        return nil, "Upload ID is required"
+    end
+
+    if not size or type(size) ~= "number" or size <= 0 then
+        return nil, "Valid file size is required"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local now = time.now():format(time.RFC3339)
+
+    local query = sql.builder.update("uploads")
+        :set("size", sql.as.int(size))
+        :set("updated_at", now)
+        :where("uuid = ?", uuid)
+
+    local executor = query:run_with(db)
+    local result, err = executor:exec()
+
+    db:release()
+
+    if err then
+        return nil, "Failed to update upload size: " .. err
+    end
+
+    if result.rows_affected == 0 then
+        return nil, "Upload not found"
+    end
+
+    return {
+        uuid = uuid,
+        size = size,
+        updated_at = now,
+        updated = true
+    }
+end
+
 -- Update upload metadata
 function upload_repo.update_metadata(uuid, metadata)
     if not uuid or uuid == "" then

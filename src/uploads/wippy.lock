@@ -5,9 +5,6 @@ modules:
     - name: userspace/contract
       version: 0.4.1
       hash: c154e2cc11ca94ddd368307aced96cfbbd411a58e74e46339d50b4a9befc1d65
-    - name: userspace/uploads
-      version: 0.4.8
-      hash: c1d6a296f9f124b1ccafb015669a1b456a754e94272ac22e8b3f617fa7a5abe0
     - name: wippy/bootloader
       version: 0.3.12
       hash: 2b6d8eba7b46ef900024d3a7dbf06bd560fad645b8b2ac6296e2a8bad42f60b9

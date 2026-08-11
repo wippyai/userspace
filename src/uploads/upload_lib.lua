@@ -183,10 +183,29 @@ local function invoke_on_delete(upload)
     end
 end
 
-function upload_lib.upload_file(user_id: string, file_data: string | stream.Stream, filename: string, size: number, mime_type: string?, storage_id: string?, metadata)
-    local upload_uuid = generate_upload_id()
+local function write_upload_bytes(resolved_storage_id, user_id, upload_uuid, filename, mime_type, file_data)
+    if resources.is_cloud_storage(resolved_storage_id) then
+        local sanitized_filename = filename:gsub("[^%w%.%-_]", "_")
+        local storage_path = user_id .. "/" .. upload_uuid .. "/" .. sanitized_filename
 
-    local storage, err = resources.get_storage(storage_id)
+        local s3, err = resources.get_s3(resolved_storage_id)
+        if err then
+            return nil, err
+        end
+
+        local ok, write_err = s3:upload_object(storage_path, file_data, {
+            content_type = mime_type,
+        })
+        s3:release()
+
+        if not ok then
+            return nil, "Failed to write file: " .. tostring(write_err)
+        end
+
+        return storage_path
+    end
+
+    local storage, err = resources.get_storage(resolved_storage_id)
     if err then
         return nil, err
     end
@@ -196,6 +215,40 @@ function upload_lib.upload_file(user_id: string, file_data: string | stream.Stre
     if ext and ext ~= "" then
         storage_path = storage_path .. "." .. ext
     end
+
+    local success, write_err = storage:writefile(storage_path, file_data)
+    if not success then
+        return nil, "Failed to write file: " .. tostring(write_err)
+    end
+
+    return storage_path
+end
+
+local function remove_upload_bytes(resolved_storage_id, storage_path)
+    if resources.is_cloud_storage(resolved_storage_id) then
+        local s3, err = resources.get_s3(resolved_storage_id)
+        if err then
+            return nil, err
+        end
+        local _, del_err = s3:delete_objects({ storage_path })
+        s3:release()
+        if del_err then
+            return nil, tostring(del_err)
+        end
+        return true
+    end
+
+    local storage, err = resources.get_storage(resolved_storage_id)
+    if err then
+        return nil, err
+    end
+    pcall(function() storage:remove(storage_path) end)
+    return true
+end
+
+function upload_lib.upload_file(user_id: string, file_data: string | stream.Stream, filename: string, size: number, mime_type: string?, storage_id: string?, metadata: any?)
+    local upload_uuid = generate_upload_id()
+    local resolved_storage_id = resources.get_storage_id(storage_id)
 
     metadata = metadata or {}
     metadata.filename = filename
@@ -209,26 +262,26 @@ function upload_lib.upload_file(user_id: string, file_data: string | stream.Stre
         return nil, type_err
     end
 
-    local success
-    success, err = storage:writefile(storage_path, file_data)
-    if not success then
-        return nil, "Failed to write file: " .. err
+    local storage_path, write_err = write_upload_bytes(
+        resolved_storage_id, user_id, upload_uuid, filename, mime_type, file_data
+    )
+    if not storage_path then
+        return nil, write_err
     end
 
-    local upload
-    upload, err = upload_repo.create(
+    local upload, err = upload_repo.create(
         upload_uuid,
         user_id,
         size,
         mime_type,
-        resources.get_storage_id(storage_id),
+        resolved_storage_id,
         storage_path,
         type_id,
         metadata
     )
 
     if err then
-        pcall(function() storage:remove(storage_path) end)
+        pcall(function() remove_upload_bytes(resolved_storage_id, storage_path) end)
         return nil, "Failed to create upload record: " .. err
     end
 
@@ -275,11 +328,9 @@ function upload_lib.delete_upload(uuid)
 
     content_repo.delete_by_upload(uuid)
 
-    local storage, storage_err = resources.get_storage(tostring(upload.storage_id))
-    if storage_err then
-        log:error("failed to get storage for cleanup", { upload_id = uuid, error = storage_err })
-    else
-        pcall(function() storage:remove(tostring(upload.storage_path)) end)
+    local _, cleanup_err = remove_upload_bytes(tostring(upload.storage_id), tostring(upload.storage_path))
+    if cleanup_err then
+        log:error("failed to remove upload bytes", { upload_id = uuid, error = cleanup_err })
     end
 
     return upload_repo.delete(uuid)
@@ -383,6 +434,274 @@ function upload_lib.complete_presigned_url(user_id, upload_id, etag, metadata_up
     publish_to_queue(upload_id)
 
     return upload
+end
+
+local MULTIPART_ID_KEY = "__multipart_upload_id"
+local MULTIPART_MIN_PART_SIZE = 5 * 1024 * 1024
+local MULTIPART_RECOMMENDED_PART_SIZE = 64 * 1024 * 1024
+local MULTIPART_MAX_PARTS = 10000
+
+local function get_multipart_upload(user_id, upload_id)
+    if not user_id or user_id == "" then
+        return nil, "Invalid user ID"
+    end
+
+    if not upload_id or upload_id == "" then
+        return nil, "Invalid upload ID"
+    end
+
+    local upload, err = upload_repo.get(upload_id)
+    if err then
+        return nil, "Failed to retrieve upload record: " .. tostring(err)
+    end
+
+    if upload.user_id ~= user_id then
+        return nil, "Access denied: upload belongs to another user"
+    end
+
+    if not upload.metadata or not upload.metadata[MULTIPART_ID_KEY] then
+        return nil, "Upload is not a multipart upload"
+    end
+
+    return upload
+end
+
+function upload_lib.create_multipart_upload(user_id, filename, size, mime_type, metadata)
+    if not user_id or user_id == "" then
+        return nil, "Invalid user ID"
+    end
+
+    if not filename or filename == "" then
+        return nil, "Invalid filename"
+    end
+
+    if not size or type(size) ~= "number" or size <= 0 then
+        return nil, "Invalid file size"
+    end
+
+    metadata = metadata or {}
+
+    if not mime_type or mime_type == "" or mime_type == "application/octet-stream" then
+        mime_type = get_mime_type_from_extension(filename)
+    end
+
+    -- Fail fast on unsupported types before creating any provider-side state.
+    local type_id, type_err = determine_upload_type(mime_type, filename)
+    if not type_id then
+        return nil, type_err
+    end
+
+    local id = generate_upload_id()
+    local sanitized_filename = filename:gsub("[^%w%.%-_]", "_")
+    local object_key = user_id .. "/" .. id .. "/" .. sanitized_filename
+
+    local s3, err = resources.get_s3()
+    if err then
+        return nil, err
+    end
+
+    local created
+    created, err = s3:create_multipart_upload(object_key, {
+        content_type = mime_type,
+        metadata = {
+            user_id = user_id,
+            original_name = filename,
+            upload_id = id,
+        },
+    })
+    s3:release()
+
+    if err then
+        return nil, "Failed to create multipart upload: " .. tostring(err)
+    end
+
+    metadata.filename = filename
+    metadata.upload_method = "multipart_s3"
+    metadata[MULTIPART_ID_KEY] = created.upload_id
+
+    local _, create_err = upload_repo.create(
+        id,
+        user_id,
+        size,
+        mime_type,
+        resources.get_s3_id(),
+        object_key,
+        type_id,
+        metadata,
+        "pending"
+    )
+
+    if create_err then
+        -- Don't leave an orphaned multipart upload accruing stored parts.
+        local s3c, s3c_err = resources.get_s3()
+        if not s3c_err then
+            pcall(function() s3c:abort_multipart_upload(object_key, created.upload_id) end)
+            s3c:release()
+        end
+        return nil, "Failed to create upload record: " .. tostring(create_err)
+    end
+
+    return {
+        upload_id = id,
+        object_key = object_key,
+        part_size = MULTIPART_RECOMMENDED_PART_SIZE,
+        min_part_size = MULTIPART_MIN_PART_SIZE,
+        max_parts = MULTIPART_MAX_PARTS,
+    }
+end
+
+function upload_lib.multipart_part_urls(user_id, upload_id, part_numbers: {number}, expires_in: number?)
+    local upload, err = get_multipart_upload(user_id, upload_id)
+    if err then
+        return nil, err
+    end
+
+    if upload.status ~= "pending" then
+        return nil, "Upload is in invalid state: " .. tostring(upload.status)
+    end
+
+    if not part_numbers or type(part_numbers) ~= "table" or #part_numbers == 0 then
+        return nil, "At least one part number is required"
+    end
+
+    expires_in = expires_in or 900
+
+    local s3, s3_err = resources.get_s3(tostring(upload.storage_id))
+    if s3_err then
+        return nil, s3_err
+    end
+
+    local urls
+    urls, err = s3:presigned_part_urls(
+        tostring(upload.storage_path),
+        tostring(upload.metadata[MULTIPART_ID_KEY]),
+        {
+            parts = part_numbers,
+            expiration = expires_in,
+        }
+    )
+    s3:release()
+
+    if err then
+        return nil, "Failed to generate part URLs: " .. tostring(err)
+    end
+
+    return urls
+end
+
+function upload_lib.complete_multipart_upload(user_id, upload_id, parts: {{part_number: number, etag: string}}, metadata_updates: any?)
+    local upload, err = get_multipart_upload(user_id, upload_id)
+    if err then
+        return nil, err
+    end
+
+    if upload.status ~= "pending" then
+        if upload.status == "uploaded" then
+            -- Already completed; idempotent like complete_presigned_url.
+            return upload
+        end
+        return nil, "Upload is in invalid state: " .. tostring(upload.status)
+    end
+
+    if not parts or type(parts) ~= "table" or #parts == 0 then
+        return nil, "At least one completed part is required"
+    end
+
+    local object_key = tostring(upload.storage_path)
+
+    local s3, s3_err = resources.get_s3(tostring(upload.storage_id))
+    if s3_err then
+        return nil, s3_err
+    end
+
+    local _, complete_err = s3:complete_multipart_upload(
+        object_key,
+        tostring(upload.metadata[MULTIPART_ID_KEY]),
+        parts
+    )
+
+    if complete_err then
+        s3:release()
+        return nil, "Failed to complete multipart upload: " .. tostring(complete_err)
+    end
+
+    -- Reconcile the declared size with what the storage actually holds —
+    -- multipart is the one path where the backend can tell us for sure.
+    local head, head_err = s3:head_object(object_key)
+    s3:release()
+
+    local metadata = upload.metadata or {}
+    metadata[MULTIPART_ID_KEY] = nil
+    if metadata_updates then
+        for k, v in pairs(metadata_updates) do
+            metadata[k] = v
+        end
+    end
+
+    local _, meta_err = upload_repo.update_metadata(upload_id, metadata)
+    if meta_err then
+        log:error("failed to update multipart metadata", { upload_id = upload_id, error = meta_err })
+    end
+
+    if head_err or not head then
+        log:warn("failed to stat completed multipart object; keeping declared size", {
+            upload_id = upload_id,
+            error = tostring(head_err),
+        })
+    elseif head.size and head.size > 0 and head.size ~= upload.size then
+        local _, size_err = upload_repo.update_size(upload_id, head.size)
+        if size_err then
+            log:warn("failed to reconcile multipart size", { upload_id = upload_id, error = size_err })
+        else
+            upload.size = head.size
+        end
+    end
+
+    local updated, status_err = upload_repo.update_status(upload_id, "uploaded")
+    if status_err then
+        return nil, "Failed to update upload record: " .. tostring(status_err)
+    end
+
+    publish_to_queue(upload_id)
+
+    upload.status = "uploaded"
+    upload.updated_at = updated.updated_at
+    upload.metadata = metadata
+
+    return upload
+end
+
+function upload_lib.abort_multipart_upload(user_id, upload_id)
+    local upload, err = get_multipart_upload(user_id, upload_id)
+    if err then
+        return nil, err
+    end
+
+    if upload.status ~= "pending" then
+        return nil, "Upload is in invalid state: " .. tostring(upload.status)
+    end
+
+    local s3, s3_err = resources.get_s3(tostring(upload.storage_id))
+    if s3_err then
+        return nil, s3_err
+    end
+
+    local _, abort_err = s3:abort_multipart_upload(
+        tostring(upload.storage_path),
+        tostring(upload.metadata[MULTIPART_ID_KEY])
+    )
+    s3:release()
+
+    if abort_err then
+        -- An already-expired/aborted provider upload is fine — the goal is
+        -- to stop tracking it; anything else is only worth a log line.
+        log:warn("abort multipart upload reported an error", {
+            upload_id = upload_id,
+            error = tostring(abort_err),
+        })
+    end
+
+    return upload_repo.delete(upload_id)
 end
 
 return upload_lib

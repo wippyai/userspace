@@ -51,3 +51,18 @@ entries:
       migration: wippy.migration:migration
     method: migrate
     
+  # userspace.uploads.migrations:04_alter_uploads_size_bigint
+  - name: 04_alter_uploads_size_bigint
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - uploads
+        - database
+      description: Widen uploads.size to BIGINT — files beyond 2 GiB overflow the int4 column
+      target_db: app:db
+      timestamp: "2026-08-11T12:00:00Z"
+    source: file://04_alter_uploads_size_bigint.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
