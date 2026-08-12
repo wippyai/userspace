@@ -67,12 +67,45 @@ local uploads = upload_repo.list(options)
 
 ### Processing Pipeline
 
-```lua
-local pipeline = require("userspace.uploads:pipeline")
+Upload types declare a `pipeline:` list of stages; the module runs them in
+order through the `funcs` executor:
 
--- Run content extraction pipeline
-pipeline.run(upload_id)
+```yaml
+- name: types.my_documents
+  kind: registry.entry
+  meta:
+    type: upload.type
+  extensions: [pdf]
+  mime_types: [application/pdf]
+  pipeline:
+    - title: Extracting Text
+      func: app.uploads:extract
+    - title: OCR Processing
+      func: app.uploads:ocr
 ```
+
+Each stage function receives `{ upload_id, mime_type, storage_id,
+storage_path, size, metadata, processor_id }` and may finish in one of three
+ways:
+
+- **Success** — any non-nil result. `result.success` is not inspected. A
+  returned `metadata` table is merged into the upload's metadata and
+  persisted immediately, so later stages and later runs can read it.
+- **Failure** — a raised error (or `nil, err`). The upload is marked
+  `error` and the error callback fires.
+- **Defer** — `{ defer = true, metadata = {...} }` parks the upload:
+  metadata plus a resume cursor are persisted, the upload stays in
+  `processing`, no completion/error callbacks fire and the queue message is
+  acked (the worker is freed). Something external (a job poller, a
+  dispatcher) must later re-publish `{"upload_id": "..."}` to
+  `userspace.uploads:process_queue`; the run then resumes from the deferred
+  stage, skipping the stages before it. The deferring stage re-runs on
+  resume and is responsible for telling "start async work" apart from
+  "work is done" (e.g. via its own metadata or a jobs table). If the
+  pipeline definition changed while parked and the recorded stage no longer
+  exists, the upload fails explicitly instead of silently re-running
+  non-idempotent stages. The cursor is cleared on completion and on error,
+  so re-driving a terminal upload runs the full pipeline again.
 
 ### Multipart Uploads
 
