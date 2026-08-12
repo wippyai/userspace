@@ -200,28 +200,28 @@ entries:
     kind: function.lua
     meta:
       comment: Test pipeline stage recording its run count
-    source: file://pipeline_stages.lua
+    source: file://stage_one.lua
     method: stage_one
 
   - name: stage_defer
     kind: function.lua
     meta:
       comment: Test pipeline stage deferring on its first pass
-    source: file://pipeline_stages.lua
+    source: file://stage_defer.lua
     method: stage_defer
 
   - name: stage_fail
     kind: function.lua
     meta:
       comment: Test pipeline stage that always raises
-    source: file://pipeline_stages.lua
+    source: file://stage_fail.lua
     method: stage_fail
 
   - name: stage_three
     kind: function.lua
     meta:
       comment: Test pipeline stage recording its run count
-    source: file://pipeline_stages.lua
+    source: file://stage_three.lua
     method: stage_three
 
   - name: pipeline_defer_test
