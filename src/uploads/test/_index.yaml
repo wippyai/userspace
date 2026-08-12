@@ -159,3 +159,83 @@ entries:
       uploads_resources: userspace.uploads:uploads_resources
       test: wippy.test:test
     method: run
+
+  - name: type.deferable
+    kind: registry.entry
+    meta:
+      type: upload.type
+      name: Defer test type
+      comment: Pipeline exercising a deferring stage between two normal stages
+    extensions:
+      - dfr
+    mime_types:
+      - application/x-defer-test
+    pipeline:
+      - title: Stage One
+        func: app:stage_one
+      - title: Deferring Stage
+        func: app:stage_defer
+      - title: Stage Three
+        func: app:stage_three
+
+  - name: type.defer_then_fail
+    kind: registry.entry
+    meta:
+      type: upload.type
+      name: Defer-then-fail test type
+      comment: Pipeline where the stage after the deferring one always fails
+    extensions:
+      - dff
+    mime_types:
+      - application/x-defer-fail-test
+    pipeline:
+      - title: Stage One
+        func: app:stage_one
+      - title: Deferring Stage
+        func: app:stage_defer
+      - title: Failing Stage
+        func: app:stage_fail
+
+  - name: stage_one
+    kind: function.lua
+    meta:
+      comment: Test pipeline stage recording its run count
+    source: file://stage_one.lua
+    method: stage_one
+
+  - name: stage_defer
+    kind: function.lua
+    meta:
+      comment: Test pipeline stage deferring on its first pass
+    source: file://stage_defer.lua
+    method: stage_defer
+
+  - name: stage_fail
+    kind: function.lua
+    meta:
+      comment: Test pipeline stage that always raises
+    source: file://stage_fail.lua
+    method: stage_fail
+
+  - name: stage_three
+    kind: function.lua
+    meta:
+      comment: Test pipeline stage recording its run count
+    source: file://stage_three.lua
+    method: stage_three
+
+  - name: pipeline_defer_test
+    kind: function.lua
+    meta:
+      name: Pipeline defer and resume
+      type: test
+      suite: uploads
+      comment: Deferred stages park the upload in processing and resume from the recorded stage
+    source: file://pipeline_defer_test.lua
+    modules:
+      - uuid
+    imports:
+      pipeline_lib: userspace.uploads:pipeline_lib
+      upload_repo: userspace.uploads:upload_repo
+      test: wippy.test:test
+    method: run
