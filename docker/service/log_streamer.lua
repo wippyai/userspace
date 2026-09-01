@@ -12,6 +12,25 @@ local function is_terminal(status)
         or status == consts.status.REMOVED
 end
 
+local function catch_up(db, container_id, client_pid, after_log_id)
+    local cursor = after_log_id
+    while true do
+        local logs, logs_err, page = containers_repo.get_logs(db, container_id,
+            { after_cursor = cursor, limit = 1000 })
+        if logs_err then return cursor end
+        for _, entry in ipairs(logs) do
+            local log_id = tonumber(entry.id) or 0
+            local sequence = tonumber(entry.sequence) or cursor
+            helpers.send_json(client_pid, "ws.message", {
+                event = "log", stream = entry.stream, line = entry.line,
+                log_id = log_id, cursor = sequence,
+            })
+            cursor = sequence
+        end
+        if not page or not page.has_more then return cursor end
+    end
+end
+
 local function run(config: {container_id: string, db_id: string?})
     local container_id = config.container_id
     local db_id = config.db_id or env.get(consts.env.DATABASE_RESOURCE)
@@ -43,7 +62,9 @@ local function run(config: {container_id: string, db_id: string?})
         end
     end
 
-    -- subscribe to root for live events before replaying logs
+    -- Subscribe before reading history. Every event has a durable log_id, so
+    -- messages queued while history is read can be compared to replay_cut and
+    -- never create a replay/live ambiguity.
     local root_pid = process.registry.lookup(consts.registry.ROOT)
     if root_pid then
         process.send(root_pid, consts.topic.SUBSCRIBE, json.encode({
@@ -54,6 +75,7 @@ local function run(config: {container_id: string, db_id: string?})
 
     -- replay existing state from DB
     local last_status = "unknown"
+    local replay_cut = 0
     local db, db_err = sql.get(db_id)
     if db then
         local container = containers_repo.get(db, container_id)
@@ -63,15 +85,9 @@ local function run(config: {container_id: string, db_id: string?})
 
         helpers.send_json(client_pid, "ws.message", { event = "status", status = last_status })
 
-        -- replay historical logs from container_logs table
-        local logs = containers_repo.get_logs(db, container_id)
-        for _, entry in ipairs(logs) do
-            helpers.send_json(client_pid, "ws.message", {
-                event = "log",
-                stream = entry.stream,
-                line = entry.line,
-            })
-        end
+        -- Notifications are only wake hints. The durable rows are always read
+        -- in per-container cursor order, so mailbox order cannot create gaps.
+        replay_cut = catch_up(db, container_id, client_pid, replay_cut)
 
         db:release()
     else
@@ -103,11 +119,11 @@ local function run(config: {container_id: string, db_id: string?})
             local payload = helpers.extract_payload(msg)
 
             if topic == consts.topic.CONTAINER_LOG and payload then
-                helpers.send_json(client_pid, "ws.message", {
-                    event = "log",
-                    stream = payload.stream,
-                    line = payload.line,
-                })
+                local live_db = sql.get(db_id)
+                if live_db then
+                    replay_cut = catch_up(live_db, container_id, client_pid, replay_cut)
+                    live_db:release()
+                end
                 drain_count = 0
             elseif topic == consts.topic.CONTAINER_STATUS and payload then
                 last_status = payload.status
@@ -127,6 +143,11 @@ local function run(config: {container_id: string, db_id: string?})
                 end
             end
         else
+            local poll_db = sql.get(db_id)
+            if poll_db then
+                replay_cut = catch_up(poll_db, container_id, client_pid, replay_cut)
+                poll_db:release()
+            end
             if terminal then
                 drain_count = drain_count + 1
                 if drain_count >= 2 then break end

@@ -49,3 +49,19 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  - name: 04_add_stdin_operations
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - docker
+        - containers
+        - stdin
+      description: Add per-container log cursors and persist acknowledged stdin outcomes
+      target_db: database
+      timestamp: "2026-09-01T12:00:00Z"
+    source: file://04_add_stdin_operations.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

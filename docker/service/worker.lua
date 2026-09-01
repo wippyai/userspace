@@ -20,15 +20,31 @@ end
 
 local function notify_log(db_id, root_pid, cid, stream, line)
     local db = sql.get(db_id)
+    local sequence: number? = nil
+    local log_id: number? = nil
     if db then
-        containers_repo.append_log(db, cid, stream, line)
+        sequence, _, log_id = containers_repo.append_log(db, cid, stream, line)
         db:release()
     end
+    -- A live observation without a durable cursor is not replay-safe.
+    if not sequence or not log_id then return end
     notify_root(root_pid, consts.topic.CONTAINER_LOG, {
         container_id = cid,
         stream = stream,
         line = line,
+        log_id = log_id,
+        cursor = sequence,
     })
+end
+
+local function notify_stdin_result(db_id, root_pid, payload)
+    local db = sql.get(db_id)
+    if db then
+        containers_repo.stdin_settle(db, tostring(payload.operation_id), tostring(payload.state),
+            "native-executor", payload.error and tostring(payload.error) or nil)
+        db:release()
+    end
+    notify_root(root_pid, consts.topic.STDIN_RESULT, payload)
 end
 
 local function notify_status(root_pid, cid, status, extra)
@@ -105,14 +121,17 @@ local function run_interactive(executor, db_id, c, active, root_pid)
                 local chunk_db = sql.get(db_id)
                 for _, line in ipairs(lines) do
                     local text = tostring(line)
+                    local sequence: number? = nil
+                    local log_id: number? = nil
                     if chunk_db then
-                        containers_repo.append_log(chunk_db, cid, stream_name, text)
+                        sequence, _, log_id = containers_repo.append_log(chunk_db, cid, stream_name, text)
                     end
-                    notify_root(root_pid, consts.topic.CONTAINER_LOG, {
-                        container_id = cid,
-                        stream = stream_name,
-                        line = text,
-                    })
+                    if sequence and log_id then
+                        notify_root(root_pid, consts.topic.CONTAINER_LOG, {
+                            container_id = cid, stream = stream_name, line = text,
+                            log_id = log_id, cursor = sequence,
+                        })
+                    end
                 end
                 if chunk_db then chunk_db:release() end
             end
@@ -311,14 +330,17 @@ local function run_managed(docker, db_id, c, root_pid)
                     local entry = lines[i]
                     local stream = entry.stream or "stdout"
                     local line_text = tostring(entry.line)
+                    local sequence: number? = nil
+                    local log_id: number? = nil
                     if log_db then
-                        containers_repo.append_log(log_db, cid, stream, line_text)
+                        sequence, _, log_id = containers_repo.append_log(log_db, cid, stream, line_text)
                     end
-                    notify_root(root_pid, consts.topic.CONTAINER_LOG, {
-                        container_id = cid,
-                        stream = stream,
-                        line = line_text,
-                    })
+                    if sequence and log_id then
+                        notify_root(root_pid, consts.topic.CONTAINER_LOG, {
+                            container_id = cid, stream = stream, line = line_text,
+                            log_id = log_id, cursor = sequence,
+                        })
+                    end
                 end
                 if log_db then log_db:release() end
                 lines_seen = #lines
@@ -364,14 +386,17 @@ local function run_managed(docker, db_id, c, root_pid)
                     local entry = lines[i]
                     local stream = entry.stream or "stdout"
                     local line_text = tostring(entry.line)
+                    local sequence: number? = nil
+                    local log_id: number? = nil
                     if drain_db then
-                        containers_repo.append_log(drain_db, cid, stream, line_text)
+                        sequence, _, log_id = containers_repo.append_log(drain_db, cid, stream, line_text)
                     end
-                    notify_root(root_pid, consts.topic.CONTAINER_LOG, {
-                        container_id = cid,
-                        stream = stream,
-                        line = line_text,
-                    })
+                    if sequence and log_id then
+                        notify_root(root_pid, consts.topic.CONTAINER_LOG, {
+                            container_id = cid, stream = stream, line = line_text,
+                            log_id = log_id, cursor = sequence,
+                        })
+                    end
                 end
                 if drain_db then drain_db:release() end
                 lines_seen = #lines
@@ -509,10 +534,18 @@ function worker.run(config: {
                 claim_and_run(db, docker, config.db_id, exec_images, active, root_pid)
             elseif topic == consts.topic.STDIN then
                 local payload = helpers.extract_payload(msg)
-                if payload and payload.container_id and payload.data then
+                if payload and payload.container_id and payload.data and payload.operation_id then
                     local entry = active[payload.container_id]
                     if entry and entry.proc then
-                        entry.proc:write_stdin(payload.data)
+                        local _, write_err = entry.proc:write_stdin(payload.data)
+                        notify_stdin_result(config.db_id, root_pid, {
+                            container_id = payload.container_id,
+                            operation_id = payload.operation_id,
+                            state = write_err and "failed" or "delivered",
+                            error = write_err and tostring(write_err) or nil,
+                            reply_to = payload.reply_to,
+                            reply_topic = payload.reply_topic,
+                        })
                     end
                 end
             end

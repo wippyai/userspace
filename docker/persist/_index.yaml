@@ -7,6 +7,7 @@ entries:
     source: file://containers.lua
     modules:
       - json
+      - sql
       - uuid
 
   - name: images

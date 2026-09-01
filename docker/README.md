@@ -154,11 +154,22 @@ local result = docker:get({ id = container_id })
 -- List containers
 local result = docker:list({ status = "running", limit = 10 })
 
--- Get container logs
-local result = docker:logs({ id = container_id })
+-- Read a bounded page after an exclusive per-container cursor. Each line has
+-- both a global log_id and a contiguous container-local sequence.
+local result = docker:logs({ id = container_id, cursor = 0, limit = 100 })
+local next_cursor = result.next_cursor
 
--- Send stdin to interactive container
-docker:stdin({ container_id = id, data = "input\n" })
+-- Record-before-send stdin for an interactive executor. `dispatched` is not
+-- delivery: poll stdin_status until delivered/failed/uncertain. Managed Docker
+-- containers currently return `unsupported` because the package has no
+-- attach-stream acknowledgement and never fabricates success.
+local write = docker:stdin({
+    container_id = id,
+    data = "input\n",
+    operation_id = "turn-42",
+    request_digest = "sha256:...",
+})
+local status = docker:stdin_status({ operation_id = "turn-42" })
 
 -- Delete container
 docker:delete({ id = container_id })
