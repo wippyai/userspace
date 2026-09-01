@@ -28,6 +28,9 @@ entries:
     host: process_host
     lifecycle:
       auto_start: true
+      security:
+        groups:
+          - wippy.security:process
       restart:
         max_attempts: 3
 
