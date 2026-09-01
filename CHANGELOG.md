@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/wippyai/userspace/compare/v0.4.0...v0.5.0) (2026-09-01)
+
+
+### Features
+
+* **docker:** OCI runtime passthrough + adopt running same-name containers ([616a151](https://github.com/wippyai/userspace/commit/616a151bbe73c7ea1418792ed621995848ebebeb))
+* **docker:** OCI runtime passthrough + adopt running same-name containers ([9fe25af](https://github.com/wippyai/userspace/commit/9fe25af845a8e68418b078847894819c85f2e512))
+* **upload:** add support for announce_uploaded flag in upload tokens ([#55](https://github.com/wippyai/userspace/issues/55)) ([902c995](https://github.com/wippyai/userspace/commit/902c9955c910810c65cf546d0cce40b38ca7b3eb))
+* **upload:** implement deferred processing stages in upload pipeline ([#56](https://github.com/wippyai/userspace/issues/56)) ([c10ffaf](https://github.com/wippyai/userspace/commit/c10ffaf6a7adcbe640acfecaafbc9b92ce3ff231))
+* **upload:** implement multipart upload handlers and endpoints ([#54](https://github.com/wippyai/userspace/issues/54)) ([933ce7a](https://github.com/wippyai/userspace/commit/933ce7ad9143f69ca3a1f50fc048c9367ab87e11))
+
 ## [0.4.0](https://github.com/wippyai/userspace/compare/v0.3.13...v0.4.0) (2026-07-09)
 
 
