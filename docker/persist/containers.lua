@@ -235,6 +235,8 @@ end
 
 function containers.update_status(db, id: string, status: string, fields: {
     docker_id: string?,
+    executor_route_id: string?,
+    executor_id: string?,
     exit_code: number?,
     error: string?,
     started_at: number?,
@@ -247,6 +249,14 @@ function containers.update_status(db, id: string, status: string, fields: {
     if f.docker_id ~= nil then
         table.insert(sets, "docker_id = ?")
         table.insert(params, f.docker_id)
+    end
+    if f.executor_route_id ~= nil then
+        table.insert(sets, "executor_route_id = ?")
+        table.insert(params, f.executor_route_id)
+    end
+    if f.executor_id ~= nil then
+        table.insert(sets, "executor_id = ?")
+        table.insert(params, f.executor_id)
     end
     if f.exit_code ~= nil then
         table.insert(sets, "exit_code = ?")

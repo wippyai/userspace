@@ -30,6 +30,35 @@ Docker container and image management via contracts and process messaging.
 | `database` | `app:db` | Database resource for container and image storage |
 | `process_host` | `app:processes` | Process host for docker services |
 
+## Interactive executor routes
+
+Acknowledged, multi-write stdin uses Wippy's attached Docker executor. It is
+enabled only by a registry allowlist; callers cannot select an executor. The
+route image and the `exec.docker` image must be exactly equal. Digest-addressed
+images are recommended so a mutable tag cannot change the sandbox between runs.
+
+```yaml
+entries:
+  - name: agent_executor
+    kind: exec.docker
+    image: registry.example/agent@sha256:0123...
+    auto_remove: true
+    read_only_rootfs: true
+    no_new_privileges: true
+
+  - name: agent_interactive_route
+    kind: registry.entry
+    meta:
+      type: docker.interactive_executor
+    image: registry.example/agent@sha256:0123...
+    executor: app:agent_executor
+```
+
+The service validates every route at startup and again immediately before
+process creation. Missing, duplicated, replaced, non-Docker, or image-mismatched
+routes fail closed. The chosen route and executor IDs are persisted on the
+container, and stdin operation receipts identify that exact executor backend.
+
 ## Declarative Containers
 
 Register containers as `registry.entry` with `meta.type: docker.container`. The docker root process picks them up at startup and whenever a new entry is created at runtime.

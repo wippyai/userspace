@@ -8,6 +8,7 @@ local consts = require("consts")
 local containers_repo = require("containers_repo")
 local helpers = require("helpers")
 local logger = require("logger")
+local interactive_routes = require("interactive_routes")
 
 -- Local name from a registry id ("ns.sub:entry" -> "entry"). Declarative
 -- containers default to this so they get a stable Docker name (required for
@@ -100,10 +101,15 @@ local function run()
     end
     local worker_count = consts.defaults.WORKER_COUNT
 
+    local exec_images, routes_err = interactive_routes.load(registry)
+    if routes_err then
+        return nil, "invalid interactive executor configuration: " .. tostring(routes_err)
+    end
+
     local worker_config = {
         db_id = db_id,
         socket_path = "/var/run/docker.sock",
-        exec_images = {},
+        exec_images = exec_images,
     }
 
     local monitor_config = {

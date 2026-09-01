@@ -25,6 +25,7 @@ entries:
     meta:
       description: Docker module configuration for testing
     component: userspace/docker
+    version: ">=0.5.4"
     parameters:
       - name: database
         value: app:db
@@ -36,6 +37,7 @@ entries:
     meta:
       description: Bootloader configuration for testing
     component: wippy/bootloader
+    version: ">=0.3.0"
     parameters:
       - name: application_host
         value: app:processes
