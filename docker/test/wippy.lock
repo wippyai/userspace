@@ -3,7 +3,7 @@ directories:
     src: .
 modules:
     - name: userspace/docker
-      version: 0.3.2
+      version: 0.4.13
       hash: 6ff51cbeed5097214f43d5ee8faa2961c4ae3e25db842f080c033aee2f0273a8
     - name: wippy/bootloader
       version: 0.3.11

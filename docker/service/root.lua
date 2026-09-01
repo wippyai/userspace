@@ -263,6 +263,8 @@ local function run()
                             container_id = payload.container_id,
                             line = payload.line,
                             stream = payload.stream,
+                            log_id = payload.log_id,
+                            cursor = payload.cursor,
                             timestamp = payload.timestamp or os.time(),
                         }
                         local encoded = json.encode(event)
@@ -305,6 +307,13 @@ local function run()
                 local str = type(payload) == "string" and payload or json.encode(payload)
                 for pid, _ in pairs(workers) do
                     process.send(pid, consts.topic.STDIN, str)
+                end
+
+            elseif topic == consts.topic.STDIN_RESULT then
+                local payload = helpers.extract_payload(msg)
+                if payload and payload.reply_to then
+                    helpers.send_json(tostring(payload.reply_to),
+                        tostring(payload.reply_topic or consts.topic.STDIN_RESULT), payload)
                 end
 
             elseif topic == consts.topic.IMAGE_BUILD_NEW then

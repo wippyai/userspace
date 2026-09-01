@@ -206,6 +206,42 @@ local function define_tests()
         end)
 
         describe("logs", function()
+            it("returns durable ids and exclusive cursor pages", function()
+                local db = get_db()
+                local id = containers_repo.create(db, { image = "alpine:latest", command = "echo test" })
+                assert(id)
+                local first = containers_repo.append_log(db, id, "stdout", "one")
+                local second = containers_repo.append_log(db, id, "stderr", "two")
+                local third = containers_repo.append_log(db, id, "stdout", "three")
+                local fourth = containers_repo.append_log(db, id, "stdout", "four")
+                test.not_nil(first, "append returns a durable cursor")
+                test.ok(tonumber(second) > tonumber(first), "cursor is increasing")
+
+                local page_one, page_err, one_meta = containers_repo.get_logs(db, id,
+                    { after_log_id = first, limit = 2 })
+                test.is_nil(page_err)
+                test.eq(#page_one, 2)
+                test.eq(tonumber(page_one[1].sequence), tonumber(second))
+                test.eq(tonumber(page_one[2].sequence), tonumber(third))
+                test.is_true(one_meta.has_more, "one extra row reports another page")
+                test.eq(tonumber(one_meta.next_after_log_id), tonumber(third))
+
+                local page_two, two_err, two_meta = containers_repo.get_logs(db, id,
+                    { after_log_id = one_meta.next_after_log_id, limit = 2 })
+                test.is_nil(two_err)
+                test.eq(#page_two, 1)
+                test.eq(tonumber(page_two[1].sequence), tonumber(fourth))
+                test.is_false(two_meta.has_more)
+
+                local stdout_only, stream_err = containers_repo.get_logs(db, id,
+                    { after_log_id = 0, limit = 10, stream = "stdout" })
+                test.is_nil(stream_err)
+                test.eq(#stdout_only, 3)
+                for _, row in ipairs(stdout_only) do test.eq(row.stream, "stdout") end
+                cleanup(db, id)
+                db:release()
+            end)
+
             it("appends and retrieves logs", function()
                 local db = get_db()
                 local id = containers_repo.create(db, { image = "alpine:latest", command = "echo test" })
@@ -268,6 +304,63 @@ local function define_tests()
                 local logs = containers_repo.get_logs(db, id)
                 test.eq(#logs, 0, "no logs")
 
+                cleanup(db, id)
+                db:release()
+            end)
+        end)
+
+        describe("stdin operations", function()
+            it("persists idempotent acknowledgement state without persisting data", function()
+                local db = get_db()
+                local id = containers_repo.create(db, { image = "alpine:latest", command = "cat" })
+                assert(id)
+                local operation, begin_err = containers_repo.stdin_begin(db, id,
+                    "stdin-operation-one", "sha256:request-one", 12)
+                test.is_nil(begin_err)
+                test.eq(operation.state, "accepted")
+                test.eq(tonumber(operation.byte_count), 12)
+                test.is_nil(operation.data, "stdin payload is never stored")
+
+                local replay, replay_err = containers_repo.stdin_begin(db, id,
+                    "stdin-operation-one", "sha256:request-one", 12)
+                test.is_nil(replay_err)
+                test.eq(replay.operation_id, "stdin-operation-one")
+                local collision = containers_repo.stdin_begin(db, id,
+                    "stdin-operation-one", "sha256:different", 12)
+                test.is_nil(collision, "same key with different request is rejected")
+                local size_collision = containers_repo.stdin_begin(db, id,
+                    "stdin-operation-one", "sha256:request-one", 13)
+                test.is_nil(size_collision, "same key with different byte count is rejected")
+
+                local dispatched, dispatch_err = containers_repo.stdin_dispatch(db,
+                    "stdin-operation-one")
+                test.is_nil(dispatch_err)
+                test.eq(dispatched.state, "dispatched")
+                local dispatch_replay = containers_repo.stdin_dispatch(db,
+                    "stdin-operation-one")
+                test.eq(dispatch_replay.state, "dispatched")
+
+                test.is_nil(containers_repo.stdin_settle(db, "stdin-operation-one", "unsupported",
+                    "userspace.docker", "managed delivery unavailable"))
+                local settled = containers_repo.stdin_get(db, "stdin-operation-one")
+                test.eq(settled.state, "unsupported")
+                test.eq(settled.backend, "userspace.docker")
+                test.eq(settled.error, "managed delivery unavailable")
+                cleanup(db, id)
+                db:release()
+            end)
+
+            it("marks an unconfirmed write uncertain when its container terminates", function()
+                local db = get_db()
+                local id = containers_repo.create(db, { image = "alpine:latest", command = "cat" })
+                assert(id)
+                local operation = containers_repo.stdin_begin(db, id,
+                    "stdin-operation-terminal", "sha256:terminal", 7)
+                test.eq(operation.state, "accepted")
+                containers_repo.update_status(db, id, "failed", { stopped_at = os.time() })
+                local settled = containers_repo.stdin_get(db, "stdin-operation-terminal")
+                test.eq(settled.state, "uncertain")
+                test.not_nil(settled.error)
                 cleanup(db, id)
                 db:release()
             end)
@@ -1030,8 +1123,9 @@ local function define_tests()
                 local db = get_db()
                 -- Without PRAGMA foreign_keys, logs can be written to any container_id
                 local orphan_id = "__test_orphan_" .. tostring(os.time())
-                local err = containers_repo.append_log(db, orphan_id, "stdout", "hello")
-                test.is_nil(err, "insert succeeds")
+                local log_id, append_err = containers_repo.append_log(db, orphan_id, "stdout", "hello")
+                test.not_nil(log_id, "insert returns a durable id")
+                test.is_nil(append_err, "insert succeeds")
 
                 local logs = containers_repo.get_logs(db, orphan_id)
                 test.eq(#logs, 1)

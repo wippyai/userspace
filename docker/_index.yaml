@@ -23,6 +23,8 @@ entries:
         path: .meta.target_db
       - entry: userspace.docker.migrations:03_add_group_id
         path: .meta.target_db
+      - entry: userspace.docker.migrations:04_add_stdin_operations
+        path: .meta.target_db
       - entry: userspace.docker.service:root.service
         path: .lifecycle.depends_on +=
 
@@ -69,6 +71,8 @@ entries:
         description: Get container logs
       - name: stdin
         description: Send stdin data to a running container
+      - name: stdin_status
+        description: Read the durable acknowledgement state for a stdin operation
       - name: compose
         description: Create multiple containers as a group
       - name: restart
@@ -185,6 +189,7 @@ entries:
           delete: userspace.docker.binding:containers_delete_func
           logs: userspace.docker.binding:containers_logs_func
           stdin: userspace.docker.binding:containers_stdin_func
+          stdin_status: userspace.docker.binding:containers_stdin_status_func
           compose: userspace.docker.binding:containers_compose_func
           exec: userspace.docker.binding:containers_exec_func
           wait: userspace.docker.binding:containers_wait_func

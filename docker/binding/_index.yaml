@@ -79,10 +79,27 @@ entries:
       comment: Send stdin data to a running container
     source: file://containers_stdin.lua
     imports:
+      containers_repo: userspace.docker.persist:containers
       consts: userspace.docker.lib:consts
     modules:
       - json
       - process
+      - sql
+      - env
+      - uuid
+    method: handle
+
+  - name: containers_stdin_status_func
+    kind: function.lua
+    meta:
+      comment: Read durable stdin operation acknowledgement state
+    source: file://containers_stdin_status.lua
+    imports:
+      containers_repo: userspace.docker.persist:containers
+      consts: userspace.docker.lib:consts
+    modules:
+      - sql
+      - env
     method: handle
 
   - name: containers_compose_func

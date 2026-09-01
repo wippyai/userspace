@@ -22,6 +22,7 @@ consts.topic = {
     SUBSCRIBE        = "container.subscribe",
     UNSUBSCRIBE      = "container.unsubscribe",
     STDIN            = "stdin",
+    STDIN_RESULT     = "stdin.result",
 
     IMAGE_BUILD_NEW       = "image.build.new",
     IMAGE_BUILD_LOG       = "image.build.log",
