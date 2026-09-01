@@ -9,6 +9,8 @@ local images = require("images")
 local containers_repo = require("containers_repo")
 local docker_client = require("docker_client")
 local helpers = require("helpers")
+local interactive_routes = require("interactive_routes")
+local registry = require("registry")
 
 local logger = require("logger")
 
@@ -37,11 +39,11 @@ local function notify_log(db_id, root_pid, cid, stream, line)
     })
 end
 
-local function notify_stdin_result(db_id, root_pid, payload)
+local function notify_stdin_result(db_id, root_pid, payload, backend)
     local db = sql.get(db_id)
     if db then
         containers_repo.stdin_settle(db, tostring(payload.operation_id), tostring(payload.state),
-            "native-executor", payload.error and tostring(payload.error) or nil)
+            tostring(backend), payload.error and tostring(payload.error) or nil)
         db:release()
     end
     notify_root(root_pid, consts.topic.STDIN_RESULT, payload)
@@ -55,7 +57,7 @@ local function notify_status(root_pid, cid, status, extra)
     notify_root(root_pid, consts.topic.CONTAINER_STATUS, payload)
 end
 
-local function run_interactive(executor, db_id, c, active, root_pid)
+local function run_interactive(executor, executor_id, db_id, c, active, root_pid)
     local cid: string = tostring(c.id)
 
     local db, db_err = sql.get(db_id)
@@ -90,7 +92,7 @@ local function run_interactive(executor, db_id, c, active, root_pid)
     end
 
     if active then
-        active[cid] = { proc = proc }
+        active[cid] = { proc = proc, executor_id = executor_id }
     end
 
     -- Release DB before blocking IO — log writes use their own connections
@@ -440,17 +442,17 @@ local function claim_and_run(db, docker, db_id, exec_images, active, root_pid)
                 local is_interactive = c.config and c.config.interactive
 
                 if is_interactive then
-                    local exec_id = exec_images[tostring(c.image)]
-                    if not exec_id then
+                    local route, route_err = interactive_routes.resolve(exec_images, tostring(c.image), registry)
+                    if not route then
                         containers_repo.update_status(db, cid, consts.status.FAILED, {
-                            error = "no executor configured for image: " .. tostring(c.image),
+                            error = tostring(route_err),
                             stopped_at = os.time(),
                         })
                         notify_status(root_pid, cid, consts.status.FAILED)
                         active[cid] = nil
                     else
                         coroutine.spawn(function()
-                            local executor, exec_err = exec.get(tostring(exec_id))
+                            local executor, exec_err = exec.get(route.executor_id)
                             if exec_err then
                                 local edb = sql.get(db_id)
                                 if edb then
@@ -466,11 +468,13 @@ local function claim_and_run(db, docker, db_id, exec_images, active, root_pid)
                                 if edb then
                                     containers_repo.update_status(edb, cid, consts.status.RUNNING, {
                                         started_at = os.time(),
+                                        executor_route_id = route.route_id,
+                                        executor_id = route.executor_id,
                                     })
                                     edb:release()
                                 end
                                 notify_status(root_pid, cid, consts.status.RUNNING)
-                                run_interactive(executor, db_id, c, active, root_pid)
+                                run_interactive(executor, route.executor_id, db_id, c, active, root_pid)
                                 executor:release()
                             end
                             active[cid] = nil
@@ -492,7 +496,7 @@ local worker = {}
 function worker.run(config: {
     db_id: string,
     socket_path: string?,
-    exec_images: {[string]: string}?,
+    exec_images: {[string]: {route_id: string, image: string, executor_id: string}}?,
 })
     local log = logger:named("docker.worker")
     local db, db_err = sql.get(config.db_id)
@@ -512,7 +516,7 @@ function worker.run(config: {
     local fallback = time.ticker(consts.defaults.FALLBACK_INTERVAL)
     local events = process.events()
     local inbox = process.inbox()
-    local active: {[string]: {proc: any?}} = {}
+    local active: {[string]: {proc: any?, executor_id: string?}} = {}
 
     claim_and_run(db, docker, config.db_id, exec_images, active, root_pid)
 
@@ -545,7 +549,7 @@ function worker.run(config: {
                             error = write_err and tostring(write_err) or nil,
                             reply_to = payload.reply_to,
                             reply_topic = payload.reply_topic,
-                        })
+                        }, entry.executor_id)
                     end
                 end
             end

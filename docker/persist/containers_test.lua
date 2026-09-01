@@ -173,12 +173,16 @@ local function define_tests()
 
                 containers_repo.update_status(db, id, "running", {
                     docker_id = "abc123",
+                    executor_route_id = "app:agent_route",
+                    executor_id = "app:agent_executor",
                     started_at = os.time(),
                 })
 
                 local c = containers_repo.get(db, id)
                 test.eq(c.status, "running")
                 test.eq(c.docker_id, "abc123")
+                test.eq(c.executor_route_id, "app:agent_route")
+                test.eq(c.executor_id, "app:agent_executor")
 
                 cleanup(db, id)
                 db:release()

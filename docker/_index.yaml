@@ -25,6 +25,8 @@ entries:
         path: .meta.target_db
       - entry: userspace.docker.migrations:04_add_stdin_operations
         path: .meta.target_db
+      - entry: userspace.docker.migrations:05_add_executor_identity
+        path: .meta.target_db
       - entry: userspace.docker.service:root.service
         path: .lifecycle.depends_on +=
 

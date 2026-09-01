@@ -65,3 +65,19 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  - name: 05_add_executor_identity
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - docker
+        - containers
+        - executor
+      description: Persist the exact route and Docker executor selected for an interactive container
+      target_db: database
+      timestamp: "2026-09-01T13:00:00Z"
+    source: file://05_add_executor_identity.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
