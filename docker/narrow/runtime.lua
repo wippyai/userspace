@@ -211,11 +211,14 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
         forced: string?): (DynamicObject?, string?)
     local raw, raw_err = ref(value, "narrow " .. operation); if not raw then return nil, raw_err end
     local docker, docker_err = client(deps); if not docker then return nil, docker_err end
-    local before: DynamicObject? = nil
-    if operation == "remove" then
-        local item, item_err = (docker :: any):inspect_container(raw.backend_ref)
-        if type(item) ~= "table" then return nil, tostring(item_err) end
-        before = item :: DynamicObject
+    local item, item_err = (docker :: any):inspect_container(raw.backend_ref)
+    if type(item) ~= "table" then return nil, tostring(item_err) end
+    local before = item :: DynamicObject
+    local before_observation = observation(before)
+    if operation == "start" and before_observation.state == "running" then
+        return before_observation, nil
+    elseif operation == "stop" and before_observation.state ~= "running" then
+        return observation(before, "stopped"), nil
     end
     local ok, call_err
     if operation == "start" then ok, call_err = (docker :: any):start_container(raw.backend_ref)
@@ -224,11 +227,26 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
         if timeout < 0 or timeout > 60 then return nil, "narrow stop timeout is invalid" end
         ok, call_err = (docker :: any):stop_container(raw.backend_ref, timeout)
     else ok, call_err = (docker :: any):remove_container(raw.backend_ref, false) end
-    if not ok then return nil, tostring(call_err) end
-    if before then return observation(before, forced), nil end
-    local item, item_err = (docker :: any):inspect_container(raw.backend_ref)
-    if type(item) ~= "table" then return nil, tostring(item_err) end
-    return observation(item :: DynamicObject, forced), nil
+    if not ok then
+        -- Contract calls can be delivered more than once. Reconcile the observed
+        -- daemon state before surfacing an error so a completed first delivery is
+        -- not reported as a failed retry.
+        local reconciled = (docker :: any):inspect_container(raw.backend_ref)
+        if operation == "remove" and type(reconciled) ~= "table" then
+            return observation(before, "destroyed"), nil
+        elseif type(reconciled) == "table" then
+            local seen = observation(reconciled :: DynamicObject)
+            if operation == "start" and seen.state == "running" then return seen, nil end
+            if operation == "stop" and seen.state ~= "running" then
+                return observation(reconciled :: DynamicObject, "stopped"), nil
+            end
+        end
+        return nil, tostring(call_err)
+    end
+    if operation == "remove" then return observation(before, forced), nil end
+    local after, after_err = (docker :: any):inspect_container(raw.backend_ref)
+    if type(after) ~= "table" then return nil, tostring(after_err) end
+    return observation(after :: DynamicObject, forced), nil
 end
 
 function runtime.start_with(value: unknown, deps: DynamicObject) return transition(value, deps, "start", nil) end

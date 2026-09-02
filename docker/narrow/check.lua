@@ -27,6 +27,18 @@ local function main()
     if runtime.config(secret) ~= nil then fail("secret environment admitted") end
     local foreign = fixture(); foreign.Labels.foreign = "x"
     if runtime.config(foreign) ~= nil then fail("foreign labels admitted") end
+    local calls = 0
+    local running = { Id = "container-one", Config = { Labels = fixture().Labels },
+        State = { Status = "running" } }
+    local started, start_err = runtime.start_with({ backend_ref = "container-one" }, {
+        client = function() return {
+            inspect_container = function() return running end,
+            start_container = function() calls = calls + 1; return nil, "already running" end,
+        } end,
+    })
+    if start_err or not started or started.state ~= "running" or calls ~= 0 then
+        fail("duplicate start was not reconciled from observed state")
+    end
     io.print("PASS: userspace/docker narrow contract rejects privileged, ambient, and socket-bearing agent sandboxes")
     return true
 end
