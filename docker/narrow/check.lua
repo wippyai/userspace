@@ -35,6 +35,12 @@ local function main()
     if runtime.config(secret) ~= nil then fail("secret environment admitted") end
     local foreign = fixture(); foreign.Labels.foreign = "x"
     if runtime.config(foreign) ~= nil then fail("foreign labels admitted") end
+    local gateway = fixture()
+    gateway.HostConfig.ExtraHosts = { "host.docker.internal:host-gateway" }
+    if runtime.config(gateway) == nil then fail("fixed host gateway alias was rejected") end
+    local arbitrary_host = fixture()
+    arbitrary_host.HostConfig.ExtraHosts = { "database.internal:host-gateway" }
+    if runtime.config(arbitrary_host) ~= nil then fail("arbitrary host gateway alias admitted") end
     local calls = 0
     local running = { Id = "container-one", Config = { Labels = fixture().Labels },
         State = { Status = "running" } }

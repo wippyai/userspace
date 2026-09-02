@@ -138,10 +138,17 @@ function runtime.config(value: unknown): (DynamicObject?, string?)
         end
     end
     if count ~= 1 then return nil, "narrow Docker requires one tmpfs" end
-    for _, name in ipairs({ "ExtraHosts", "Devices" }) do
-        if type(host[name]) ~= "table" or next(host[name] :: DynamicObject) ~= nil then
-            return nil, "narrow Docker " .. name .. " must be empty"
-        end
+    local extra_hosts, extra_hosts_err = strings(host.ExtraHosts,
+        "narrow Docker ExtraHosts", 1)
+    if not extra_hosts then return nil, extra_hosts_err end
+    if #extra_hosts > 0
+        and (#extra_hosts ~= 1
+            or extra_hosts[1] ~= "host.docker.internal:host-gateway") then
+        return nil, "narrow Docker ExtraHosts permits only the fixed host gateway alias"
+    end
+    if type(host.Devices) ~= "table"
+        or next(host.Devices :: DynamicObject) ~= nil then
+        return nil, "narrow Docker Devices must be empty"
     end
     return raw, nil
 end

@@ -278,9 +278,10 @@ narrow:stop({ backend_ref = created.backend_ref, timeout_seconds = 10 })
 narrow:remove({ backend_ref = created.backend_ref })
 ```
 
-The narrow surface intentionally bypasses declarative container defaults such
-as `host.docker.internal`; it is a low-level enforcement boundary, not a second
-general-purpose container API.
+The narrow surface is a low-level enforcement boundary, not a second
+general-purpose container API. `ExtraHosts` is empty by default and permits
+only the fixed Linux bridge mapping `host.docker.internal:host-gateway`; all
+caller-selected aliases and addresses remain rejected.
 
 ## Streaming Events
 
