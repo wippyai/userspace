@@ -260,6 +260,28 @@ local result = images:build_status({ build_id = build_id })
 images:delete({ id = image_id })
 ```
 
+### `userspace.docker:narrow`
+
+This contract is for orchestrators that already produce a complete protected
+Docker API configuration. It accepts only immutable images, non-root users,
+read-only root filesystems, dropped capabilities, no-new-privileges,
+seccomp/AppArmor, positive PID/CPU/memory limits, non-host networking, bounded
+binds, one hardened tmpfs, and exact `bee.*` attempt labels. Unknown or broader
+Docker fields fail closed.
+
+```lua
+local narrow = contract.open("userspace.docker:narrow")
+local created = narrow:create({ name = "bee-<digest>", config = protected_config })
+narrow:start({ backend_ref = created.backend_ref })
+local observed = narrow:inspect({ backend_ref = created.backend_ref })
+narrow:stop({ backend_ref = created.backend_ref, timeout_seconds = 10 })
+narrow:remove({ backend_ref = created.backend_ref })
+```
+
+The narrow surface intentionally bypasses declarative container defaults such
+as `host.docker.internal`; it is a low-level enforcement boundary, not a second
+general-purpose container API.
+
 ## Streaming Events
 
 Methods that accept a `stream` parameter deliver live events via process messaging:

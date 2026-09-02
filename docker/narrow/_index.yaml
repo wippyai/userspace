@@ -1,0 +1,46 @@
+version: "1.0"
+namespace: userspace.docker.narrow
+entries:
+  - name: runtime
+    kind: library.lua
+    source: file://runtime.lua
+  - name: create
+    kind: function.lua
+    source: file://targets.lua
+    method: create
+    imports: { runtime: userspace.docker.narrow:runtime, docker_client: userspace.docker:docker_client }
+  - name: find
+    kind: function.lua
+    source: file://targets.lua
+    method: find
+    imports: { runtime: userspace.docker.narrow:runtime, docker_client: userspace.docker:docker_client }
+  - name: inspect
+    kind: function.lua
+    source: file://targets.lua
+    method: inspect
+    imports: { runtime: userspace.docker.narrow:runtime, docker_client: userspace.docker:docker_client }
+  - name: start
+    kind: function.lua
+    source: file://targets.lua
+    method: start
+    imports: { runtime: userspace.docker.narrow:runtime, docker_client: userspace.docker:docker_client }
+  - name: stop
+    kind: function.lua
+    source: file://targets.lua
+    method: stop
+    imports: { runtime: userspace.docker.narrow:runtime, docker_client: userspace.docker:docker_client }
+  - name: remove
+    kind: function.lua
+    source: file://targets.lua
+    method: remove
+    imports: { runtime: userspace.docker.narrow:runtime, docker_client: userspace.docker:docker_client }
+  - name: check
+    kind: process.lua
+    meta:
+      scope: dev
+      description: Fail-closed agent sandbox configuration check
+      command: { name: userspace-docker-check-narrow, short: Verify narrow agent sandbox boundary }
+    source: file://check.lua
+    method: main
+    modules: [io]
+    imports: { runtime: userspace.docker.narrow:runtime }

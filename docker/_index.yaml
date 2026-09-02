@@ -176,6 +176,18 @@ entries:
       - name: run
         description: Sync containers, images, networks, and volumes from Docker
 
+  - name: narrow
+    kind: contract.definition
+    meta:
+      description: Fail-closed raw Docker lifecycle for capability-free agent sandboxes
+    methods:
+      - { name: create, description: Create one validated immutable sandbox }
+      - { name: find, description: Find exact label-matched sandboxes }
+      - { name: inspect, description: Inspect one opaque sandbox }
+      - { name: start, description: Start one opaque sandbox }
+      - { name: stop, description: Stop one opaque sandbox }
+      - { name: remove, description: Remove one opaque sandbox }
+
   # Contract bindings
   - name: containers_binding
     kind: contract.binding
@@ -272,6 +284,21 @@ entries:
         default: true
         methods:
           run: userspace.docker.binding:sync_func
+
+  - name: narrow_binding
+    kind: contract.binding
+    meta:
+      comment: Validated raw Docker lifecycle implementation for agent harnesses
+    contracts:
+      - contract: userspace.docker:narrow
+        default: true
+        methods:
+          create: userspace.docker.narrow:create
+          find: userspace.docker.narrow:find
+          inspect: userspace.docker.narrow:inspect
+          start: userspace.docker.narrow:start
+          stop: userspace.docker.narrow:stop
+          remove: userspace.docker.narrow:remove
 
   # Docker client library
   - name: docker_client
