@@ -5,6 +5,7 @@ local LABELS: {[string]: boolean} = {
     ["bee.actor_ref"] = true, ["bee.revision_digest"] = true,
     ["bee.attempt_id"] = true, ["bee.request_digest"] = true,
     ["bee.lease_fence"] = true,
+    ["bee.image_digest"] = true,
 }
 
 local function object(value: unknown, allowed: {[string]: boolean}, name: string):
@@ -149,11 +150,14 @@ local function observation(value: DynamicObject, forced: string?): DynamicObject
     local observed = type(value.State) == "table" and (value.State :: DynamicObject).Status or value.State
     local state = forced or (observed == "created" and "created"
         or (observed == "running" and "running" or "exited"))
+    local observed_labels = type(config.Labels) == "table" and config.Labels
+        or (type(value.Labels) == "table" and value.Labels or {})
+    local observed_image = type(observed_labels) == "table"
+        and (observed_labels :: DynamicObject)["bee.image_digest"] or nil
     return { schema_revision = "userspace.docker.narrow-observation@1",
         backend_ref = tostring(value.Id or value.ID or ""),
-        observed_image_digest = tostring(value.Image or value.ImageID or ""),
-        labels = type(config.Labels) == "table" and config.Labels
-            or (type(value.Labels) == "table" and value.Labels or {}), state = state }
+        observed_image_digest = tostring(observed_image or value.Image or value.ImageID or ""),
+        labels = observed_labels, state = state }
 end
 
 local function client(deps: DynamicObject): (any?, string?) return (deps.client :: any)() end
