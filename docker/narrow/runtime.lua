@@ -183,7 +183,7 @@ function runtime.create_with(value: unknown, deps: DynamicObject): (DynamicObjec
     end
     local inspected, inspect_err = (docker :: any):inspect_container((created :: DynamicObject).Id)
     if type(inspected) ~= "table" then return nil, tostring(inspect_err) end
-    return observation(inspected :: DynamicObject, "created"), nil
+    return observation(inspected :: DynamicObject), nil
 end
 
 function runtime.find_with(value: unknown, deps: DynamicObject): ({DynamicObject}?, string?)
@@ -208,7 +208,7 @@ function runtime.inspect_with(value: unknown, deps: DynamicObject): (DynamicObje
 end
 
 local function transition(value: unknown, deps: DynamicObject, operation: string,
-        forced: string): (DynamicObject?, string?)
+        forced: string?): (DynamicObject?, string?)
     local raw, raw_err = ref(value, "narrow " .. operation); if not raw then return nil, raw_err end
     local docker, docker_err = client(deps); if not docker then return nil, docker_err end
     local before: DynamicObject? = nil
@@ -231,7 +231,7 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
     return observation(item :: DynamicObject, forced), nil
 end
 
-function runtime.start_with(value: unknown, deps: DynamicObject) return transition(value, deps, "start", "running") end
+function runtime.start_with(value: unknown, deps: DynamicObject) return transition(value, deps, "start", nil) end
 function runtime.stop_with(value: unknown, deps: DynamicObject) return transition(value, deps, "stop", "stopped") end
 function runtime.remove_with(value: unknown, deps: DynamicObject) return transition(value, deps, "remove", "destroyed") end
 function runtime.production(docker_client: any): DynamicObject
