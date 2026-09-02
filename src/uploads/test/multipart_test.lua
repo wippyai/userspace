@@ -25,7 +25,28 @@ local function define_tests()
             -- lookup fails — proving the type gate runs first.
             local _, err = upload_lib.create_multipart_upload("user-1", "file.pdf", 1024)
             test.not_nil(err)
-            test.eq(err:find("Unsupported file type") ~= nil, true)
+            test.eq(tostring(err):find("Unsupported file type") ~= nil, true)
+            -- A native error the HTTP layer can act on without parsing text.
+            test.eq(err:kind(), errors.INVALID)
+            test.eq(err:retryable(), false)
+            test.eq(err:details().code, upload_lib.UNSUPPORTED_FORMAT)
+        end)
+
+        it("answers an unsupported type with 415 and a stable code", function()
+            local _, err = upload_lib.create_multipart_upload("user-1", "file.pdf", 1024)
+            local status, payload = upload_lib.failure_response(err, "Failed to create multipart upload")
+            test.eq(status, 415)
+            test.eq(payload.success, false)
+            test.eq(payload.code, "unsupported_format")
+            test.eq(payload.retryable, false)
+            test.eq(payload.error, "This file type isn't supported.")
+            test.eq(payload.details:find("Unsupported file type") ~= nil, true)
+
+            -- Anything else keeps the generic 500 with the reason in details.
+            local status2, payload2 = upload_lib.failure_response("storage exploded", "Failed to create multipart upload")
+            test.eq(status2, 500)
+            test.eq(payload2.error, "Failed to create multipart upload")
+            test.eq(payload2.details, "storage exploded")
         end)
 
         it("rejects part URL requests for unknown uploads", function()
@@ -122,7 +143,8 @@ local function define_tests()
             -- gate fails first — no storage access, no orphan bytes.
             local _, err = upload_lib.upload_file("user-1", "content", "file.pdf", 7)
             test.not_nil(err)
-            test.eq(err:find("Unsupported file type") ~= nil, true)
+            test.eq(tostring(err):find("Unsupported file type") ~= nil, true)
+            test.eq(err:details().code, upload_lib.UNSUPPORTED_FORMAT)
         end)
 
         it("detects storage backends by configured id", function()
