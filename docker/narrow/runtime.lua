@@ -103,7 +103,7 @@ function runtime.config(value: unknown): (DynamicObject?, string?)
     local nnp, seccomp, apparmor = false, false, false
     for _, item in ipairs(security) do
         if item == "no-new-privileges:true" then nnp = true
-        elseif string.match(item, "^seccomp={") then seccomp = true
+        elseif item == "seccomp=runtime/default" or string.match(item, "^seccomp={") then seccomp = true
         elseif string.match(item, "^apparmor=[A-Za-z0-9_.-]+$") then apparmor = true
         else return nil, "narrow Docker security option is unsupported" end
     end
@@ -146,6 +146,22 @@ function runtime.config(value: unknown): (DynamicObject?, string?)
     return raw, nil
 end
 
+-- `seccomp=runtime/default` is a contract-level policy selector, not a Docker
+-- SecurityOpt understood by the daemon. Its absence from the wire request asks
+-- Docker to install the engine's built-in default profile. Inline measured JSON
+-- profiles remain explicit and pass through unchanged.
+function runtime.docker_config(value: DynamicObject): DynamicObject
+    local projected: DynamicObject = {}; for key, item in pairs(value) do projected[key] = item end
+    local source_host = value.HostConfig :: DynamicObject
+    local host: DynamicObject = {}; for key, item in pairs(source_host) do host[key] = item end
+    local security: {string} = {}
+    for _, item in ipairs(source_host.SecurityOpt :: {string}) do
+        if item ~= "seccomp=runtime/default" then security[#security + 1] = item end
+    end
+    host.SecurityOpt = security; projected.HostConfig = host
+    return projected
+end
+
 local function observation(value: DynamicObject, forced: string?): DynamicObject
     local config = type(value.Config) == "table" and value.Config :: DynamicObject or {}
     local observed = type(value.State) == "table" and (value.State :: DynamicObject).Status or value.State
@@ -178,7 +194,7 @@ function runtime.create_with(value: unknown, deps: DynamicObject): (DynamicObjec
     end
     local config, config_err = runtime.config(raw.config); if not config then return nil, config_err end
     local docker, docker_err = client(deps); if not docker then return nil, docker_err end
-    local created, create_err = (docker :: any):create_container(config, { name = raw.name })
+    local created, create_err = (docker :: any):create_container(runtime.docker_config(config), { name = raw.name })
     if type(created) ~= "table" or type((created :: DynamicObject).Id) ~= "string" then
         return nil, tostring(create_err or "Docker create returned no ID")
     end

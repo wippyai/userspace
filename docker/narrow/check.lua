@@ -19,6 +19,14 @@ local function fixture()
 end
 local function main()
     local _, err = runtime.config(fixture()); if err then fail(err) end
+    local builtin = fixture(); builtin.HostConfig.SecurityOpt[2] = "seccomp=runtime/default"
+    local admitted, builtin_err = runtime.config(builtin); if not admitted then fail(tostring(builtin_err)) end
+    local projected = runtime.docker_config(admitted)
+    local projected_security = projected.HostConfig.SecurityOpt
+    if #projected_security ~= 2 or projected_security[1] ~= "no-new-privileges:true"
+        or projected_security[2] ~= "apparmor=bee-default" then
+        fail("runtime default seccomp selector reached Docker wire config")
+    end
     local privileged = fixture(); privileged.HostConfig.Privileged = true
     if runtime.config(privileged) ~= nil then fail("privileged config admitted") end
     local socket = fixture(); socket.HostConfig.Binds[1] = "/var/run/docker.sock:/docker.sock:rw"
