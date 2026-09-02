@@ -1,4 +1,5 @@
 local runtime = {}
+local time = require("time")
 type DynamicObject = {[string]: unknown}
 
 local LABELS: {[string]: boolean} = {
@@ -231,15 +232,18 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
         -- Contract calls can be delivered more than once. Reconcile the observed
         -- daemon state before surfacing an error so a completed first delivery is
         -- not reported as a failed retry.
-        local reconciled = (docker :: any):inspect_container(raw.backend_ref)
-        if operation == "remove" and type(reconciled) ~= "table" then
-            return observation(before, "destroyed"), nil
-        elseif type(reconciled) == "table" then
-            local seen = observation(reconciled :: DynamicObject)
-            if operation == "start" and seen.state == "running" then return seen, nil end
-            if operation == "stop" and seen.state ~= "running" then
-                return observation(reconciled :: DynamicObject, "stopped"), nil
+        for attempt = 1, 40 do
+            local reconciled = (docker :: any):inspect_container(raw.backend_ref)
+            if operation == "remove" and type(reconciled) ~= "table" then
+                return observation(before, "destroyed"), nil
+            elseif type(reconciled) == "table" then
+                local seen = observation(reconciled :: DynamicObject)
+                if operation == "start" and seen.state == "running" then return seen, nil end
+                if operation == "stop" and seen.state ~= "running" then
+                    return observation(reconciled :: DynamicObject, "stopped"), nil
+                end
             end
+            if attempt < 40 then time.sleep("25ms") end
         end
         return nil, tostring(call_err)
     end

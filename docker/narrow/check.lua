@@ -39,6 +39,21 @@ local function main()
     if start_err or not started or started.state ~= "running" or calls ~= 0 then
         fail("duplicate start was not reconciled from observed state")
     end
+    local observations = 0
+    local raced, race_err = runtime.start_with({ backend_ref = "container-race" }, {
+        client = function() return {
+            inspect_container = function()
+                observations = observations + 1
+                local state = observations >= 3 and "running" or "created"
+                return { Id = "container-race", Config = { Labels = fixture().Labels },
+                    State = { Status = state } }
+            end,
+            start_container = function() return nil, "already running" end,
+        } end,
+    })
+    if race_err or not raced or raced.state ~= "running" or observations < 3 then
+        fail("concurrent duplicate start was not reconciled through transition")
+    end
     io.print("PASS: userspace/docker narrow contract rejects privileged, ambient, and socket-bearing agent sandboxes")
     return true
 end

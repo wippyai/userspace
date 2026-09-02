@@ -4,6 +4,7 @@ entries:
   - name: runtime
     kind: library.lua
     source: file://runtime.lua
+    modules: [time]
   - name: create
     kind: function.lua
     source: file://targets.lua
