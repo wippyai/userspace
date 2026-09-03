@@ -3,7 +3,8 @@ local registry = require("registry")
 -- Upload Type Library - For discovering and validating upload types
 local upload_type = {}
 
--- Find an upload type by MIME type or file extension
+upload_type.NO_MATCH = "No matching upload type found"
+
 function upload_type.find_by_mime_or_ext(mime_type, file_ext)
     if not mime_type and not file_ext then
         return nil, "Either MIME type or file extension is required"
@@ -47,7 +48,7 @@ function upload_type.find_by_mime_or_ext(mime_type, file_ext)
         end
     end
 
-    return nil, "No matching upload type found"
+    return nil, upload_type.NO_MATCH
 end
 
 -- Get a specific upload type by ID

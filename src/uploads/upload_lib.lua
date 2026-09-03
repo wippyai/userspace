@@ -104,13 +104,31 @@ local function get_mime_type_from_extension(filename)
     return "application/octet-stream"
 end
 
+local UNSUPPORTED_FORMAT = "unsupported_format"
+local HTTP_UNSUPPORTED_MEDIA_TYPE = 415
+
 local function determine_upload_type(mime_type, filename)
     local ext = get_file_extension(filename)
     local type_entry, err = upload_type.find_by_mime_or_ext(mime_type, ext)
-    if not type_entry then
-        return nil, "Unsupported file type: " .. (err or "unknown error")
+    if type_entry then
+        return type_entry.id
     end
-    return type_entry.id
+
+    if err == upload_type.NO_MATCH then
+        local shown_ext = ext ~= "" and ("." .. ext) or "no extension"
+        return nil, errors.new({
+            message = "Unsupported file type: " .. tostring(mime_type or "unknown mime") .. " (" .. shown_ext .. ")",
+            kind = errors.INVALID,
+            retryable = false,
+            details = { code = UNSUPPORTED_FORMAT, mime_type = mime_type, extension = ext },
+        })
+    end
+
+    return nil, errors.new({
+        message = "Failed to determine upload type: " .. tostring(err or "unknown error"),
+        kind = errors.INTERNAL,
+        retryable = true,
+    })
 end
 
 local function publish_to_queue(upload_id)
@@ -709,6 +727,38 @@ function upload_lib.abort_multipart_upload(user_id, upload_id)
     end
 
     return upload_repo.delete(upload_id)
+end
+
+upload_lib.UNSUPPORTED_FORMAT = UNSUPPORTED_FORMAT
+
+function upload_lib.error_code(err)
+    if type(err) ~= "userdata" then
+        return nil
+    end
+    local ok, details = pcall(function()
+        return err:details()
+    end)
+    if not ok or type(details) ~= "table" then
+        return nil
+    end
+    return details.code
+end
+
+function upload_lib.failure_response(err, fallback_error)
+    if upload_lib.error_code(err) == UNSUPPORTED_FORMAT then
+        return HTTP_UNSUPPORTED_MEDIA_TYPE, {
+            success = false,
+            code = UNSUPPORTED_FORMAT,
+            retryable = false,
+            error = "This file type isn't supported.",
+            details = tostring(err),
+        }
+    end
+    return 500, {
+        success = false,
+        error = fallback_error,
+        details = tostring(err),
+    }
 end
 
 return upload_lib

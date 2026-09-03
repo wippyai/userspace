@@ -42,12 +42,9 @@ local function handler()
     )
 
     if err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to create multipart upload",
-            details = err
-        })
+        local status, payload = upload_lib.failure_response(err, "Failed to create multipart upload")
+        res:set_status(status)
+        res:write_json(payload)
         return
     end
 

@@ -117,12 +117,9 @@ local function handler()
     )
 
     if err then
-        res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({
-            success = false,
-            error = "Failed to generate presigned URL",
-            details = err
-        })
+        local status, payload = upload_lib.failure_response(err, "Failed to generate presigned URL")
+        res:set_status(status)
+        res:write_json(payload)
         return
     end
 
