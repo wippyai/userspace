@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/wippyai/userspace/compare/v0.5.0...v0.5.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **docker:** grant root service process capabilities ([#59](https://github.com/wippyai/userspace/issues/59)) ([f4c4cc9](https://github.com/wippyai/userspace/commit/f4c4cc91617bef049ed744a4b27f3313bcdff8a5))
+
 ## [0.5.0](https://github.com/wippyai/userspace/compare/v0.4.0...v0.5.0) (2026-09-01)
 
 
