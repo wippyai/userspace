@@ -1,6 +1,5 @@
 local http = require("http")
 local security = require("security")
-
 local upload_lib = require("upload_lib")
 
 local function handler()
