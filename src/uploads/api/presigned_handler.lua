@@ -1,10 +1,7 @@
 local http = require("http")
 local security = require("security")
-local json = require("json")
-
 local upload_lib = require("upload_lib")
 
--- Generate presigned S3 upload URL handler
 local function handler()
     local req, err = http.request()
     local res = http.response()
@@ -26,10 +23,8 @@ local function handler()
         return nil, "Failed to get HTTP context"
     end
 
-    -- Set JSON content type for response
     res:set_content_type(http.CONTENT.JSON)
 
-    -- Check for proper JSON content
     if not req:is_content_type(http.CONTENT.JSON) then
         res:set_status(http.STATUS.BAD_REQUEST)
         res:write_json({
@@ -50,7 +45,6 @@ local function handler()
         return
     end
 
-    -- Get user ID from actor
     local user_id = actor:id()
     if not user_id or user_id == "" then
         res:set_status(http.STATUS.UNAUTHORIZED)
@@ -61,7 +55,6 @@ local function handler()
         return
     end
 
-    -- Parse JSON request body
     local body, err = req:body_json()
     if err then
         res:set_status(http.STATUS.BAD_REQUEST)
@@ -73,7 +66,6 @@ local function handler()
         return
     end
 
-    -- Validate required fields
     if not body.filename then
         res:set_status(http.STATUS.BAD_REQUEST)
         res:write_json({
@@ -92,7 +84,6 @@ local function handler()
         return
     end
 
-    -- Get content type or default to octet-stream
     local mime_type = body.content_type or "application/octet-stream"
 
     -- Set expiration for presigned URL (default: 15 minutes)
@@ -129,6 +120,7 @@ local function handler()
         success = true,
         presigned_url = presigned_data.url,
         upload_id = presigned_data.upload_id,
+        content_type = presigned_data.content_type,
         fields = presigned_data.fields or {},
         expires_at = presigned_data.expires_at
     })

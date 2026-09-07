@@ -196,6 +196,34 @@ entries:
       - title: Failing Stage
         func: app:stage_fail
 
+  - name: type.rtf_test
+    kind: registry.entry
+    meta:
+      type: upload.type
+      name: RTF test type
+      comment: Paired with type.doc_test to show which type a resolved mime lands on
+    extensions:
+      - rtf
+    mime_types:
+      - application/rtf
+    pipeline:
+      - title: Stage One
+        func: app:stage_one
+
+  - name: type.doc_test
+    kind: registry.entry
+    meta:
+      type: upload.type
+      name: Legacy Word test type
+      comment: The type an RTF claiming application/msword must NOT land on
+    extensions:
+      - doc
+    mime_types:
+      - application/msword
+    pipeline:
+      - title: Stage One
+        func: app:stage_one
+
   - name: stage_one
     kind: function.lua
     meta:
@@ -237,5 +265,18 @@ entries:
     imports:
       pipeline_lib: userspace.uploads:pipeline_lib
       upload_repo: userspace.uploads:upload_repo
+      test: wippy.test:test
+    method: run
+
+  - name: mime_resolution_test
+    kind: function.lua
+    meta:
+      name: Client content type resolution
+      type: test
+      suite: uploads
+      comment: A client's Content-Type is a claim; a known extension outranks it
+    source: file://mime_resolution_test.lua
+    imports:
+      upload_lib: userspace.uploads:upload_lib
       test: wippy.test:test
     method: run

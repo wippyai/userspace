@@ -110,7 +110,6 @@ entries:
     modules:
       - http
       - security
-      - json
     imports:
       upload_lib: userspace.uploads:upload_lib
     method: handler

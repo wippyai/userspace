@@ -31,6 +31,8 @@ local MIME_TYPES: {[string]: string} = {
     ["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ["xls"] = "application/vnd.ms-excel",
     ["xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ["xlsm"] = "application/vnd.ms-excel.sheet.macroEnabled.12",
+    ["xlsb"] = "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
     ["ppt"] = "application/vnd.ms-powerpoint",
     ["pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ["odt"] = "application/vnd.oasis.opendocument.text",
@@ -82,6 +84,7 @@ local MIME_TYPES: {[string]: string} = {
     ["woff"] = "font/woff",
     ["woff2"] = "font/woff2",
     ["eml"] = "message/rfc822",
+    ["msg"] = "application/vnd.ms-outlook",
     ["exe"] = "application/octet-stream",
     ["bin"] = "application/octet-stream",
     ["dmg"] = "application/x-apple-diskimage",
@@ -96,12 +99,40 @@ local function get_file_extension(filename)
     return filename:match("%.([^%.]+)$") or ""
 end
 
-local function get_mime_type_from_extension(filename)
-    local ext = get_file_extension(filename):lower()
-    if ext and MIME_TYPES[ext] then
-        return MIME_TYPES[ext]
+local function mime_for_extension(ext)
+    return MIME_TYPES[tostring(ext or ""):lower()]
+end
+
+function upload_lib.mime_type_for_extension(ext)
+    return mime_for_extension(ext) or "application/octet-stream"
+end
+
+function upload_lib.resolve_mime_type(client_mime, filename)
+    local ext_mime = mime_for_extension(get_file_extension(filename))
+
+    if not client_mime or client_mime == "" or client_mime == "application/octet-stream" then
+        return ext_mime or "application/octet-stream"
     end
-    return "application/octet-stream"
+
+    if ext_mime and ext_mime ~= client_mime then
+        return ext_mime, client_mime
+    end
+
+    return client_mime
+end
+
+local function resolve_mime_for(metadata, client_mime, filename, user_id)
+    local resolved, claimed = upload_lib.resolve_mime_type(client_mime, filename)
+    if claimed then
+        metadata.client_content_type = claimed
+        log:warn("resolved upload type from filename over client claim", {
+            user_id = user_id,
+            filename = filename,
+            claimed = claimed,
+            resolved = resolved,
+        })
+    end
+    return resolved
 end
 
 local UNSUPPORTED_FORMAT = "unsupported_format"
@@ -272,9 +303,7 @@ function upload_lib.upload_file(user_id: string, file_data: string | stream.Stre
     metadata = metadata or {}
     metadata.filename = filename
 
-    if not mime_type or mime_type == "" or mime_type == "application/octet-stream" then
-        mime_type = get_mime_type_from_extension(filename)
-    end
+    mime_type = resolve_mime_for(metadata, mime_type, filename, user_id)
 
     local type_id, type_err = determine_upload_type(mime_type, filename)
     if not type_id then
@@ -370,9 +399,19 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
         return nil, "Invalid file size"
     end
 
-    mime_type = mime_type or "application/octet-stream"
+    local client_mime = mime_type or "application/octet-stream"
     expires_in = expires_in or 900
     metadata = metadata or {}
+
+    metadata.filename = filename
+    metadata.upload_method = "direct_s3"
+
+    local resolved_mime = resolve_mime_for(metadata, client_mime, filename, user_id)
+
+    local type_id, type_err = determine_upload_type(resolved_mime, filename)
+    if not type_id then
+        return nil, type_err
+    end
 
     local id = generate_upload_id()
     if not id then
@@ -390,7 +429,6 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
     local presigned_url
     presigned_url, err = s3:presigned_put_url(object_key, {
         expires_in = expires_in,
-        content_type = mime_type,
         metadata = {
             user_id = user_id,
             original_name = filename,
@@ -403,19 +441,11 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
         return nil, "Failed to generate presigned URL: " .. tostring(err)
     end
 
-    metadata.filename = filename
-    metadata.upload_method = "direct_s3"
-
-    local type_id, type_err = determine_upload_type(mime_type, filename)
-    if not type_id then
-        return nil, type_err
-    end
-
     local _, create_err = upload_repo.create(
         id,
         user_id,
         size,
-        mime_type,
+        resolved_mime,
         resources.get_s3_id(),
         object_key,
         type_id,
@@ -435,6 +465,7 @@ function upload_lib.generate_presigned_url(user_id, filename, size, mime_type, e
         url = presigned_url,
         upload_id = id,
         object_key = object_key,
+        content_type = resolved_mime,
         expires_at = expires_at:unix(),
     }
 end
@@ -504,9 +535,7 @@ function upload_lib.create_multipart_upload(user_id, filename, size, mime_type, 
 
     metadata = metadata or {}
 
-    if not mime_type or mime_type == "" or mime_type == "application/octet-stream" then
-        mime_type = get_mime_type_from_extension(filename)
-    end
+    mime_type = resolve_mime_for(metadata, mime_type, filename, user_id)
 
     -- Fail fast on unsupported types before creating any provider-side state.
     local type_id, type_err = determine_upload_type(mime_type, filename)
