@@ -6,8 +6,7 @@ modules:
       version: 0.4.1
       hash: c154e2cc11ca94ddd368307aced96cfbbd411a58e74e46339d50b4a9befc1d65
     - name: userspace/uploads
-      version: 0.4.5
-      hash: 29880b4909d58837227defd22e828c8e5ca1ad9f671adb5ed366043a2e862499
+      version: 0.5.22
     - name: wippy/agent
       version: 0.4.11
       hash: a0b5b6d5b9cc75dce9f963303aefaa222b5314d7ac09b25c69cfd19a3cfbaf42
@@ -20,18 +19,18 @@ modules:
     - name: wippy/migration
       version: 0.3.14
       hash: b7c28ba246cade1bcedad8b97e22b9da9b6f5b36d859a6cee7f3153f10b14847
+    - name: wippy/security
+      version: 0.4.1
+      hash: 99367f0b7319ae40de517210838e984b0a110c19684e74a3c90b09f575d4783c
     - name: wippy/session
       version: 0.1.25
       hash: bfb46bc29405c02341e026c460558d95691f55830974e9e9ecbe0afd26f6a3f9
     - name: wippy/terminal
-      version: 0.4.2
-      hash: 34b99aac2eba9c5016fd02c783117fb2b0381ce14696c7b199265458b99a3271
+      version: 0.4.5
+      hash: 028180c6044cdd9bbe15330255a4926770e02a291511930264a615f6388824f0
     - name: wippy/test
-      version: 0.4.11
-      hash: 235f2f1d222dabeec1a83f6f9f48a7f75abf2143860b833437c1d96da3cd3e95
+      version: 0.4.17
+      hash: 37a304cc20aa3005004255e9fda16835a94119db520c0c97e1db044c7844a229
     - name: wippy/views
       version: 0.5.4
       hash: f55a412c52f900540e7b19430d768d141b58ae5e4066cb78fc4fb2a14ea7869b
-replacements:
-    - from: userspace/uploads
-      to: ..

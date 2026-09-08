@@ -8,6 +8,7 @@ File upload handling with content processing and resource management for Wippy a
 - Content extraction and storage
 - Resource registry integration
 - Upload type detection and validation
+- Recovery of interrupted processing after restarts
 - Migrations for upload tables
 
 ## Installation
@@ -105,7 +106,60 @@ ways:
   pipeline definition changed while parked and the recorded stage no longer
   exists, the upload fails explicitly instead of silently re-running
   non-idempotent stages. The cursor is cleared on completion and on error,
-  so re-driving a terminal upload runs the full pipeline again.
+  so re-driving a terminal upload runs the full pipeline again. A deferred
+  cursor carries `state = "deferred"`, which is what keeps recovery (below)
+  from re-queuing the upload.
+
+Between stages the pipeline also records where it stands: after each stage
+completes, the cursor names the next one with `state = "active"`. That is what
+lets an interrupted run resume instead of starting over.
+
+### Recovery after restarts
+
+The processing queue is in memory, so a restart forgets its messages, and a
+worker that dies mid-pipeline (a deploy, an out-of-memory kill) leaves its
+upload in `processing` with nobody coming back for it. The uploads table is the
+durable record of the work, and `userspace.uploads:recover_pending` reads it
+back:
+
+- **At startup** every upload in `uploaded` or `queued` — accepted but never
+  picked up — is published to the queue again.
+- **At startup and then every `recovery_interval`** every upload in
+  `processing` that has not been touched for `recovery_stale_after` is treated
+  as interrupted: it is moved to `queued` and published again, and the worker
+  that picks it up resumes at the stage its cursor names. After
+  `recovery_max_attempts` such re-queues the upload is marked `error` instead,
+  because a file that keeps killing its worker must not keep getting one.
+
+Inactivity, not the restart itself, is the signal: in a rolling deployment the
+new instance starts while the old one is still working, and treating everything
+in `processing` as orphaned would process those uploads twice. The pipeline
+refreshes `updated_at` at every stage boundary; a stage that legitimately runs
+longer than `recovery_stale_after` (unpacking a large archive, say) must call
+`pipeline_lib.heartbeat(upload_id)` every so often to stay off the list.
+Deferred uploads are never re-queued by recovery: whatever deferred them owns
+their return.
+
+The cursor in `metadata.__pipeline_cursor`:
+
+| Field | Meaning |
+|-------|---------|
+| `index`, `func` | The stage to run next. `func` wins when the pipeline definition changed. |
+| `state` | `active`: a worker was running this stage. `deferred`: waiting for an external re-publish. A cursor without a state (written before this field existed) reads as `deferred`. |
+| `recoveries` | How many times an interrupted run was re-queued. Cleared with the cursor on completion and on error. |
+
+Stages should be safe to run twice: an interruption between a stage's side
+effects and the cursor write replays that stage.
+
+| Dependency parameter | Default | Meaning |
+|----------------------|---------|---------|
+| `recovery_stale_after` | `30m` | Inactivity after which a processing upload counts as interrupted (Go duration) |
+| `recovery_interval` | `5m` | How often the sweep runs after the startup pass; `0` disables it |
+| `recovery_max_attempts` | `3` | Re-queues before an interrupted upload is failed |
+
+A single instance that is stopped before its replacement starts can lower
+`recovery_stale_after` for faster recovery; several instances sharing one
+database should keep it above their longest stage that does not heartbeat.
 
 ### Multipart Uploads
 

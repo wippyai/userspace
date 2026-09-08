@@ -1,49 +1,38 @@
-local json = require("json")
-local queue = require("queue")
+local time = require("time")
 local logger = require("logger")
-local upload_repo = require("upload_repo")
+local recovery = require("recovery")
 
 local log = logger:named("upload_recovery")
 
-local QUEUE_ID = "userspace.uploads:process_queue"
-local BATCH_SIZE = 100
+local function sweep(config, publish)
+    local ok, result = pcall(recovery.recover_interrupted, {
+        cutoff = recovery.cutoff(time.now(), config.stale_after),
+        max_attempts = config.max_attempts,
+        publish = publish,
+    })
+    if not ok then
+        log:error("recovery sweep raised", { error = tostring(result) })
+        return nil
+    end
+    return result
+end
 
 local function run()
-    local total = 0
-    local offset = 0
+    local config = recovery.load_config()
+    local publish = recovery.queue_publisher()
+
+    local pending = recovery.republish_pending(publish)
+    local interrupted = sweep(config, publish)
+
+    if not config.interval then
+        log:info("periodic recovery disabled; startup pass only")
+        return { pending = pending, interrupted = interrupted }
+    end
 
     while true do
-        local uploads, err = upload_repo.get_pending_uploads(BATCH_SIZE, offset)
-        if err then
-            log:error("failed to fetch pending uploads", { error = err })
-            break
-        end
-
-        if not uploads or #uploads == 0 then
-            break
-        end
-
-        for _, upload in ipairs(uploads) do
-            local payload = json.encode({ upload_id = upload.uuid })
-            local _, pub_err = queue.publish(QUEUE_ID, payload)
-            if pub_err then
-                log:error("failed to re-enqueue upload", {
-                    upload_id = upload.uuid,
-                    error = pub_err,
-                })
-            else
-                total = total + 1
-            end
-        end
-
-        offset = offset + BATCH_SIZE
+        time.sleep(config.interval)
+        sweep(config, publish)
     end
-
-    if total > 0 then
-        log:info("re-enqueued pending uploads", { count = total })
-    end
-
-    return { recovered = total }
 end
 
 return { run = run }

@@ -132,7 +132,7 @@ local function define_tests()
             local ok, err = pipeline_lib.process_upload(fresh)
             test.eq(ok, false)
             test.not_nil(err)
-            test.eq(err:find("Cannot resume deferred upload", 1, true) ~= nil, true)
+            test.eq(err:find("Cannot resume upload", 1, true) ~= nil, true)
 
             local failed = upload_repo.get(id)
             test.eq(failed.status, "error")
