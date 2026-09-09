@@ -28,3 +28,30 @@ entries:
       icon: tabler:cloud-upload
       private: true
     default: app:uploads.s3
+
+  # userspace.uploads.env:recovery_stale_after
+  - name: recovery_stale_after
+    kind: env.variable
+    meta:
+      comment: Inactivity after which a processing upload counts as interrupted (Go duration)
+      icon: tabler:clock-pause
+      private: true
+    default: "30m"
+
+  # userspace.uploads.env:recovery_interval
+  - name: recovery_interval
+    kind: env.variable
+    meta:
+      comment: How often recovery looks for interrupted uploads; 0 disables the periodic sweep (Go duration)
+      icon: tabler:refresh
+      private: true
+    default: "5m"
+
+  # userspace.uploads.env:recovery_max_attempts
+  - name: recovery_max_attempts
+    kind: env.variable
+    meta:
+      comment: How many times an interrupted upload is re-queued before it is marked failed
+      icon: tabler:repeat
+      private: true
+    default: "3"

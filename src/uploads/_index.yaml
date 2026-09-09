@@ -260,6 +260,34 @@ entries:
       - entry: userspace.uploads:process_consumer
         path: .prefetch
 
+  # Recovery of processing across restarts (see recovery_lib)
+  - name: recovery_stale_after
+    kind: ns.requirement
+    meta:
+      description: How long a processing upload may go without activity before recovery treats it as interrupted and re-queues it (Go duration; a stage running longer than this must call pipeline_lib.heartbeat)
+    default: "30m"
+    targets:
+      - entry: userspace.uploads.env:recovery_stale_after
+        path: .default
+
+  - name: recovery_interval
+    kind: ns.requirement
+    meta:
+      description: How often recovery looks for interrupted uploads after the pass at startup (Go duration; 0 disables the periodic sweep)
+    default: "5m"
+    targets:
+      - entry: userspace.uploads.env:recovery_interval
+        path: .default
+
+  - name: recovery_max_attempts
+    kind: ns.requirement
+    meta:
+      description: How many times an interrupted upload is re-queued before it is marked failed
+    default: "3"
+    targets:
+      - entry: userspace.uploads.env:recovery_max_attempts
+        path: .default
+
   # Queue infrastructure for upload processing
   - name: queue_driver
     kind: queue.driver.memory
@@ -301,29 +329,49 @@ entries:
       depends_on:
         - userspace.uploads:process_queue
 
+  # userspace.uploads:recovery_lib
+  - name: recovery_lib
+    kind: library.lua
+    meta:
+      comment: Recovery of upload processing across restarts — re-publishes uploads never picked up, re-queues interrupted runs at their recorded stage, fails runs that keep being interrupted
+    source: file://recovery_lib.lua
+    modules:
+      - json
+      - time
+      - queue
+      - env
+      - logger
+    imports:
+      pipeline_lib: userspace.uploads:pipeline_lib
+      upload_repo: userspace.uploads:upload_repo
+
   # userspace.uploads:recover_pending
   - name: recover_pending
     kind: process.lua
     meta:
-      comment: Startup function that re-publishes pending uploads to the queue
+      comment: Recovery process — a pass at startup over everything the restart left behind, then a periodic look for runs that stopped mid-pipeline
     source: file://recover_pending.lua
     modules:
-      - json
-      - queue
+      - time
       - logger
     imports:
-      upload_repo: userspace.uploads:upload_repo
+      recovery: userspace.uploads:recovery_lib
     method: run
 
   - name: recover_pending.service
     kind: process.service
     meta:
-      comment: Re-enqueue pending uploads on startup
+      comment: Supervised recovery loop for upload processing
     host: app:processes
     lifecycle:
       depends_on:
         - userspace.uploads:process_consumer
       auto_start: true
+      restart:
+        initial_delay: 5s
+        max_delay: 60s
+        backoff_factor: 2
+        max_attempts: 0
       security:
         groups:
           - wippy.security:process
@@ -424,4 +472,10 @@ entries:
       - entry: userspace.uploads.env:storage_id
         path: .storage
       - entry: userspace.uploads.env:storage_s3
+        path: .storage
+      - entry: userspace.uploads.env:recovery_stale_after
+        path: .storage
+      - entry: userspace.uploads.env:recovery_interval
+        path: .storage
+      - entry: userspace.uploads.env:recovery_max_attempts
         path: .storage

@@ -103,4 +103,10 @@ local function define_tests()
     end)
 end
 
-return { run = define_tests }
+local run_cases = test.run_cases(define_tests)
+
+local function run(options: any): any
+    return run_cases(options)
+end
+
+return { run = run }

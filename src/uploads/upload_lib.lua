@@ -84,6 +84,7 @@ local MIME_TYPES: {[string]: string} = {
     ["woff"] = "font/woff",
     ["woff2"] = "font/woff2",
     ["eml"] = "message/rfc822",
+    ["emlx"] = "message/x-emlx",
     ["msg"] = "application/vnd.ms-outlook",
     ["exe"] = "application/octet-stream",
     ["bin"] = "application/octet-stream",

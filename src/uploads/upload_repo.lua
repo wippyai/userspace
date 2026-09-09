@@ -5,6 +5,33 @@ local resources = require("uploads_resources")
 
 local upload_repo = {}
 
+local UPLOAD_COLUMNS = {
+    "uuid", "user_id", "size", "mime_type",
+    "status", "storage_id", "storage_path", "type_id", "created_at",
+    "updated_at", "error_details", "metadata",
+}
+
+local function decode_metadata(upload)
+    if upload.metadata and upload.metadata ~= "" then
+        local decoded, err = json.decode(tostring(upload.metadata))
+        if not err then
+            upload.metadata = decoded
+        else
+            upload.metadata = {}
+        end
+    else
+        upload.metadata = {}
+    end
+    return upload
+end
+
+local function after_uuid(query, after)
+    if after == nil or after == "" then
+        return query
+    end
+    return query:where("uuid > ?", after)
+end
+
 function upload_repo.create(uuid, user_id, size, mime_type, storage_id, storage_path, type_id, metadata, status)
     if status == nil then status = "uploaded" end
 
@@ -889,6 +916,145 @@ function upload_repo.count_with_filters(options)
     end
 
     return result[1].count
+end
+
+function upload_repo.touch(uuid)
+    if not uuid or uuid == "" then
+        return nil, "Upload ID is required"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local now = time.now():format(time.RFC3339)
+
+    local result, exec_err = sql.builder.update("uploads")
+        :set("updated_at", now)
+        :where("uuid = ?", uuid)
+        :run_with(db)
+        :exec()
+
+    db:release()
+
+    if exec_err then
+        return nil, "Failed to touch upload: " .. exec_err
+    end
+
+    if result.rows_affected == 0 then
+        return nil, "Upload not found"
+    end
+
+    return { uuid = uuid, updated_at = now }
+end
+
+function upload_repo.list_pending(after, limit)
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local query = sql.builder.select(table.unpack(UPLOAD_COLUMNS))
+        :from("uploads")
+        :where(sql.builder.or_({
+            sql.builder.eq({ status = "uploaded" }),
+            sql.builder.eq({ status = "queued" })
+        }))
+    query = after_uuid(query, after)
+        :order_by("uuid ASC")
+        :limit(limit or 100)
+
+    local uploads, query_err = query:run_with(db):query()
+
+    db:release()
+
+    if query_err then
+        return nil, "Failed to list pending uploads: " .. query_err
+    end
+
+    for _, upload in ipairs(uploads) do
+        decode_metadata(upload)
+    end
+
+    return uploads
+end
+
+function upload_repo.list_stale_processing(cutoff, after, limit)
+    if not cutoff or cutoff == "" then
+        return nil, "Cutoff is required"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local query = sql.builder.select(table.unpack(UPLOAD_COLUMNS))
+        :from("uploads")
+        :where("status = ?", "processing")
+        :where("updated_at < ?", cutoff)
+    query = after_uuid(query, after)
+        :order_by("uuid ASC")
+        :limit(limit or 100)
+
+    local uploads, query_err = query:run_with(db):query()
+
+    db:release()
+
+    if query_err then
+        return nil, "Failed to list stale uploads: " .. query_err
+    end
+
+    for _, upload in ipairs(uploads) do
+        decode_metadata(upload)
+    end
+
+    return uploads
+end
+
+function upload_repo.requeue_if_stale(uuid, metadata, cutoff)
+    if not uuid or uuid == "" then
+        return nil, "Upload ID is required"
+    end
+
+    if type(metadata) ~= "table" then
+        return nil, "Metadata is required"
+    end
+
+    if not cutoff or cutoff == "" then
+        return nil, "Cutoff is required"
+    end
+
+    local metadata_json, encode_err = json.encode(metadata)
+    if encode_err then
+        return nil, "Failed to encode metadata: " .. encode_err
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local now = time.now():format(time.RFC3339)
+
+    local result, exec_err = sql.builder.update("uploads")
+        :set("status", "queued")
+        :set("metadata", metadata_json)
+        :set("updated_at", now)
+        :where("uuid = ?", uuid)
+        :where("status = ?", "processing")
+        :where("updated_at < ?", cutoff)
+        :run_with(db)
+        :exec()
+
+    db:release()
+
+    if exec_err then
+        return nil, "Failed to re-queue upload: " .. exec_err
+    end
+
+    return result.rows_affected > 0
 end
 
 return upload_repo

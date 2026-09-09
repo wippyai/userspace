@@ -59,6 +59,7 @@ entries:
     meta:
       description: "Uploads module configuration for testing"
     component: "userspace/uploads"
+    version: ">=0.5.22"
     parameters:
       - name: database_resource
         value: app:db
@@ -69,11 +70,29 @@ entries:
       - name: router
         value: app:api
 
+  - name: dep.wippy.security
+    kind: ns.dependency
+    meta:
+      description: "Security policies for testing (the process policy group that supervised services declare)"
+    component: "wippy/security"
+    version: ">=0.4.1"
+
+  - name: dep.wippy.migration
+    kind: ns.dependency
+    meta:
+      description: "Migration runner configuration for testing (applies the uploads tables to app:db)"
+    component: "wippy/migration"
+    version: ">=0.3.14"
+    parameters:
+      - name: app_db
+        value: app:db
+
   - name: dep.wippy.session
     kind: ns.dependency
     meta:
       description: "Session module configuration for testing (wires env_storage so the file_provider contract loads)"
     component: "wippy/session"
+    version: ">=0.1.25"
     parameters:
       - name: database_resource
         value: app:db
@@ -87,6 +106,7 @@ entries:
     meta:
       description: "LLM module configuration for testing"
     component: "wippy/llm"
+    version: ">=0.4.33"
     parameters:
       - name: process_host
         value: app:processes
@@ -98,6 +118,7 @@ entries:
     meta:
       description: "Views module for rendering"
     component: "wippy/views"
+    version: ">=0.5.4"
     parameters:
       - name: api_router
         value: app:api.public
@@ -109,6 +130,7 @@ entries:
     meta:
       description: "Bootloader configuration for testing"
     component: "wippy/bootloader"
+    version: ">=0.3.12"
     parameters:
       - name: application_host
         value: app:processes
@@ -278,5 +300,66 @@ entries:
     source: file://mime_resolution_test.lua
     imports:
       upload_lib: userspace.uploads:upload_lib
+      test: wippy.test:test
+    method: run
+
+  - name: type.resumable
+    kind: registry.entry
+    meta:
+      type: upload.type
+      name: Resume test type
+      comment: Three plain stages; the middle one records the resume cursor it was handed
+    extensions:
+      - rsm
+    mime_types:
+      - application/x-resume-test
+    pipeline:
+      - title: Stage One
+        func: app:stage_one
+      - title: Stage Two
+        func: app:stage_two
+      - title: Stage Three
+        func: app:stage_three
+
+  - name: stage_two
+    kind: function.lua
+    meta:
+      comment: Test pipeline stage recording its run count and the cursor it saw
+    source: file://stage_two.lua
+    method: stage_two
+
+  - name: pipeline_progress_test
+    kind: function.lua
+    meta:
+      name: Pipeline progress cursor
+      type: test
+      suite: uploads
+      comment: Every completed stage leaves a cursor for the next one, so an interrupted run resumes where it stopped
+    source: file://pipeline_progress_test.lua
+    modules:
+      - uuid
+      - sql
+    imports:
+      pipeline_lib: userspace.uploads:pipeline_lib
+      upload_repo: userspace.uploads:upload_repo
+      test: wippy.test:test
+    method: run
+
+  - name: recovery_test
+    kind: function.lua
+    meta:
+      name: Recovery of interrupted processing
+      type: test
+      suite: uploads
+      comment: Stale processing uploads go back to the queue at their recorded stage, deferred ones are left to their owners, repeat offenders are failed
+    source: file://recovery_test.lua
+    modules:
+      - uuid
+      - sql
+      - time
+    imports:
+      recovery: userspace.uploads:recovery_lib
+      pipeline_lib: userspace.uploads:pipeline_lib
+      upload_repo: userspace.uploads:upload_repo
       test: wippy.test:test
     method: run

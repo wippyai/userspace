@@ -5,7 +5,6 @@ local upload_type = require("upload_type")
 local upload_tokens = require("upload_tokens")
 local security = require("security")
 
--- Upload status constants
 local STATUS = {
     UPLOADED = "uploaded",
     QUEUED = "queued",
@@ -14,11 +13,21 @@ local STATUS = {
     ERROR = "error"
 }
 
--- Notification topic pattern
 local USER_NOTIFICATION_TOPIC = "user.%s"
 local UPLOAD_STATUS_TOPIC = "upload:%s"
 
 local CURSOR_KEY = "__pipeline_cursor"
+local CURSOR_STATE = {
+    ACTIVE = "active",
+    DEFERRED = "deferred",
+}
+
+type Cursor = {
+    index: number?,
+    func: string?,
+    state: string?,
+    recoveries: number?,
+}
 
 local pipeline_lib = {}
 
@@ -139,6 +148,33 @@ function pipeline_lib.invoke_upload_token(upload, status, error_msg)
     end
 end
 
+function pipeline_lib.cursor_of(upload: any): Cursor?
+    local metadata = upload and upload.metadata
+    if type(metadata) ~= "table" then
+        return nil
+    end
+
+    local cursor = metadata[CURSOR_KEY]
+    if type(cursor) == "table" then
+        return cursor
+    end
+    if type(cursor) == "string" and cursor ~= "" then
+        return { func = cursor }
+    end
+    return nil
+end
+
+function pipeline_lib.is_deferred(cursor: Cursor?): boolean
+    if type(cursor) ~= "table" then
+        return false
+    end
+    return cursor.state ~= CURSOR_STATE.ACTIVE
+end
+
+function pipeline_lib.heartbeat(upload_id)
+    return upload_repo.touch(upload_id)
+end
+
 local function clear_resume_cursor(upload)
     if not upload.metadata or upload.metadata[CURSOR_KEY] == nil then
         return
@@ -159,7 +195,7 @@ local function clear_resume_cursor(upload)
     end
 end
 
-local function fail_upload(upload, error_msg, stage_title)
+function pipeline_lib.fail_upload(upload, error_msg, stage_title)
     print("Error processing upload", upload.uuid, ":", error_msg)
 
     clear_resume_cursor(upload)
@@ -181,6 +217,35 @@ local function fail_upload(upload, error_msg, stage_title)
     return false, error_msg
 end
 
+local function resume_index(pipeline, cursor)
+    if not cursor or cursor.func == nil then
+        return 1
+    end
+
+    local func = tostring(cursor.func)
+    local index = tonumber(cursor.index)
+    if index and pipeline[index] and pipeline[index].func == func then
+        return index
+    end
+
+    for i, stage in ipairs(pipeline) do
+        if stage.func == func then
+            return i
+        end
+    end
+
+    return nil, "Cannot resume upload: stage '" .. func .. "' is not in the pipeline"
+end
+
+local function active_cursor(pipeline, index, previous)
+    return {
+        index = index,
+        func = tostring(pipeline[index].func),
+        state = CURSOR_STATE.ACTIVE,
+        recoveries = previous and previous.recoveries or nil,
+    }
+end
+
 -- Process a single upload using funcs library
 function pipeline_lib.process_upload(upload)
     -- Update status to processing
@@ -195,13 +260,13 @@ function pipeline_lib.process_upload(upload)
 
     -- Check if upload has a type_id
     if not upload.type_id or upload.type_id == "" then
-        return fail_upload(upload, "Upload has no type_id assigned")
+        return pipeline_lib.fail_upload(upload, "Upload has no type_id assigned")
     end
 
     -- Get pipeline stages for this upload type
     local pipeline, err = upload_type.get_pipeline(upload.type_id)
     if err then
-        return fail_upload(upload, "Failed to get pipeline: " .. err)
+        return pipeline_lib.fail_upload(upload, "Failed to get pipeline: " .. err)
     end
 
     local actor = security.new_actor(tostring(upload.user_id), { context_id = "upload:" .. tostring(upload.uuid) })
@@ -214,31 +279,12 @@ function pipeline_lib.process_upload(upload)
         type_id = upload.type_id
     }):with_actor(actor)
 
-    local start_index = 1
-    local cursor = upload.metadata and upload.metadata[CURSOR_KEY]
-    if cursor ~= nil then
-        local found = nil
-        if type(cursor) == "table" and cursor.func then
-            if pipeline[cursor.index] and pipeline[cursor.index].func == cursor.func then
-                found = cursor.index
-            else
-                for i, stage in ipairs(pipeline) do
-                    if stage.func == cursor.func then
-                        found = i
-                        break
-                    end
-                end
-            end
-        end
-
-        if not found then
-            local cursor_func = type(cursor) == "table" and cursor.func or cursor
-            return fail_upload(upload, "Cannot resume deferred upload: stage '" ..
-                tostring(cursor_func) .. "' is not in the pipeline for type " ..
-                tostring(upload.type_id))
-        end
-
-        start_index = found
+    local cursor = pipeline_lib.cursor_of(upload)
+    local start_index, resume_err = resume_index(pipeline, cursor)
+    if not start_index then
+        return pipeline_lib.fail_upload(upload, resume_err .. " for type " .. tostring(upload.type_id))
+    end
+    if start_index > 1 then
         print("Resuming upload", upload.uuid, "from stage", start_index, "of", #pipeline)
     end
 
@@ -246,7 +292,7 @@ function pipeline_lib.process_upload(upload)
     for i = start_index, #pipeline do
         local stage = pipeline[i]
         if not stage then
-            return fail_upload(upload, "Pipeline stage " .. i .. " is missing for type " ..
+            return pipeline_lib.fail_upload(upload, "Pipeline stage " .. i .. " is missing for type " ..
                 tostring(upload.type_id))
         end
 
@@ -272,16 +318,21 @@ function pipeline_lib.process_upload(upload)
         -- Check for errors
         if err or not result then
             local error_msg = tostring(err) or "Processing failed at step " .. i
-            return fail_upload(upload, error_msg, stage_title)
+            return pipeline_lib.fail_upload(upload, error_msg, stage_title)
         end
 
         if result.defer then
             local merged = pipeline_lib.merge_metadata(upload.metadata or {}, result.metadata or {})
-            merged[CURSOR_KEY] = { index = i, func = tostring(processor_id) }
+            merged[CURSOR_KEY] = {
+                index = i,
+                func = tostring(processor_id),
+                state = CURSOR_STATE.DEFERRED,
+                recoveries = cursor and cursor.recoveries or nil,
+            }
 
             local _, metadata_err = upload_repo.update_metadata(upload.uuid, merged)
             if metadata_err then
-                return fail_upload(upload, "Failed to persist deferred state at stage '" ..
+                return pipeline_lib.fail_upload(upload, "Failed to persist deferred state at stage '" ..
                     tostring(processor_id) .. "': " .. tostring(metadata_err), stage_title)
             end
 
@@ -289,22 +340,18 @@ function pipeline_lib.process_upload(upload)
             return true
         end
 
-        -- If the processor returned updated metadata, merge with existing metadata
-        if result.metadata then
-            -- Get existing metadata
-            local existing_metadata = upload.metadata or {}
+        local merged = pipeline_lib.merge_metadata(upload.metadata or {}, result.metadata or {})
+        if i < #pipeline then
+            merged[CURSOR_KEY] = active_cursor(pipeline, i + 1, cursor)
+        else
+            merged[CURSOR_KEY] = nil
+        end
 
-            -- Merge with new metadata
-            local merged_metadata = pipeline_lib.merge_metadata(existing_metadata, result.metadata)
-
-            -- Update the upload record with merged metadata
-            local _, metadata_err = upload_repo.update_metadata(upload.uuid, merged_metadata)
-            if metadata_err then
-                print("Warning: Failed to update metadata for upload", upload.uuid, ":", metadata_err)
-            else
-                -- Update local copy of metadata
-                upload.metadata = merged_metadata
-            end
+        local _, metadata_err = upload_repo.update_metadata(upload.uuid, merged)
+        if metadata_err then
+            print("Warning: Failed to update metadata for upload", upload.uuid, ":", metadata_err)
+        else
+            upload.metadata = merged
         end
     end
 
@@ -328,5 +375,6 @@ end
 -- Export constants
 pipeline_lib.STATUS = STATUS
 pipeline_lib.CURSOR_KEY = CURSOR_KEY
+pipeline_lib.CURSOR_STATE = CURSOR_STATE
 
 return pipeline_lib
