@@ -13,6 +13,7 @@ local VALIDATION_ERRORS = {
     INVALID_TASK_ARGS = "task_args must be a table",
     INVALID_TIMEOUT = "timeout_seconds must be a positive integer",
     INVALID_MAX_RETRIES = "max_retries must be a non-negative integer",
+    INVALID_MAX_CONSECUTIVE_FAILURES = "max_consecutive_failures must be a positive integer",
     NO_UPDATES = "At least one field must be provided for update"
 }
 
@@ -21,6 +22,33 @@ local BUSINESS_ERRORS = {
     UPDATE_FAILED = "Failed to update scheduled task",
     SCHEDULE_CALCULATION_FAILED = "Failed to calculate next run time"
 }
+
+local REQUEST_FIELDS = {
+    "description", "schedule_expression", "task_context", "task_args",
+    "timeout_seconds", "max_retries", "max_consecutive_failures", "enabled"
+}
+
+local UPDATEABLE_FIELDS = {
+    "description", "schedule_expression", "task_context", "task_args",
+    "timeout_seconds", "max_retries", "max_consecutive_failures", "enabled",
+    "status", "retry_count", "consecutive_failures"
+}
+
+local function revive_updates(existing, requested_enabled)
+    if requested_enabled ~= true then
+        return {}
+    end
+
+    if not existing or not schedule_repo.TERMINAL_STATUSES[existing.status] then
+        return {}
+    end
+
+    return {
+        status = schedule_repo.STATUS.SCHEDULED,
+        retry_count = 0,
+        consecutive_failures = 0
+    }
+end
 
 local function handle(request_dto)
     -- Input validation
@@ -45,12 +73,7 @@ local function handle(request_dto)
 
     -- Check that at least one update field is provided
     local has_updates = false
-    local updateable_fields = {
-        "description", "schedule_expression", "task_context", "task_args",
-        "timeout_seconds", "max_retries", "enabled"
-    }
-
-    for _, field in ipairs(updateable_fields) do
+    for _, field in ipairs(REQUEST_FIELDS) do
         if request_dto[field] ~= nil then
             has_updates = true
             break
@@ -76,6 +99,11 @@ local function handle(request_dto)
 
     if request_dto.max_retries and (type(request_dto.max_retries) ~= "number" or request_dto.max_retries < 0) then
         return { success = false, error = VALIDATION_ERRORS.INVALID_MAX_RETRIES }
+    end
+
+    if request_dto.max_consecutive_failures and
+        (type(request_dto.max_consecutive_failures) ~= "number" or request_dto.max_consecutive_failures < 1) then
+        return { success = false, error = VALIDATION_ERRORS.INVALID_MAX_CONSECUTIVE_FAILURES }
     end
 
     -- First check if task exists and user has access
@@ -118,8 +146,17 @@ local function handle(request_dto)
         updates.max_retries = request_dto.max_retries
     end
 
+    if request_dto.max_consecutive_failures then
+        updates.max_consecutive_failures = request_dto.max_consecutive_failures
+    end
+
     if request_dto.enabled ~= nil then
         updates.enabled = request_dto.enabled
+    end
+
+    -- Merged last so a caller cannot override the revival.
+    for field, value in pairs(revive_updates(existing_task, request_dto.enabled)) do
+        updates[field] = value
     end
 
     -- If schedule expression changed, recalculate next run time
@@ -176,4 +213,9 @@ local function handle(request_dto)
     return response
 end
 
-return { handle = handle }
+return {
+    handle = handle,
+    revive_updates = revive_updates,
+    REQUEST_FIELDS = REQUEST_FIELDS,
+    UPDATEABLE_FIELDS = UPDATEABLE_FIELDS
+}

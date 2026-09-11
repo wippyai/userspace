@@ -1,0 +1,20 @@
+version: "1.0"
+namespace: app.persist
+
+entries:
+  - name: schedule_repo_test
+    kind: function.lua
+    meta:
+      name: Schedule repository cleanup
+      type: test
+      suite: scheduler
+      comment: Retention windows are hours, not milliseconds, and cleanup never hard-deletes a user schedule
+    source: file://schedule_repo_test.lua
+    modules:
+      - sql
+      - time
+    imports:
+      test: wippy.test:test
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+      schedule_calculator: userspace.scheduler.interval:schedule_calculator
+    method: run

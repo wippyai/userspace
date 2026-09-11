@@ -1,0 +1,34 @@
+version: "1.0"
+namespace: app.service
+
+entries:
+  - name: worker_test
+    kind: function.lua
+    meta:
+      name: Worker completion actions
+      type: test
+      suite: scheduler
+      comment: What the worker decides to do with a schedule after a run - reschedule, retry or disable
+    source: file://worker_test.lua
+    imports:
+      test: wippy.test:test
+      worker: userspace.scheduler.service:worker
+    method: run
+
+  - name: lifecycle_test
+    kind: function.lua
+    meta:
+      name: Broken-schedule lifetime
+      type: test
+      suite: scheduler
+      comment: End to end - how many runs a permanently failing schedule gets before the scheduler gives up
+    source: file://lifecycle_test.lua
+    modules:
+      - time
+      - sql
+    imports:
+      test: wippy.test:test
+      schedule_repo: userspace.scheduler.persist:schedule_repo
+      schedule_calculator: userspace.scheduler.interval:schedule_calculator
+      worker: userspace.scheduler.service:worker
+    method: run

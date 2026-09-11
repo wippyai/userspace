@@ -15,10 +15,21 @@ local CONST = {
 }
 
 -- Action constants for task completion
+local DEFAULT_MAX_CONSECUTIVE_FAILURES = schedule_repo.DEFAULT_MAX_CONSECUTIVE_FAILURES or 7
+
 local COMPLETION_ACTIONS = {
     RESCHEDULE = "reschedule",
+    SKIP = "skip",
+    COMPLETE = "complete",
+    FAIL = "fail",
     DISABLE = "disable",
     RETRY = "retry"
+}
+
+local TERMINAL_STATUS = {
+    [COMPLETION_ACTIONS.COMPLETE] = schedule_repo.STATUS.COMPLETED,
+    [COMPLETION_ACTIONS.FAIL] = schedule_repo.STATUS.FAILED,
+    [COMPLETION_ACTIONS.DISABLE] = schedule_repo.STATUS.DISABLED
 }
 
 -- Initialize logger at module level for testability
@@ -30,6 +41,7 @@ local log = logger:named("scheduler.worker")
 ---@field tasks_succeeded integer Number of tasks that succeeded
 ---@field tasks_failed integer Number of tasks that failed
 ---@field tasks_rescheduled integer Number of tasks rescheduled for next run
+---@field tasks_skipped integer Number of failed occurrences skipped without disabling
 ---@field tasks_disabled integer Number of tasks disabled
 ---@field tasks_retried integer Number of tasks reset for retry
 ---@field batches_processed integer Number of batches processed
@@ -248,31 +260,49 @@ local function determine_completion_action(task, exec_result)
     -- see why a schedule stopped, not just a generic flag.
     local failure_detail = tostring(exec_result.error or "no error message")
 
-    -- Once schedules always get disabled after execution (success or failure)
     if task.schedule_type == schedule_repo.SCHEDULE_TYPES.ONCE then
-        local reason = is_success and "Once schedule completed successfully"
-            or ("Once schedule failed: " .. failure_detail)
-        return COMPLETION_ACTIONS.DISABLE, reason
+        if is_success then
+            return COMPLETION_ACTIONS.COMPLETE, "Once schedule completed successfully"
+        end
+        return COMPLETION_ACTIONS.FAIL, "Once schedule failed: " .. failure_detail
     end
 
     -- For recurring schedules (interval, ticker, cron)
     if is_success then
         -- Success: reschedule for next run
         return COMPLETION_ACTIONS.RESCHEDULE, nil
-    else
-        -- Failure: check retry logic
-        if not exec_result.retriable then
-            return COMPLETION_ACTIONS.DISABLE, "Task failed (non-retriable): " .. failure_detail
-        end
-
-        if task.retry_count >= task.max_retries then
-            return COMPLETION_ACTIONS.DISABLE,
-                "Maximum retries exceeded (" .. task.max_retries .. "): " .. failure_detail
-        end
-
-        -- Still have retries left
-        return COMPLETION_ACTIONS.RETRY, nil
     end
+
+    local streak_origin = task.last_error
+    local detail = failure_detail
+    if streak_origin and streak_origin ~= "" and streak_origin ~= failure_detail then
+        detail = streak_origin .. " (latest: " .. failure_detail .. ")"
+    end
+
+    local streak = (task.consecutive_failures or 0) + 1
+    local streak_budget = task.max_consecutive_failures or DEFAULT_MAX_CONSECUTIVE_FAILURES
+
+    if not exec_result.retriable then
+        if streak >= streak_budget then
+            return COMPLETION_ACTIONS.DISABLE,
+                "Failed " .. streak .. " consecutive runs (limit " .. streak_budget .. "): " .. detail
+        end
+        return COMPLETION_ACTIONS.SKIP, "Skipped a non-retriable run (" .. streak .. "/" ..
+            streak_budget .. " consecutive): " .. detail
+    end
+
+    if task.retry_count >= task.max_retries then
+        if streak >= streak_budget then
+            return COMPLETION_ACTIONS.DISABLE,
+                "Maximum retries exceeded (" .. task.max_retries .. ") on " .. streak ..
+                " consecutive runs (limit " .. streak_budget .. "): " .. detail
+        end
+        return COMPLETION_ACTIONS.SKIP, "Maximum retries exceeded (" .. task.max_retries ..
+            "), skipping to the next run (" .. streak .. "/" .. streak_budget .. " consecutive): " .. detail
+    end
+
+    -- Still have retries left for this occurrence
+    return COMPLETION_ACTIONS.RETRY, nil
 end
 
 ---Handle task completion based on determined action
@@ -286,11 +316,17 @@ local function handle_completion_action(task, action, reason, deps, stats)
     local success = false
     local err = nil
 
-    if action == COMPLETION_ACTIONS.RESCHEDULE then
-        success, err = deps.schedule_repo.reschedule_task(task.id, deps.schedule_calculator)
+    if action == COMPLETION_ACTIONS.RESCHEDULE or action == COMPLETION_ACTIONS.SKIP then
+        local after_failure = action == COMPLETION_ACTIONS.SKIP
+        success, err = deps.schedule_repo.reschedule_task(task.id, deps.schedule_calculator,
+            { after_failure = after_failure })
         if success then
             stats.tasks_rescheduled = stats.tasks_rescheduled + 1
-            deps.logger:debug("Task rescheduled for next run", {
+            if after_failure then
+                stats.tasks_skipped = stats.tasks_skipped + 1
+            end
+            deps.logger:debug(after_failure and "Task skipped to next run" or "Task rescheduled for next run", {
+                reason = reason,
                 task_id = task.id,
                 schedule_type = task.schedule_type,
                 expression = task.schedule_expression,
@@ -303,19 +339,22 @@ local function handle_completion_action(task, action, reason, deps, stats)
                 error = err
             })
         end
-    elseif action == COMPLETION_ACTIONS.DISABLE then
-        success, err = deps.schedule_repo.disable_schedule(task.id, reason)
+    elseif TERMINAL_STATUS[action] then
+        local status = TERMINAL_STATUS[action]
+        success, err = deps.schedule_repo.retire_schedule(task.id, status, reason)
         if success then
             stats.tasks_disabled = stats.tasks_disabled + 1
-            deps.logger:debug("Task disabled", {
+            deps.logger:debug("Task retired", {
                 task_id = task.id,
                 actor_id = task.actor_id,
+                status = status,
                 reason = reason
             })
         else
-            deps.logger:debug("Failed to disable task", {
+            deps.logger:debug("Failed to retire task", {
                 task_id = task.id,
                 actor_id = task.actor_id,
+                status = status,
                 error = err
             })
         end
@@ -575,6 +614,7 @@ local function run(config, dependency_overrides)
         tasks_succeeded = 0,
         tasks_failed = 0,
         tasks_rescheduled = 0,
+        tasks_skipped = 0,
         tasks_disabled = 0,
         tasks_retried = 0,
         batches_processed = 0,
@@ -637,5 +677,6 @@ return {
     handle_completion_action = handle_completion_action,
     initialize_dependencies = initialize_dependencies,
     CONST = CONST,
-    COMPLETION_ACTIONS = COMPLETION_ACTIONS
+    COMPLETION_ACTIONS = COMPLETION_ACTIONS,
+    TERMINAL_STATUS = TERMINAL_STATUS
 }
