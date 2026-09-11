@@ -7,11 +7,7 @@ entries:
     kind: function.lua
     meta:
       type: migration
-      tags:
-        - scheduler
-        - userspace
-        - schedules
-      description: Create schedules table for task scheduling with user, system, and component support
+      comment: Create schedules table for task scheduling with user, system, and component support
       target_db: app:db
       timestamp: "2025-06-19T10:00:00Z"
     source: file://01_create_schedules_table.lua
@@ -24,17 +20,23 @@ entries:
     kind: function.lua
     meta:
       type: migration
-      tags:
-        - scheduler
-        - userspace
-        - schedules
-        - actor
-        - scope
-        - security
-      description: Add actor and scope columns to schedules table for security context support
+      comment: Add actor and scope columns to schedules table for security context support
       target_db: app:db
       timestamp: "2025-06-22T15:30:00Z"
     source: file://02_add_actor_scope_to_schedules.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  # userspace.scheduler.migrations:03_add_max_consecutive_failures
+  - name: 03_add_max_consecutive_failures
+    kind: function.lua
+    meta:
+      type: migration
+      comment: Add max_consecutive_failures so a recurring schedule survives a bad occurrence instead of being disabled by it
+      target_db: app:db
+      timestamp: "2026-09-11T10:00:00Z"
+    source: file://03_add_max_consecutive_failures.lua
     imports:
       migration: wippy.migration:migration
     method: migrate

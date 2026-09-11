@@ -12,3 +12,6 @@ keywords:
 exclude_meta:
   type:
     - test
+exclude:
+  # The module's test workspace (src/scheduler/test) declares app:* fixtures.
+  - "app:**"

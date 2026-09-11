@@ -1,0 +1,3 @@
+organization: userspace
+module: scheduler-test
+description: Test stub for scheduler module

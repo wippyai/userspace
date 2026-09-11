@@ -1,0 +1,10 @@
+version: "1.0"
+workspace:
+  replacements:
+    userspace/scheduler: ..
+
+override:
+  # The supervisor spawns a cleanup worker the moment it starts (and every 20
+  # minutes after), which would reap this suite's fixtures mid-assertion. The
+  # retention tests call the cleanup functions directly instead.
+  "userspace.scheduler.service:scheduler:lifecycle.auto_start": false

@@ -1,0 +1,72 @@
+version: "1.0"
+namespace: app
+
+entries:
+  - name: db
+    kind: db.sql.sqlite
+    meta:
+      comment: In-memory database for scheduler tests
+    file: ":memory:"
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  # The module's own HTTP endpoints declare router: app:api, so the router has to
+  # exist for the registry to resolve. Nothing in this suite calls over HTTP.
+  - name: gateway
+    kind: http.service
+    meta:
+      comment: Test HTTP server
+    addr: :19087
+    lifecycle:
+      auto_start: true
+
+  - name: api
+    kind: http.router
+    meta:
+      comment: Test API router
+      server: gateway
+    prefix: /api
+
+  - name: dep.userspace.scheduler
+    kind: ns.dependency
+    meta:
+      description: The module under test
+    component: "userspace/scheduler"
+    version: ">=0.4.11"
+
+  - name: dep.wippy.bootloader
+    kind: ns.dependency
+    meta:
+      description: Bootloader, wired to the test env storage
+    component: "wippy/bootloader"
+    version: ">=0.3.14"
+    parameters:
+      - name: env_storage
+        value: app:env_storage
+
+  - name: dep.wippy.migration
+    kind: ns.dependency
+    meta:
+      description: Migration runner, applies the schedules table to app:db
+    component: "wippy/migration"
+    version: ">=0.3.14"
+    parameters:
+      - name: app_db
+        value: app:db
+
+  - name: dep.wippy.security
+    kind: ns.dependency
+    meta:
+      description: Security policies (the process policy group supervised services declare)
+    component: "wippy/security"
+    version: ">=0.4.1"

@@ -1,0 +1,18 @@
+version: "1.0"
+namespace: app.interval
+
+entries:
+  - name: schedule_calculator_test
+    kind: function.lua
+    meta:
+      name: Schedule calculator
+      type: test
+      suite: scheduler
+      comment: Next-run calculation for once, interval, ticker and cron schedules
+    source: file://schedule_calculator_test.lua
+    modules:
+      - time
+    imports:
+      test: wippy.test:test
+      schedule_calculator: userspace.scheduler.interval:schedule_calculator
+    method: run

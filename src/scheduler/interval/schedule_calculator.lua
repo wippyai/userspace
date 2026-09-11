@@ -308,6 +308,10 @@ function schedule_calculator.next_interval_run(expression, last_run_at, created_
         return nil, "Invalid duration format: " .. parse_err
     end
 
+    if duration:nanoseconds() <= 0 then
+        return nil, "Invalid duration format: interval must be positive, got '" .. expression .. "'"
+    end
+
     local base_time
     if last_run_at then
         -- Add interval to last completion time
@@ -340,6 +344,10 @@ function schedule_calculator.next_ticker_run(expression, last_run_at, created_at
     local interval, parse_err = time.parse_duration(expression)
     if parse_err then
         return nil, "Invalid duration format: " .. parse_err
+    end
+
+    if interval:nanoseconds() <= 0 then
+        return nil, "Invalid duration format: ticker interval must be positive, got '" .. expression .. "'"
     end
 
     local base_time

@@ -1,0 +1,17 @@
+version: "1.0"
+namespace: app.binding
+
+# Tests for userspace.scheduler.binding (src/scheduler/binding/).
+entries:
+  - name: update_schedule_func_test
+    kind: function.lua
+    meta:
+      name: Reviving a retired schedule
+      type: test
+      suite: scheduler
+      comment: Re-enabling a schedule that was retired must also clear the terminal status, or it reads as ON and never runs
+    source: file://update_schedule_func_test.lua
+    imports:
+      test: wippy.test:test
+      update_schedule_func: userspace.scheduler.binding:update_schedule_func
+    method: run

@@ -15,6 +15,14 @@ local STATUS = {
     DISABLED = "disabled"
 }
 
+local DEFAULT_MAX_CONSECUTIVE_FAILURES = 7
+
+local TERMINAL_STATUSES = {
+    [STATUS.COMPLETED] = true,
+    [STATUS.FAILED] = true,
+    [STATUS.DISABLED] = true
+}
+
 -- Schedule type constants
 local SCHEDULE_TYPES = {
     ONCE = "once",
@@ -257,6 +265,7 @@ local function row_to_schedule_data(row)
         retry_count = row.retry_count or 0,
         max_retries = row.max_retries or 3,
         consecutive_failures = row.consecutive_failures or 0,
+        max_consecutive_failures = row.max_consecutive_failures or DEFAULT_MAX_CONSECUTIVE_FAILURES,
         last_error = row.last_error,
         actor_id = row.actor_id,
         actor_scope = row.actor_scope,
@@ -324,6 +333,7 @@ function schedule_repo.create(task_data)
         retry_count = 0,
         max_retries = task_data.max_retries or 3,
         consecutive_failures = 0,
+        max_consecutive_failures = task_data.max_consecutive_failures or DEFAULT_MAX_CONSECUTIVE_FAILURES,
         actor_id = task_data.actor_id,
         actor_scope = task_data.actor_scope,
         actor_metadata = encode_json(task_data.actor_metadata or {}),
@@ -783,8 +793,9 @@ end
 ---Reschedule a task for its next run using schedule calculator
 ---@param task_id string
 ---@param schedule_calculator table The schedule calculator module
+---@param opts table|nil { after_failure = boolean } -- keep the failure streak
 ---@return boolean, string|nil -- success, error
-function schedule_repo.reschedule_task(task_id, schedule_calculator)
+function schedule_repo.reschedule_task(task_id, schedule_calculator, opts)
     if not task_id or task_id == "" then
         return false, "task_id is required"
     end
@@ -870,10 +881,17 @@ function schedule_repo.reschedule_task(task_id, schedule_calculator)
         :set("picked_by", sql.as.null())
         :set("picked_at", sql.as.null())
         :set("retry_count", 0)
-        :set("consecutive_failures", 0)
-        :set("last_error", sql.as.null())
         :set("updated_at", encode_time_for_db(now_time))
         :where("id = ?", task_id)
+
+    if opts and opts.after_failure then
+        update_query = update_query
+            :set("consecutive_failures", sql.builder.expr("consecutive_failures + 1"))
+    else
+        update_query = update_query
+            :set("consecutive_failures", 0)
+            :set("last_error", sql.as.null())
+    end
 
     local update_executor = update_query:run_with(tx)
     local update_result, update_err = update_executor:exec()
@@ -896,17 +914,17 @@ function schedule_repo.reschedule_task(task_id, schedule_calculator)
     return update_result.rows_affected > 0, nil
 end
 
----Disable a schedule permanently
----@param task_id string
----@param reason string Reason for disabling
----@return boolean, string|nil -- success, error
-function schedule_repo.disable_schedule(task_id, reason)
+function schedule_repo.retire_schedule(task_id, status, reason)
     if not task_id or task_id == "" then
         return false, "task_id is required"
     end
 
+    if not status or not TERMINAL_STATUSES[status] then
+        return false, "status must be a terminal status, got " .. tostring(status)
+    end
+
     if not reason or reason == "" then
-        reason = "Disabled by system"
+        reason = "Retired by system"
     end
 
     local db, err = get_db()
@@ -917,11 +935,11 @@ function schedule_repo.disable_schedule(task_id, reason)
     local now_time = time.now():utc() -- Always use UTC
     local update_query = sql.builder.update("schedules")
         :set("enabled", false)
-        :set("status", STATUS.DISABLED)
+        :set("status", status)
         :set("picked", false)
         :set("picked_by", sql.as.null())
         :set("picked_at", sql.as.null())
-        :set("last_error", reason)
+        :set("last_error", status == STATUS.COMPLETED and sql.as.null() or reason)
         :set("updated_at", encode_time_for_db(now_time))
         :where("id = ?", task_id)
 
@@ -930,10 +948,14 @@ function schedule_repo.disable_schedule(task_id, reason)
     db:release()
 
     if update_err then
-        return false, "Failed to disable schedule: " .. update_err
+        return false, "Failed to retire schedule: " .. update_err
     end
 
     return result.rows_affected > 0, nil
+end
+
+function schedule_repo.disable_schedule(task_id, reason)
+    return schedule_repo.retire_schedule(task_id, STATUS.DISABLED, reason or "Disabled by system")
 end
 
 ---Reset a task for retry (keep current next_run_at)
@@ -996,11 +1018,9 @@ function schedule_repo.update_execution_result(task_id, is_success, error_messag
             :set("consecutive_failures", 0)
             :set("last_error", sql.as.null())
     else
-        -- Increment failure counters and set error
         update_query = update_query
-            :set("consecutive_failures", sql.builder.expr("consecutive_failures + 1"))
             :set("retry_count", sql.builder.expr("retry_count + 1"))
-            :set("last_error", error_message or "Unknown error")
+            :set("last_error", sql.builder.expr("COALESCE(last_error, ?)", error_message or "Unknown error"))
     end
 
     local executor = update_query:run_with(db)
@@ -1066,6 +1086,10 @@ function schedule_repo.cleanup_stuck_tasks()
     return result.rows_affected, nil
 end
 
+function schedule_repo.retention_cutoff(now, hours)
+    return now:add(-(hours or 0) * 3600 * time.SECOND)
+end
+
 ---Delete old completed and failed tasks
 ---@param completed_retention_hours integer How long to keep completed tasks (default 24h)
 ---@param failed_retention_hours integer How long to keep failed tasks (default 72h)
@@ -1080,8 +1104,8 @@ function schedule_repo.cleanup_old_tasks(completed_retention_hours, failed_reten
     end
 
     local now = time.now():utc() -- Always use UTC
-    local completed_cutoff = now:add(-completed_retention_hours * 3600 * 1000)
-    local failed_cutoff = now:add(-failed_retention_hours * 3600 * 1000)
+    local completed_cutoff = schedule_repo.retention_cutoff(now, completed_retention_hours)
+    local failed_cutoff = schedule_repo.retention_cutoff(now, failed_retention_hours)
 
     -- Delete old completed tasks
     local delete_completed = sql.builder.delete("schedules")
@@ -1136,7 +1160,7 @@ function schedule_repo.cleanup_disabled_schedules(disabled_retention_hours)
     end
 
     local now = time.now():utc() -- Always use UTC
-    local disabled_cutoff = now:add(-disabled_retention_hours * 3600 * 1000)
+    local disabled_cutoff = schedule_repo.retention_cutoff(now, disabled_retention_hours)
 
     -- Delete old disabled schedules
     local delete_disabled = sql.builder.delete("schedules")
@@ -1212,5 +1236,7 @@ end
 -- Export constants and module
 schedule_repo.STATUS = STATUS
 schedule_repo.SCHEDULE_TYPES = SCHEDULE_TYPES
+schedule_repo.TERMINAL_STATUSES = TERMINAL_STATUSES
+schedule_repo.DEFAULT_MAX_CONSECUTIVE_FAILURES = DEFAULT_MAX_CONSECUTIVE_FAILURES
 
 return schedule_repo
