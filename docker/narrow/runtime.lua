@@ -256,9 +256,13 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
         -- daemon state before surfacing an error so a completed first delivery is
         -- not reported as a failed retry.
         for attempt = 1, 40 do
-            local reconciled = (docker :: any):inspect_container(raw.backend_ref)
+            local reconciled, inspect_err, inspect_status = (docker :: any):inspect_container(raw.backend_ref)
             if operation == "remove" and type(reconciled) ~= "table" then
-                return observation(before, "destroyed"), nil
+                if inspect_status == 404 then return observation(before, "destroyed"), nil end
+                -- A timeout, refused connection or daemon error says nothing
+                -- about whether removal completed. Never authorize cleanup
+                -- from the absence of an inspection response.
+                return nil, tostring(inspect_err or call_err)
             elseif type(reconciled) == "table" then
                 local seen = observation(reconciled :: DynamicObject)
                 if operation == "start" and seen.state == "running" then return seen, nil end

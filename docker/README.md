@@ -306,6 +306,15 @@ while true do
 end
 ```
 
+### Removal reconciliation
+
+If a narrow `remove` request fails, a subsequent inspection must return Docker
+HTTP 404 before the operation reports `destroyed`. Transport failures, denied
+access and daemon errors leave removal unconfirmed; their diagnostic text is
+never interpreted as proof of absence. The low-level client's
+`inspect_container` supplies an optional third return value for the actual HTTP
+status, preserving its existing result/error returns.
+
 ## License
 
 Apache-2.0
