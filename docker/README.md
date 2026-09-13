@@ -306,7 +306,17 @@ while true do
 end
 ```
 
-### Removal reconciliation
+### Observed container identity and cleanup
+
+Narrow observations preserve Docker's `created`, `running`, `paused`,
+`restarting`, `removing`, `exited` and `dead` states. Missing or unrecognized
+states are `unknown`, never an inferred exit. `observed_image_digest` comes from
+the daemon's actual image ID, not the requested `bee.image_digest` label; a
+missing or malformed image ID is reported as an empty string. Callers must
+compare observations with their own admitted identity and treat missing evidence
+as uncertainty. Labels alone do not establish authorization or actual image
+identity. A successful stop is reported as `stopped` only after observing
+`created` or `exited`; paused/restarting/unknown states cannot establish it.
 
 If a narrow `remove` request fails, a subsequent inspection must return Docker
 HTTP 404 before the operation reports `destroyed`. Transport failures, denied

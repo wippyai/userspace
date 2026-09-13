@@ -172,16 +172,28 @@ end
 local function observation(value: DynamicObject, forced: string?): DynamicObject
     local config = type(value.Config) == "table" and value.Config :: DynamicObject or {}
     local observed = type(value.State) == "table" and (value.State :: DynamicObject).Status or value.State
-    local state = forced or (observed == "created" and "created"
-        or (observed == "running" and "running" or "exited"))
+    local states: {[string]: boolean} = {created = true, running = true, paused = true, restarting = true,
+        removing = true, exited = true, dead = true}
+    local state = forced or "unknown"
+    if not forced and type(observed) == "string" then
+        local reported = observed :: string
+        if states[reported] then state = reported end
+    end
     local observed_labels = type(config.Labels) == "table" and config.Labels
         or (type(value.Labels) == "table" and value.Labels or {})
-    local observed_image = type(observed_labels) == "table"
-        and (observed_labels :: DynamicObject)["bee.image_digest"] or nil
+    -- Labels describe the caller's requested identity. Only the daemon's
+    -- image ID is evidence of which image actually backs the container.
+    local observed_image = value.ImageID or value.Image
+    if type(observed_image) ~= "string" or #observed_image ~= 71
+        or not observed_image:match("^sha256:[0-9a-f]+$") then observed_image = "" end
     return { schema_revision = "userspace.docker.narrow-observation@1",
         backend_ref = tostring(value.Id or value.ID or ""),
-        observed_image_digest = tostring(observed_image or value.Image or value.ImageID or ""),
+        observed_image_digest = observed_image,
         labels = observed_labels, state = state }
+end
+
+local function stopped_state(state: unknown): boolean
+    return state == "created" or state == "exited"
 end
 
 local function client(deps: DynamicObject): (any?, string?) return (deps.client :: any)() end
@@ -241,7 +253,7 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
     local before_observation = observation(before)
     if operation == "start" and before_observation.state == "running" then
         return before_observation, nil
-    elseif operation == "stop" and before_observation.state ~= "running" then
+    elseif operation == "stop" and stopped_state(before_observation.state) then
         return observation(before, "stopped"), nil
     end
     local ok, call_err
@@ -266,7 +278,7 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
             elseif type(reconciled) == "table" then
                 local seen = observation(reconciled :: DynamicObject)
                 if operation == "start" and seen.state == "running" then return seen, nil end
-                if operation == "stop" and seen.state ~= "running" then
+                if operation == "stop" and stopped_state(seen.state) then
                     return observation(reconciled :: DynamicObject, "stopped"), nil
                 end
             end
@@ -277,6 +289,9 @@ local function transition(value: unknown, deps: DynamicObject, operation: string
     if operation == "remove" then return observation(before, forced), nil end
     local after, after_err = (docker :: any):inspect_container(raw.backend_ref)
     if type(after) ~= "table" then return nil, tostring(after_err) end
+    if operation == "stop" and not stopped_state(observation(after :: DynamicObject).state) then
+        return nil, "Docker stop did not observe a stopped container"
+    end
     return observation(after :: DynamicObject, forced), nil
 end
 
