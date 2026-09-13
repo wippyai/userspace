@@ -269,6 +269,13 @@ seccomp/AppArmor, positive PID/CPU/memory limits, non-host networking, bounded
 binds, one hardened tmpfs, and exact `bee.*` attempt labels. Unknown or broader
 Docker fields fail closed.
 
+Set `config.Tty` explicitly to `true` for a PTY or `false` for byte streams.
+Both modes require attached stdin/stdout/stderr and open stdin, and pass the same
+sandbox validation. `create` forwards the requested mode and returns the observed
+container identity without starting it. Terminal attachment is a separate caller
+responsibility; this operation does not create an interactive worker or grant
+access to a terminal.
+
 ```lua
 local narrow = contract.open("userspace.docker:narrow")
 local created = narrow:create({ name = "bee-<digest>", config = protected_config })
