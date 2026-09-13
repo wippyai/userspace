@@ -318,6 +318,13 @@ as uncertainty. Labels alone do not establish authorization or actual image
 identity. A successful stop is reported as `stopped` only after observing
 `created` or `exited`; paused/restarting/unknown states cannot establish it.
 
+`started_at` preserves the daemon's `State.StartedAt` string, including its
+fractional precision. It is absent when the daemon supplies no bounded string
+(for example, list responses). Compare it with the admitted execution timestamp
+before attaching or controlling a retained container: a container ID survives a
+restart. The field is observed data, not authorization or an atomic control
+fence; callers validate the timestamp and keep uncertain observations uncertain.
+
 If a narrow `remove` request fails, a subsequent inspection must return Docker
 HTTP 404 before the operation reports `destroyed`. Transport failures, denied
 access and daemon errors leave removal unconfirmed; their diagnostic text is

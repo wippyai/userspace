@@ -186,10 +186,16 @@ local function observation(value: DynamicObject, forced: string?): DynamicObject
     local observed_image = value.ImageID or value.Image
     if type(observed_image) ~= "string" or #observed_image ~= 71
         or not observed_image:match("^sha256:[0-9a-f]+$") then observed_image = "" end
+    -- Inspect supplies the execution timestamp; list responses may not.
+    -- Preserve its precision for equality fencing without inventing a value
+    -- from labels, container creation time or a local clock.
+    local started_at = type(value.State) == "table" and (value.State :: DynamicObject).StartedAt or nil
+    if type(started_at) ~= "string" or #started_at == 0 or #started_at > 64
+        or started_at:find("%c") then started_at = nil end
     return { schema_revision = "userspace.docker.narrow-observation@1",
         backend_ref = tostring(value.Id or value.ID or ""),
         observed_image_digest = observed_image,
-        labels = observed_labels, state = state }
+        labels = observed_labels, state = state, started_at = started_at }
 end
 
 local function stopped_state(state: unknown): boolean
