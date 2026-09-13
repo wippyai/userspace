@@ -281,11 +281,10 @@ function docker.new(socket_path: string?)
 
     function client:inspect_container(id: string)
         local result, req_err = make_request(sock, "GET", "/containers/" .. id .. "/json")
-        if req_err or not result then
-            -- Keep the daemon's status separate from diagnostic text. A failed
-            -- transport has no status and cannot establish container absence.
-            return nil, req_err, result and result.status_code or nil
-        end
+        -- Keep the daemon's status separate from diagnostic text. A failed
+        -- transport has no status and cannot establish container absence.
+        if not result then return nil, req_err, nil end
+        if req_err then return nil, req_err, result.status_code end
         return result.body, nil, result.status_code
     end
 

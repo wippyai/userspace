@@ -1,0 +1,17 @@
+version: "1.0"
+namespace: userspace.docker
+
+entries:
+  - name: client_definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Docker HTTP client
+      description: Docker API client without services, storage, or lifecycle requirements
+
+  - name: docker_client
+    kind: library.lua
+    source: file://client.lua
+    modules:
+      - http_client
+      - json
