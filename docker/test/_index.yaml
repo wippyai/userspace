@@ -2,6 +2,15 @@ version: "1.0"
 namespace: app
 
 entries:
+  - name: pty_config
+    kind: process.lua
+    source: file://pty_config.lua
+    method: main
+    modules: [io]
+    imports: {runtime: userspace.docker.narrow:runtime}
+    meta:
+      command: {name: docker-pty-config}
+
   - name: observed_identity
     kind: process.lua
     source: file://observed_identity.lua

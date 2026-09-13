@@ -285,6 +285,13 @@ integer no larger than `Memory`, since `/dev/shm` pages are charged to the
 container memory cgroup. `IpcMode` is not accepted, so a sandbox never joins the
 host IPC namespace.
 
+Set `config.Tty` explicitly to `true` for a PTY or `false` for byte streams.
+Both modes require attached stdin/stdout/stderr and open stdin, and pass the same
+sandbox validation. `create` forwards the requested mode and returns the observed
+container identity without starting it. Terminal attachment is a separate caller
+responsibility; this operation does not create an interactive worker or grant
+access to a terminal.
+
 ```lua
 local narrow = contract.open("userspace.docker:narrow")
 local created = narrow:create({ name = "bee-<digest>", config = protected_config })
