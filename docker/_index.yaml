@@ -43,6 +43,11 @@ entries:
         path: .default
 
   # Dependencies
+  - name: dependency.client
+    kind: ns.dependency
+    component: userspace/docker-client
+    version: "^0.1.0"
+
   - name: dependency.test
     kind: ns.dependency
     component: wippy/test
@@ -299,14 +304,6 @@ entries:
           start: userspace.docker.narrow:start
           stop: userspace.docker.narrow:stop
           remove: userspace.docker.narrow:remove
-
-  # Docker client library
-  - name: docker_client
-    kind: library.lua
-    source: file://client.lua
-    modules:
-      - http_client
-      - json
 
   # Tests
   - name: client_test

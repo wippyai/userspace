@@ -2,6 +2,11 @@
 
 Docker container and image management via contracts and process messaging.
 
+This package depends on `userspace/docker-client`, which owns the existing
+`userspace.docker:docker_client` implementation. Hosts needing only the Docker
+HTTP client can depend on that package without installing these services,
+database requirements or migrations.
+
 ## Features
 
 - Container lifecycle management (create, start, stop, delete)
