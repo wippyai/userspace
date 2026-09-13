@@ -282,9 +282,11 @@ function docker.new(socket_path: string?)
     function client:inspect_container(id: string)
         local result, req_err = make_request(sock, "GET", "/containers/" .. id .. "/json")
         if req_err or not result then
-            return nil, req_err
+            -- Keep the daemon's status separate from diagnostic text. A failed
+            -- transport has no status and cannot establish container absence.
+            return nil, req_err, result and result.status_code or nil
         end
-        return result.body, nil
+        return result.body, nil, result.status_code
     end
 
     function client:remove_container(id: string, force: boolean?)

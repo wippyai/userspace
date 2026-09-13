@@ -2,6 +2,24 @@ version: "1.0"
 namespace: app
 
 entries:
+  - name: observed_identity
+    kind: process.lua
+    source: file://observed_identity.lua
+    method: main
+    modules: [io]
+    imports: {runtime: userspace.docker.narrow:runtime}
+    meta:
+      command: {name: docker-observed-identity}
+
+  - name: remove_observation
+    kind: process.lua
+    source: file://remove_observation.lua
+    method: main
+    modules: [io]
+    imports: {runtime: userspace.docker.narrow:runtime}
+    meta:
+      command: {name: docker-remove-observation}
+
   - name: db
     kind: db.sql.sqlite
     meta:
