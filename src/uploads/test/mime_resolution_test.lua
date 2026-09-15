@@ -29,6 +29,17 @@ local function define_tests()
             test.is_nil(claimed)
         end)
 
+        it("corrects a slideshow claimed as plain PowerPoint", function()
+            local resolved, claimed = upload_lib.resolve_mime_type(
+                "application/vnd.ms-powerpoint", "quarterly.ppsx"
+            )
+            test.eq(
+                resolved,
+                "application/vnd.openxmlformats-officedocument.presentationml.slideshow"
+            )
+            test.eq(claimed, "application/vnd.ms-powerpoint")
+        end)
+
         it("matches the extension case-insensitively", function()
             test.eq(upload_lib.resolve_mime_type("application/msword", "SHOUTING.RTF"), "application/rtf")
         end)
@@ -60,6 +71,25 @@ local function define_tests()
             test.eq(upload_lib.mime_type_for_extension("rtf"), "application/rtf")
             test.eq(upload_lib.mime_type_for_extension("RTF"), "application/rtf")
             test.eq(upload_lib.mime_type_for_extension("msg"), "application/vnd.ms-outlook")
+        end)
+
+        it("knows every presentation extension the pipeline accepts", function()
+            test.eq(upload_lib.mime_type_for_extension("ppt"), "application/vnd.ms-powerpoint")
+            test.eq(upload_lib.mime_type_for_extension("pps"), "application/vnd.ms-powerpoint")
+
+            test.eq(
+                upload_lib.mime_type_for_extension("pptx"),
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
+            test.eq(
+                upload_lib.mime_type_for_extension("ppsx"),
+                "application/vnd.openxmlformats-officedocument.presentationml.slideshow"
+            )
+
+            test.eq(
+                upload_lib.mime_type_for_extension("odp"),
+                "application/vnd.oasis.opendocument.presentation"
+            )
         end)
 
         it("falls back to octet-stream on anything it does not know", function()
