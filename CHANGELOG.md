@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/wippyai/userspace/compare/v0.5.0...v0.6.0) (2026-09-15)
+
+
+### Features
+
+* **upload:** implement recovery mechanism for interrupted uploads ([#65](https://github.com/wippyai/userspace/issues/65)) ([9193dab](https://github.com/wippyai/userspace/commit/9193dab2f17a34c788b7140e143733fe306ce693))
+
+
+### Bug Fixes
+
+* **docker:** grant root service process capabilities ([#59](https://github.com/wippyai/userspace/issues/59)) ([f4c4cc9](https://github.com/wippyai/userspace/commit/f4c4cc91617bef049ed744a4b27f3313bcdff8a5))
+
 ## [0.5.0](https://github.com/wippyai/userspace/compare/v0.4.0...v0.5.0) (2026-09-01)
 
 
