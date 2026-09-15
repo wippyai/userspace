@@ -1,5 +1,4 @@
 local http = require("http")
-local json = require("json")
 local time = require("time")
 local component = require("component")
 
