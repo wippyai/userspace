@@ -75,7 +75,7 @@ entries:
     source: file://update_component.lua
     modules:
       - http
-      - json
+      - time
     imports:
       component: userspace.component:component
     method: handler
