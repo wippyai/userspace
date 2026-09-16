@@ -48,6 +48,20 @@ local function age(id, seconds)
     end
 end
 
+local function age_pick(id, seconds)
+    local db = db_handle()
+    local db_type = db:type()
+    local _, err = sql.builder.update("schedules")
+        :set("picked_at", db_stamp(db_type, time.now():utc():add(-seconds * time.SECOND)))
+        :where("id = ?", id)
+        :run_with(db)
+        :exec()
+    db:release()
+    if err then
+        error("failed to age claim: " .. err)
+    end
+end
+
 local function terminal_statuses()
     local set = schedule_repo.TERMINAL_STATUSES
     if type(set) ~= "table" or type(schedule_repo.retire_schedule) ~= "function" then
@@ -435,6 +449,47 @@ local function define_tests()
 
             test.is_true(alive(live), "cleanup must only ever touch terminal statuses")
         end)
+    end)
+
+    test.describe("Abandoned claims", function()
+        test.before_each(reset)
+
+        test.it("releases a claim abandoned before the task started", function()
+            local id = fixture("user", schedule_repo.STATUS.SCHEDULED, 0)
+            local claimed = schedule_repo.claim_ready_tasks("worker-a", 10)
+            test.eq(#claimed, 1, "the fixture must be claimable to begin with")
+            test.eq(claimed[1].id, id)
+
+            age_pick(id, 2 * HOUR) -- past the 3600s default timeout_seconds
+
+            local released, err = schedule_repo.cleanup_stuck_tasks()
+            test.is_nil(err)
+            test.eq(released, 1,
+                "a claim stranded at status='scheduled' must be released -- if this is 0 the " ..
+                "schedule is unclaimable forever while still reading as enabled in the UI")
+
+            test.eq(#schedule_repo.claim_ready_tasks("worker-b", 10), 1,
+                "the released schedule must come back into rotation")
+        end)
+
+        test.it("releases a claim abandoned mid-execution", function()
+            local id = fixture("user", schedule_repo.STATUS.SCHEDULED, 0)
+            schedule_repo.claim_ready_tasks("worker-a", 10)
+            schedule_repo.mark_executing(id)
+            age_pick(id, 2 * HOUR)
+
+            test.eq(schedule_repo.cleanup_stuck_tasks(), 1)
+            test.eq(#schedule_repo.claim_ready_tasks("worker-b", 10), 1)
+        end)
+
+        test.it("leaves a claim inside its timeout alone", function()
+            fixture("user", schedule_repo.STATUS.SCHEDULED, 0)
+            schedule_repo.claim_ready_tasks("worker-a", 10)
+
+            test.eq(schedule_repo.cleanup_stuck_tasks(), 0,
+                "a worker still inside timeout_seconds must keep its claim")
+        end)
+
     end)
 end
 
