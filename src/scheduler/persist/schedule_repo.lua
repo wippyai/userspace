@@ -1058,7 +1058,7 @@ function schedule_repo.cleanup_stuck_tasks()
             :set("last_error", "Task timeout - worker may have died")
             :set("updated_at", encode_time_for_db(now_time))
             :where("picked = ?", true)
-            :where("status = ?", STATUS.EXECUTING)
+            :where(sql.builder.expr("status IN (?, ?)", STATUS.EXECUTING, STATUS.SCHEDULED))
             :where(sql.builder.expr("(? - EXTRACT(EPOCH FROM picked_at)) > timeout_seconds", now_unix))
     else
         -- SQLite: Direct comparison with Unix timestamps
@@ -1071,7 +1071,7 @@ function schedule_repo.cleanup_stuck_tasks()
             :set("last_error", "Task timeout - worker may have died")
             :set("updated_at", encode_time_for_db(now_time))
             :where("picked = ?", true)
-            :where("status = ?", STATUS.EXECUTING)
+            :where(sql.builder.expr("status IN (?, ?)", STATUS.EXECUTING, STATUS.SCHEDULED))
             :where(sql.builder.expr("(? - picked_at) > timeout_seconds", now_unix))
     end
 
