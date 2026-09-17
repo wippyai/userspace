@@ -31,3 +31,19 @@ entries:
     modules:
       - sql
       - env
+
+  - name: log_cursor_migration_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker-migrations
+      description: Log cursor migration backfills large SQLite histories
+      timeout: 600s
+    source: file://log_cursor_migration_test.lua
+    method: run_tests
+    imports:
+      runner: wippy.migration:runner
+      test: wippy.test:test
+    modules:
+      - sql
+      - time
