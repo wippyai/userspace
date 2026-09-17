@@ -38,11 +38,15 @@ return require("migration").define(function()
         database("sqlite", function()
             up(function(db)
                 db:execute("ALTER TABLE container_logs ADD COLUMN sequence INTEGER")
+                -- One ranking pass over the table; a per-row COUNT(*) is quadratic in a
+                -- container's history and stalls boot on large log tables.
                 db:execute([[
-                    UPDATE container_logs AS current SET sequence = (
-                        SELECT COUNT(*) FROM container_logs AS prior
-                        WHERE prior.container_id = current.container_id AND prior.id <= current.id
-                    )
+                    UPDATE container_logs SET sequence = ranked.seq
+                    FROM (
+                        SELECT id, ROW_NUMBER() OVER (PARTITION BY container_id ORDER BY id) AS seq
+                        FROM container_logs
+                    ) AS ranked
+                    WHERE container_logs.id = ranked.id
                 ]])
                 db:execute("CREATE UNIQUE INDEX idx_container_logs_sequence ON container_logs(container_id, sequence)")
                 db:execute([[
