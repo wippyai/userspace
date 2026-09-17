@@ -21,7 +21,10 @@ return require("migration").define(function()
         end)
 
         database("sqlite", function()
-            -- SQLite INTEGER is a dynamic 64-bit type already; nothing to do.
+            -- SQLite INTEGER is already a 64-bit type, so there is no schema change;
+            -- the runner still requires both directions to be declared.
+            up(function(_db) end)
+            down(function(_db) end)
         end)
     end)
 end)
