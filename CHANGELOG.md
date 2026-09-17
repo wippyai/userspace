@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.6.0](https://github.com/wippyai/userspace/compare/v0.5.0...v0.6.0) (2026-09-17)
+
+
+### Features
+
+* **upload:** implement recovery mechanism for interrupted uploads ([#65](https://github.com/wippyai/userspace/issues/65)) ([9193dab](https://github.com/wippyai/userspace/commit/9193dab2f17a34c788b7140e143733fe306ce693))
+
+
+### Bug Fixes
+
+* **docker:** backfill SQLite log cursors in one pass ([#74](https://github.com/wippyai/userspace/issues/74)) ([30dfe5b](https://github.com/wippyai/userspace/commit/30dfe5b14f9847c25a1dac155c9a5024971bb180))
+* **docker:** grant root service process capabilities ([#59](https://github.com/wippyai/userspace/issues/59)) ([f4c4cc9](https://github.com/wippyai/userspace/commit/f4c4cc91617bef049ed744a4b27f3313bcdff8a5))
+* **scheduler:** release claims stranded before mark_executing ([#72](https://github.com/wippyai/userspace/issues/72)) ([ef6e66f](https://github.com/wippyai/userspace/commit/ef6e66f4b3686e45d763b33e1e63d18c7a7e7120))
+* **uploads:** declare the SQLite no-op for migration 04 ([#75](https://github.com/wippyai/userspace/issues/75)) ([8504a13](https://github.com/wippyai/userspace/commit/8504a132547cc1a15d17136daffb6633b7a17ec5))
+
+
+### Performance Improvements
+
+* **docker:** stream container logs instead of polling ([#73](https://github.com/wippyai/userspace/issues/73)) ([50f3c33](https://github.com/wippyai/userspace/commit/50f3c33bcd0161407414f50b704f8b3cc4d4ceec))
+
 ## [0.5.0](https://github.com/wippyai/userspace/compare/v0.4.0...v0.5.0) (2026-09-01)
 
 
