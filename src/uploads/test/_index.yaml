@@ -13,6 +13,7 @@ entries:
     meta:
       comment: Local file storage for upload tests
     directory: ./.wippy/test_uploads
+    auto_init: true
 
   - name: env_storage
     kind: env.storage.file
@@ -363,3 +364,15 @@ entries:
       upload_repo: userspace.uploads:upload_repo
       test: wippy.test:test
     method: run
+
+  - name: migrations_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: uploads
+      description: Every uploads migration applies on sqlite
+    source: file://migrations_test.lua
+    method: run_tests
+    imports:
+      runner: wippy.migration:runner
+      test: wippy.test:test
