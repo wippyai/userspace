@@ -1,0 +1,15 @@
+version: "1.0"
+namespace: app.service
+
+entries:
+  - name: interactive_executor_routes_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: docker
+      description: Interactive executor routes fail closed and preserve exact Docker image identity
+    source: file://interactive_executor_routes_test.lua
+    method: run_tests
+    imports:
+      routes: userspace.docker.service:interactive_executor_routes
+      test: wippy.test:test

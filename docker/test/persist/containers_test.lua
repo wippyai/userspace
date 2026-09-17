@@ -224,6 +224,7 @@ local function define_tests()
                 local page_one, page_err, one_meta = containers_repo.get_logs(db, id,
                     { after_log_id = first, limit = 2 })
                 test.is_nil(page_err)
+                assert(one_meta, "page metadata returned")
                 test.eq(#page_one, 2)
                 test.eq(tonumber(page_one[1].sequence), tonumber(second))
                 test.eq(tonumber(page_one[2].sequence), tonumber(third))
@@ -233,6 +234,7 @@ local function define_tests()
                 local page_two, two_err, two_meta = containers_repo.get_logs(db, id,
                     { after_log_id = one_meta.next_after_log_id, limit = 2 })
                 test.is_nil(two_err)
+                assert(two_meta, "page metadata returned")
                 test.eq(#page_two, 1)
                 test.eq(tonumber(page_two[1].sequence), tonumber(fourth))
                 test.is_false(two_meta.has_more)
@@ -307,6 +309,106 @@ local function define_tests()
 
                 local logs = containers_repo.get_logs(db, id)
                 test.eq(#logs, 0, "no logs")
+
+                cleanup(db, id)
+                db:release()
+            end)
+
+            it("append_logs writes a batch with contiguous cursors in input order", function()
+                local db = get_db()
+                local id = containers_repo.create(db, { image = "alpine:latest", command = "echo test" })
+                assert(id)
+
+                local first = containers_repo.append_log(db, id, "stdout", "before")
+                local base = tonumber(first)
+                assert(base, "first append returns a cursor")
+                local entries = {}
+                for i = 1, 450 do
+                    table.insert(entries, { stream = (i % 2 == 0) and "stderr" or "stdout", line = "batch " .. i })
+                end
+                local cursors, err = containers_repo.append_logs(db, id, entries)
+                test.is_nil(err, "batch appended")
+                test.eq(#cursors, 450, "one cursor per entry")
+                for i, c in ipairs(cursors) do
+                    test.eq(tonumber(c.sequence), base + i, "sequence " .. i .. " contiguous")
+                    test.not_nil(c.log_id, "durable id " .. i)
+                end
+
+                local after = containers_repo.append_log(db, id, "stdout", "after")
+                test.eq(tonumber(after), base + 451, "single append continues the batch sequence")
+
+                local rows = containers_repo.get_logs(db, id, { after_cursor = first, limit = 1000 })
+                test.eq(#rows, 451)
+                test.eq(rows[1].line, "batch 1")
+                test.eq(rows[2].stream, "stderr")
+                test.eq(rows[450].line, "batch 450")
+                test.eq(rows[451].line, "after")
+                for i, c in ipairs(cursors) do
+                    test.eq(tonumber(rows[i].id), tonumber(c.log_id), "log_id " .. i .. " matches stored row")
+                end
+
+                cleanup(db, id)
+                db:release()
+            end)
+
+            it("append_logs with no entries writes nothing", function()
+                local db = get_db()
+                local id = containers_repo.create(db, { image = "alpine:latest", command = "echo test" })
+                assert(id)
+
+                local cursors, err = containers_repo.append_logs(db, id, {})
+                test.is_nil(err)
+                test.eq(#cursors, 0)
+                test.eq(#containers_repo.get_logs(db, id), 0)
+
+                cleanup(db, id)
+                db:release()
+            end)
+
+            it("get_logs tail returns the newest lines oldest first", function()
+                local db = get_db()
+                local id = containers_repo.create(db, { image = "alpine:latest", command = "echo test" })
+                assert(id)
+
+                local entries = {}
+                for i = 1, 10 do
+                    table.insert(entries, { stream = "stdout", line = "line " .. i })
+                end
+                containers_repo.append_logs(db, id, entries)
+
+                local rows, err, page = containers_repo.get_logs(db, id, { tail = 3 })
+                test.is_nil(err)
+                assert(page, "page metadata returned")
+                test.eq(#rows, 3, "tail size applied")
+                test.eq(rows[1].line, "line 8")
+                test.eq(rows[3].line, "line 10")
+                test.eq(tonumber(page.next_cursor), tonumber(rows[3].sequence), "next cursor follows the newest row")
+                test.is_true(page.has_more, "older rows exist before the tail")
+
+                local all_rows, _, all_page = containers_repo.get_logs(db, id, { tail = 50 })
+                assert(all_page, "page metadata returned")
+                test.eq(#all_rows, 10, "tail larger than history returns everything")
+                test.eq(all_rows[1].line, "line 1")
+                test.is_false(all_page.has_more)
+
+                local stderr_rows = containers_repo.get_logs(db, id, { tail = 5, stream = "stderr" })
+                test.eq(#stderr_rows, 0, "tail honors the stream filter")
+
+                cleanup(db, id)
+                db:release()
+            end)
+
+            it("get_logs rejects tail combined with a cursor or out of range", function()
+                local db = get_db()
+                local id = containers_repo.create(db, { image = "alpine:latest", command = "echo test" })
+                assert(id)
+
+                local _, cursor_err = containers_repo.get_logs(db, id, { tail = 5, after_cursor = 1 })
+                test.not_nil(cursor_err, "tail and cursor are exclusive")
+                local _, zero_err = containers_repo.get_logs(db, id, { tail = 0 })
+                test.not_nil(zero_err, "tail must be positive")
+                local _, big_err = containers_repo.get_logs(db, id, { tail = 1001 })
+                test.not_nil(big_err, "tail is bounded")
 
                 cleanup(db, id)
                 db:release()

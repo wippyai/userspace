@@ -58,6 +58,22 @@ local function create_from_entry(db, entry: {id: string, data: table?})
     return not create_err
 end
 
+-- Publishes one persisted log line to every subscriber of its container.
+local function publish_log(subs: table, container_id: any, entry: table)
+    local encoded = json.encode({
+        type = "log",
+        container_id = container_id,
+        line = entry.line,
+        stream = entry.stream,
+        log_id = entry.log_id,
+        cursor = entry.cursor,
+        timestamp = entry.timestamp or os.time(),
+    })
+    for sub_pid, _ in pairs(subs) do
+        process.send(tostring(sub_pid), consts.topic.CONTAINER_LOG, encoded)
+    end
+end
+
 local function run()
     local log = logger:named("docker.root")
 
@@ -264,18 +280,17 @@ local function run()
                 if payload and payload.container_id then
                     local subs = subscribers[tostring(payload.container_id)]
                     if subs then
-                        local event = {
-                            type = "log",
-                            container_id = payload.container_id,
-                            line = payload.line,
-                            stream = payload.stream,
-                            log_id = payload.log_id,
-                            cursor = payload.cursor,
-                            timestamp = payload.timestamp or os.time(),
-                        }
-                        local encoded = json.encode(event)
-                        for sub_pid, _ in pairs(subs) do
-                            process.send(tostring(sub_pid), consts.topic.CONTAINER_LOG, encoded)
+                        publish_log(subs, payload.container_id, payload)
+                    end
+                end
+
+            elseif topic == consts.topic.CONTAINER_LOG_BATCH then
+                local payload = helpers.extract_payload(msg)
+                if payload and payload.container_id and type(payload.entries) == "table" then
+                    local subs = subscribers[tostring(payload.container_id)]
+                    if subs then
+                        for _, entry in ipairs(payload.entries) do
+                            publish_log(subs, payload.container_id, entry)
                         end
                     end
                 end

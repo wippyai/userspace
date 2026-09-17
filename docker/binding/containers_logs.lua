@@ -8,7 +8,7 @@ local function get_db()
     return sql.get(db_id)
 end
 
-local function handle(input: {id: string, after_log_id: number?, cursor: number?, limit: number?, stream: string?})
+local function handle(input: {id: string, after_log_id: number?, cursor: number?, limit: number?, tail: number?, stream: string?})
     if not input.id or input.id == "" then
         return { success = false, error = "id is required" }
     end
@@ -29,6 +29,7 @@ local function handle(input: {id: string, after_log_id: number?, cursor: number?
     local lines, logs_err, page = containers_repo.get_logs(db, input.id, {
         after_cursor = after_cursor,
         limit = input.limit,
+        tail = input.tail,
         stream = input.stream,
     })
     db:release()

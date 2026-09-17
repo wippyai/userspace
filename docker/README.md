@@ -83,11 +83,18 @@ entries:
 ### Services vs jobs
 
 A `restart_policy` marks a container as a **long-lived service**: the worker
-starts it, confirms it is up, then hands it off to Docker's restart policy and
-the monitor — it is never polled to completion or removed. A stopped/failed
-service is recreated on the next startup. Without a `restart_policy` the
-container is treated as a **finite job**: it is polled until it exits, its logs
-and exit code are recorded, and it is removed.
+starts it and follows its log stream for as long as it runs, including across
+restarts performed by Docker's restart policy. Once it has stabilized its
+lifecycle belongs to the restart policy and the monitor — it is never finalized
+as a job or removed. A stopped/failed service is recreated on the next startup.
+Without a `restart_policy` the container is treated as a **finite job**: its log
+stream is followed until it exits, its logs and exit code are recorded, and it
+is removed.
+
+Logs are ingested from a single follow stream per container. The daemon pushes
+new output as it is written; the worker never re-reads log history or polls
+container state while the container runs. A dropped stream is reopened from the
+last delivered timestamp without duplicating lines.
 
 ### Multi-service stack
 
@@ -187,6 +194,9 @@ local result = docker:list({ status = "running", limit = 10 })
 -- both a global log_id and a contiguous container-local sequence.
 local result = docker:logs({ id = container_id, cursor = 0, limit = 100 })
 local next_cursor = result.next_cursor
+
+-- Read the newest lines (oldest first). next_cursor continues after them.
+local recent = docker:logs({ id = container_id, tail = 200 })
 
 -- Record-before-send stdin for an interactive executor. `dispatched` is not
 -- delivery: poll stdin_status until delivered/failed/uncertain. Managed Docker

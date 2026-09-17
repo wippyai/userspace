@@ -32,6 +32,108 @@ local function define_tests()
             docker = client
         end)
 
+        describe("log streaming", function()
+            it("delivers lines while the container runs and ends when it exits", function()
+                local created, create_err = docker:create_container({
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "echo first; sleep 3; echo second >&2; exit 7" },
+                    Tty = false,
+                    HostConfig = { AutoRemove = false },
+                })
+                test.is_nil(create_err, "container created")
+                local id = created.Id
+                docker:start_container(id)
+                local started = time.now()
+
+                local reader, follow_err = docker:follow_logs(id)
+                test.is_nil(follow_err, "follow stream opened")
+
+                local decoder = docker_client.new_log_decoder({ timestamps = true })
+                local cursor = docker_client.new_log_cursor()
+                local lines = {}
+                local first_seen_after: any = nil
+                while true do
+                    local chunk, read_err = reader:read(65536)
+                    if read_err or chunk == nil then break end
+                    for _, entry in ipairs(decoder:push(chunk)) do
+                        if cursor:accept(entry) then
+                            table.insert(lines, entry)
+                            if entry.line == "first" then
+                                first_seen_after = time.now():sub(started):seconds()
+                            end
+                        end
+                    end
+                end
+                reader:close()
+                local ended_after = time.now():sub(started):seconds()
+
+                test.eq(#lines, 2, "both lines streamed")
+                test.eq(lines[1].line, "first")
+                test.eq(lines[2].line, "second")
+                test.eq(lines[2].stream, "stderr")
+                test.not_nil(lines[1].ts, "timestamped")
+                test.ok(first_seen_after ~= nil and first_seen_after < 2.5, "first line arrived before the container slept out")
+                test.ok(ended_after >= 3, "stream stayed open until the container exited")
+
+                local info = docker:inspect_container(id)
+                test.eq(info.State.ExitCode, 7, "exit code recorded")
+
+                -- Reopening from the last delivered timestamp replays only what was already seen.
+                cursor:reconnect()
+                local resumed = docker:follow_logs(id, { since = cursor:since() })
+                local replay = docker_client.new_log_decoder({ timestamps = true })
+                local fresh = 0
+                while true do
+                    local chunk = resumed:read(65536)
+                    if chunk == nil then break end
+                    for _, entry in ipairs(replay:push(chunk)) do
+                        if cursor:accept(entry) then fresh = fresh + 1 end
+                    end
+                end
+                resumed:close()
+                test.eq(fresh, 0, "resume delivers no duplicates")
+
+                docker:remove_container(id, true)
+            end)
+
+            it("runs a managed container through the worker and persists its logs", function()
+                local handle = contract.get("userspace.docker:containers")
+                test.not_nil(handle, "containers contract available")
+                local c = handle:open()
+                local created = c:create({
+                    image = "alpine:latest",
+                    command = "for i in 1 2 3 4 5; do echo line_$i; done; sleep 2; echo done >&2; exit 3",
+                })
+                test.is_true(created.success, "container accepted: " .. tostring(created.error))
+                local id = created.id
+
+                local container: any = nil
+                for _ = 1, 120 do
+                    local got = c:get({ id = id })
+                    container = got and got.container
+                    if container and (container.status == "stopped" or container.status == "failed") then break end
+                    time.sleep("250ms")
+                end
+                test.not_nil(container, "container row exists")
+                test.eq(container.status, "failed", "non-zero exit marks the container failed")
+                test.eq(tonumber(container.exit_code), 3, "exit code persisted")
+
+                local logs = c:logs({ id = id, tail = 3 })
+                test.is_true(logs.success, "logs readable: " .. tostring(logs.error))
+                test.eq(#logs.lines, 3, "tail returns the newest lines")
+                test.eq(logs.lines[1].line, "line_4")
+                test.eq(logs.lines[2].line, "line_5")
+                test.eq(logs.lines[3].line, "done")
+                test.eq(logs.lines[3].stream, "stderr")
+
+                local all = c:logs({ id = id, limit = 100 })
+                test.eq(#all.lines, 6, "every line persisted exactly once")
+
+                c:delete({ id = id })
+                if c.release then c:release() end
+            end)
+        end)
+
         describe("container lifecycle", function()
             it("runs a container and captures stdout/stderr", function()
                 local config = {
@@ -636,7 +738,6 @@ local function define_tests()
                     Image = "alpine:latest",
                     Cmd = { "sh", "-c", "sleep 30" },
                     AttachStdout = true,
-                    HostConfig = { NetworkMode = net_name },
                 }
 
                 docker:create_network(net_name)
@@ -645,8 +746,9 @@ local function define_tests()
                 test.is_nil(s_err, "server created")
                 docker:start_container(server.Id)
 
-                -- Connect with alias so DNS resolves
-                docker:connect_network(net_name, server.Id, { "test-server" })
+                -- Attach the server to the compose network under an alias so DNS resolves it
+                local _, connect_err = docker:connect_network(net_name, server.Id, { "test-server" })
+                test.is_nil(connect_err, "server connected to network with alias")
                 time.sleep("500ms")
 
                 -- Client pings server by alias

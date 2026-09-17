@@ -305,57 +305,133 @@ end
 -- the table's global `id` remains the immutable row identity. A container is
 -- owned by one worker, while the unique index rejects accidental concurrent
 -- allocation instead of allowing duplicate cursors.
-function containers.append_log(db, container_id: string, stream: string, line: string): (number?, string?, number?)
+local LOG_BATCH_ROWS = 200
+
+-- Appends log lines in order. Each statement allocates its sequences from the
+-- container's current maximum inside the INSERT itself, so concurrent writers
+-- for one container (stdout and stderr readers) never compute the same cursor
+-- from a stale read. Returns one {log_id, sequence} per entry, in input order.
+function containers.append_logs(db, container_id: string, entries: {{stream: string, line: string}}): ({{log_id: number, sequence: number}}, string?)
+    local cursors = {}
     local now = os.time()
-    if is_postgres(db) then
+    for first = 1, #entries, LOG_BATCH_ROWS do
+        local last = math.min(first + LOG_BATCH_ROWS - 1, #entries)
+        local rows_sql = {}
+        local params: {any} = { container_id, now, container_id }
+        for i = first, last do
+            local entry = entries[i]
+            table.insert(rows_sql, "SELECT " .. tostring(i - first + 1)
+                .. " AS ord, CAST(? AS TEXT) AS stream, CAST(? AS TEXT) AS line")
+            table.insert(params, entry.stream)
+            table.insert(params, entry.line)
+        end
         local rows, err = db_query(db, [[
             INSERT INTO container_logs (container_id, sequence, stream, line, ts)
-            SELECT ?, COALESCE(MAX(sequence), 0) + 1, ?, ?, ?
-            FROM container_logs WHERE container_id = ?
+            SELECT ?, base.seq + batch.ord, batch.stream, batch.line, ?
+            FROM (SELECT COALESCE(MAX(sequence), 0) AS seq FROM container_logs WHERE container_id = ?) AS base
+            CROSS JOIN (]] .. table.concat(rows_sql, " UNION ALL ") .. [[) AS batch
+            ORDER BY batch.ord
             RETURNING id, sequence
-        ]], { container_id, stream, line, now, container_id })
-        if err then return nil, "failed to append log: " .. tostring(err) end
-        local row = rows and rows[1]
-        return row and tonumber(row.sequence) or nil, nil,
-            row and tonumber(row.id) or nil
+        ]], params)
+        if err then
+            return cursors, "failed to append logs: " .. tostring(err)
+        end
+        local inserted: {{log_id: number, sequence: number}} = {}
+        for _, row in ipairs(rows or {}) do
+            table.insert(inserted, { log_id = tonumber(row.id) :: number, sequence = tonumber(row.sequence) :: number })
+        end
+        table.sort(inserted, function(a, b) return a.sequence < b.sequence end)
+        if #inserted ~= last - first + 1 then
+            return cursors, "failed to append logs: inserted " .. #inserted .. " of " .. (last - first + 1) .. " rows"
+        end
+        for _, c in ipairs(inserted) do
+            table.insert(cursors, c)
+        end
     end
-
-    local _, err = db_execute(db, [[
-        INSERT INTO container_logs (container_id, sequence, stream, line, ts)
-        SELECT ?, COALESCE(MAX(sequence), 0) + 1, ?, ?, ?
-        FROM container_logs WHERE container_id = ?
-    ]], { container_id, stream, line, now, container_id })
-    if err then return nil, "failed to append log: " .. tostring(err) end
-    local rows, cursor_err = db_query(db, "SELECT last_insert_rowid() AS id")
-    if cursor_err then return nil, nil end
-    local row = rows and rows[1]
-    local log_id = row and tonumber(row.id) or nil
-    if not log_id then return nil, nil end
-    local inserted, inserted_err = db_query(db,
-        "SELECT sequence FROM container_logs WHERE id = ?", { log_id })
-    if inserted_err then return nil, "failed to read appended log cursor: " .. tostring(inserted_err) end
-    local entry = inserted and inserted[1]
-    return entry and tonumber(entry.sequence) or nil, nil, log_id
+    return cursors, nil
 end
 
-type LogQuery = {after_cursor: number?, after_log_id: number?, limit: number?, stream: string?}
+function containers.append_log(db, container_id: string, stream: string, line: string): (number?, string?, number?)
+    local cursors, err = containers.append_logs(db, container_id, { { stream = stream, line = line } })
+    if err then return nil, err end
+    local c = cursors[1]
+    return c.sequence, nil, c.log_id
+end
+
+type LogQuery = {after_cursor: number?, after_log_id: number?, limit: number?, stream: string?, tail: number?}
+
+type LogOptions = LogQuery | number
+
+type LogPage = {
+    after_log_id: number,
+    next_after_log_id: number,
+    after_cursor: number,
+    next_cursor: number,
+    has_more: boolean,
+}
 
 -- Compatibility: callers may continue to pass a numeric second argument as a
--- limit. New callers pass an exclusive durable cursor. The metadata third
--- return is optional so older callers receiving only the rows remain valid.
-function containers.get_logs(db, container_id: string, options: LogQuery | number?): ({table}, string?, table?)
+-- limit. New callers pass an exclusive durable cursor, or `tail` for the newest
+-- lines. The metadata third return is optional so older callers receiving only
+-- the rows remain valid.
+function containers.get_logs(db, container_id: string, options: LogOptions?): ({table}, string?, LogPage?)
     local legacy_unbounded = options == nil
     local raw: LogQuery = type(options) == "number" and { limit = options :: number }
         or (options or {}) :: LogQuery
+    local stream = raw.stream
+    if stream ~= nil and stream ~= "stdout" and stream ~= "stderr" then
+        return {}, "stream must be stdout or stderr"
+    end
+
+    if raw.tail ~= nil then
+        if raw.after_cursor ~= nil or raw.after_log_id ~= nil or raw.limit ~= nil then
+            return {}, "tail cannot be combined with a cursor or limit"
+        end
+        local tail = tonumber(raw.tail)
+        if tail == nil then
+            return {}, "tail must be an integer from 1 to 1000"
+        end
+        if tail < 1 or tail % 1 ~= 0 or tail > 1000 then
+            return {}, "tail must be an integer from 1 to 1000"
+        end
+        local where = { "container_id = ?" }
+        local params: {any} = { container_id }
+        if stream then
+            table.insert(where, "stream = ?")
+            table.insert(params, stream)
+        end
+        table.insert(params, tail + 1)
+        local rows, err = db_query(db,
+            "SELECT id, sequence, stream, line, ts FROM container_logs WHERE "
+                .. table.concat(where, " AND ") .. " ORDER BY sequence DESC LIMIT ?", params)
+        if err then return {}, "failed to get logs: " .. tostring(err) end
+        local newest: {table} = rows or {}
+        local has_more = #newest > tail
+        if has_more then table.remove(newest, #newest) end
+        local result: {table} = {}
+        for i = #newest, 1, -1 do
+            table.insert(result, newest[i])
+        end
+        local after = 0
+        local next_after = 0
+        if #result > 0 then
+            after = (tonumber(result[1].sequence) or 1) - 1
+            next_after = tonumber(result[#result].sequence) or after
+        end
+        return result, nil, {
+            after_log_id = after,
+            next_after_log_id = next_after,
+            after_cursor = after,
+            next_cursor = next_after,
+            has_more = has_more,
+        }
+    end
+
     local after = tonumber(raw.after_cursor or raw.after_log_id) or 0
     local limit = tonumber(raw.limit) or 100
     if after < 0 or after % 1 ~= 0 then return {}, "after_log_id must be a nonnegative integer" end
     if limit < 1 or limit % 1 ~= 0 or limit > 1000 then
         return {}, "limit must be an integer from 1 to 1000"
-    end
-    local stream = raw.stream
-    if stream ~= nil and stream ~= "stdout" and stream ~= "stderr" then
-        return {}, "stream must be stdout or stderr"
     end
 
     local where = { "container_id = ?", "sequence > ?" }

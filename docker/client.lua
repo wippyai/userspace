@@ -1,5 +1,6 @@
 local http_client = require("http_client")
 local json = require("json")
+local time = require("time")
 
 local DOCKER_SOCKETS = {
     "/var/run/docker.sock",
@@ -21,14 +22,17 @@ local function encode_query(params: {[string]: string})
     return "?" .. table.concat(parts, "&")
 end
 
-local function parse_response(body: any)
+-- Decodes a response body only when the daemon declares it as JSON. Log,
+-- archive and plain-text bodies are returned untouched.
+local function parse_response(body: any, headers: {[string]: string}?)
     if not body then
         return nil
     end
     if type(body) == "table" then
         return body
     end
-    if type(body) == "string" then
+    local content_type = headers and headers["Content-Type"]
+    if type(body) == "string" and content_type and content_type:find("json", 1, true) then
         local parsed, err = json.decode(body)
         if not err and parsed ~= nil then
             return parsed
@@ -86,7 +90,7 @@ local function make_request(sock: string, method: string, endpoint: string, opti
 
     local result = {
         status_code = response.status_code,
-        body = parse_response(response.body),
+        body = parse_response(response.body, response.headers),
         raw_body = response.body,
         headers = response.headers,
     }
@@ -102,59 +106,140 @@ local function make_request(sock: string, method: string, endpoint: string, opti
     return result, nil
 end
 
--- Parse Docker multiplexed stream log format.
+-- Incremental decoder for the Docker multiplexed log stream.
 -- Each frame: [1 byte stream type][3 bytes padding][4 bytes big-endian size][payload]
--- stream type: 1 = stdout, 2 = stderr
-local function parse_logs(raw: string?)
+-- stream type: 2 = stderr, anything else = stdout. A frame boundary ends a line;
+-- newlines inside a payload split it further and empty lines are dropped. With
+-- timestamps, every frame payload starts with an RFC3339Nano stamp and a space.
+type LogEntry = {stream: string, line: string, ts: string?}
+
+type LogDecoder = {
+    push: (self: LogDecoder, chunk: string?) -> {LogEntry},
+}
+
+local function new_log_decoder(opts: {timestamps: boolean?}?): LogDecoder
+    local timestamps = opts ~= nil and opts.timestamps == true
+    local pending = ""
+    local decoder = {}
+
+    function decoder:push(chunk: string?): {LogEntry}
+        local entries: {LogEntry} = {}
+        if chunk and chunk ~= "" then
+            pending = pending .. chunk
+        end
+        local data = pending
+        local len = #data
+        local pos = 1
+
+        while pos + 7 <= len do
+            local b1 = string.byte(data, pos + 4)
+            local b2 = string.byte(data, pos + 5)
+            local b3 = string.byte(data, pos + 6)
+            local b4 = string.byte(data, pos + 7)
+            local size = b1 * 16777216 + b2 * 65536 + b3 * 256 + b4
+            if pos + 7 + size > len then
+                break
+            end
+            local stream = (string.byte(data, pos) == 2) and "stderr" or "stdout"
+            local payload = data:sub(pos + 8, pos + 7 + size)
+            pos = pos + 8 + size
+
+            local ts: string? = nil
+            if timestamps then
+                local space = payload:find(" ", 1, true)
+                if space then
+                    ts = payload:sub(1, space - 1)
+                    payload = payload:sub(space + 1)
+                end
+            end
+
+            local line_start = 1
+            local payload_len = #payload
+            while line_start <= payload_len do
+                local nl = payload:find("\n", line_start, true)
+                local line_end = nl and (nl - 1) or payload_len
+                if line_end >= line_start then
+                    table.insert(entries, { stream = stream, line = payload:sub(line_start, line_end), ts = ts })
+                end
+                if not nl then break end
+                line_start = nl + 1
+            end
+        end
+
+        pending = pos > 1 and data:sub(pos) or data
+        return entries
+    end
+
+    return decoder :: LogDecoder
+end
+
+-- Parse a complete Docker multiplexed log body. A trailing truncated frame is dropped.
+local function parse_logs(raw: string?): {LogEntry}
     if not raw or raw == "" then
         return {}
     end
+    return new_log_decoder():push(tostring(raw))
+end
 
-    local data: string = tostring(raw)
-    local lines = {}
-    local pos = 1
-    local len = #data
+-- Converts a Docker RFC3339Nano log timestamp to the "seconds.nanoseconds" form
+-- accepted by the logs `since` parameter.
+local function since_of(ts: string): string?
+    local t, err = time.parse(time.RFC3339NANO, ts)
+    if err or not t then
+        return nil
+    end
+    return string.format("%d.%09d", t:unix(), t:nanosecond())
+end
 
-    while pos + 7 <= len do
-        local stream_byte = string.byte(data, pos)
-        local stream = (stream_byte == 2) and "stderr" or "stdout"
+-- Tracks the last delivered log timestamp so a follow stream reopened with
+-- since=<last timestamp> skips the lines it replays. Docker timestamps are fixed
+-- width UTC, so they order lexicographically.
+type LogCursor = {
+    accept: (self: LogCursor, entry: {ts: string?}) -> boolean,
+    reconnect: (self: LogCursor) -> (),
+    since: (self: LogCursor) -> string?,
+}
 
-        local b1 = string.byte(data, pos + 4)
-        local b2 = string.byte(data, pos + 5)
-        local b3 = string.byte(data, pos + 6)
-        local b4 = string.byte(data, pos + 7)
-        local size = b1 * 16777216 + b2 * 65536 + b3 * 256 + b4
+local function new_log_cursor(): LogCursor
+    local last_ts: string? = nil
+    local seen_at_last: number = 0
+    local replay_skip: number = 0
+    local cursor = {}
 
-        pos = pos + 8
-
-        if pos + size - 1 > len then
-            break
+    function cursor:accept(entry: {ts: string?}): boolean
+        local ts = entry.ts
+        if ts == nil then
+            return true
         end
-
-        local payload = data:sub(pos, pos + size - 1)
-        pos = pos + size
-
-        -- split payload into individual lines
-        local line_start = 1
-        while line_start <= #payload do
-            local nl = payload:find("\n", line_start, true)
-            if nl then
-                local line = payload:sub(line_start, nl - 1)
-                if line ~= "" then
-                    table.insert(lines, { stream = stream, line = line })
-                end
-                line_start = nl + 1
-            else
-                local line = payload:sub(line_start)
-                if line ~= "" then
-                    table.insert(lines, { stream = stream, line = line })
-                end
-                break
-            end
+        if last_ts == nil or ts > last_ts then
+            last_ts = ts
+            seen_at_last = 1
+            replay_skip = 0
+            return true
         end
+        if ts < last_ts then
+            return false
+        end
+        if replay_skip > 0 then
+            replay_skip = replay_skip - 1
+            return false
+        end
+        seen_at_last = seen_at_last + 1
+        return true
     end
 
-    return lines
+    function cursor:reconnect()
+        replay_skip = seen_at_last
+    end
+
+    function cursor:since(): string?
+        if last_ts == nil then
+            return nil
+        end
+        return since_of(last_ts)
+    end
+
+    return cursor :: LogCursor
 end
 
 -- Parse JSON-per-line streamed responses from pull/build endpoints
@@ -335,6 +420,45 @@ function docker.new(socket_path: string?)
             return nil, req_err
         end
         return result.raw_body, nil
+    end
+
+    -- Opens a follow stream of the container's stdout/stderr with per-frame
+    -- timestamps. The stream ends when the container stops, when `timeout`
+    -- elapses, or when the connection drops. Returns the stream reader.
+    function client:follow_logs(id: string, options: {since: string?, timeout: string?}?)
+        local o = options or {}
+        local query: {[string]: string} = {
+            stdout = "true",
+            stderr = "true",
+            follow = "true",
+            timestamps = "true",
+        }
+        if o.since then
+            query.since = tostring(o.since)
+        end
+        local response, err = http_client.get("http://docker/containers/" .. id .. "/logs" .. encode_query(query), {
+            unix_socket = sock,
+            timeout = o.timeout or "1h",
+            stream = true,
+        })
+        if err then
+            return nil, err
+        end
+        local reader = response.stream
+        if response.status_code >= 400 then
+            local message = ""
+            if reader then
+                message = tostring(reader:read(8192) or "")
+                reader:close()
+            end
+            local parsed = parse_response(message, response.headers)
+            local detail = type(parsed) == "table" and parsed.message or message
+            return nil, "HTTP " .. response.status_code .. ": " .. tostring(detail)
+        end
+        if not reader then
+            return nil, "logs stream unavailable"
+        end
+        return reader, nil
     end
 
     function client:list_images(filters: table?)
@@ -761,5 +885,9 @@ end
 
 docker.parse_logs = parse_logs
 docker.parse_stream_lines = parse_stream_lines
+docker.parse_response = parse_response
+docker.new_log_decoder = new_log_decoder
+docker.new_log_cursor = new_log_cursor
+docker.since_of = since_of
 
 return docker

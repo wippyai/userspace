@@ -8,6 +8,7 @@ local reclaim = require("reclaim")
 local images = require("images")
 local containers_repo = require("containers_repo")
 local docker_client = require("docker_client")
+local log_watch = require("log_watch")
 local helpers = require("helpers")
 local interactive_routes = require("interactive_routes")
 local registry = require("registry")
@@ -20,23 +21,30 @@ local function notify_root(root_pid, topic, payload)
     end
 end
 
-local function notify_log(db_id, root_pid, cid, stream, line)
+-- Persists a batch of log lines and publishes them to root in one message. A
+-- live observation without a durable cursor is not replay-safe, so only lines
+-- that were stored are published.
+local function record_logs(db_id, root_pid, cid: string, entries: {{stream: string, line: string}})
+    if #entries == 0 then return end
     local db = sql.get(db_id)
-    local sequence: number? = nil
-    local log_id: number? = nil
-    if db then
-        sequence, _, log_id = containers_repo.append_log(db, cid, stream, line)
-        db:release()
+    if not db then return end
+    local cursors, append_err = containers_repo.append_logs(db, cid, entries)
+    db:release()
+    if append_err then
+        logger:warn("container log append failed", { container_id = cid, error = tostring(append_err) })
     end
-    -- A live observation without a durable cursor is not replay-safe.
-    if not sequence or not log_id then return end
-    notify_root(root_pid, consts.topic.CONTAINER_LOG, {
-        container_id = cid,
-        stream = stream,
-        line = line,
-        log_id = log_id,
-        cursor = sequence,
-    })
+    if #cursors == 0 then return end
+    local events = {}
+    for i, c in ipairs(cursors) do
+        local entry = entries[i]
+        table.insert(events, {
+            stream = entry.stream,
+            line = entry.line,
+            log_id = c.log_id,
+            cursor = c.sequence,
+        })
+    end
+    notify_root(root_pid, consts.topic.CONTAINER_LOG_BATCH, { container_id = cid, entries = events })
 end
 
 local function notify_stdin_result(db_id, root_pid, payload, backend)
@@ -98,48 +106,31 @@ local function run_interactive(executor, executor_id, db_id, c, active, root_pid
     -- Release DB before blocking IO — log writes use their own connections
     db:release()
 
-    local function stream_lines(reader_fn, stream_name)
+    local function stream_lines(reader_fn, stream_name: string)
         local reader = reader_fn()
         if not reader then return end
         local remainder = ""
         while true do
             local chunk = reader:read()
             if not chunk then break end
-            local text = remainder .. chunk
+            local text: string = remainder .. tostring(chunk)
             remainder = ""
-            local lines = {}
+            local entries: {{stream: string, line: string}} = {}
             local pos = 1
             while pos <= #text do
                 local nl = text:find("\n", pos, true)
                 if nl then
-                    table.insert(lines, text:sub(pos, nl - 1))
+                    table.insert(entries, { stream = stream_name, line = text:sub(pos, nl - 1) })
                     pos = nl + 1
                 else
                     remainder = text:sub(pos)
                     break
                 end
             end
-            if #lines > 0 then
-                local chunk_db = sql.get(db_id)
-                for _, line in ipairs(lines) do
-                    local text = tostring(line)
-                    local sequence: number? = nil
-                    local log_id: number? = nil
-                    if chunk_db then
-                        sequence, _, log_id = containers_repo.append_log(chunk_db, cid, stream_name, text)
-                    end
-                    if sequence and log_id then
-                        notify_root(root_pid, consts.topic.CONTAINER_LOG, {
-                            container_id = cid, stream = stream_name, line = text,
-                            log_id = log_id, cursor = sequence,
-                        })
-                    end
-                end
-                if chunk_db then chunk_db:release() end
-            end
+            record_logs(db_id, root_pid, cid, entries)
         end
         if remainder ~= "" then
-            notify_log(db_id, root_pid, cid, stream_name, remainder)
+            record_logs(db_id, root_pid, cid, { { stream = stream_name, line = remainder } })
         end
         reader:close()
     end
@@ -287,125 +278,50 @@ local function run_managed(docker, db_id, c, root_pid)
         end
     end
 
-    -- Release DB before blocking poll loop — reacquire after
+    -- Release DB before following logs — log writes use their own connections
     db:release()
 
     -- A service (restart_policy set) is long-lived: once it is up past a short
-    -- stabilization window it is handed off to the monitor rather than polled to
-    -- completion, so it is never treated as a failed job or removed.
+    -- stabilization window its lifecycle belongs to the daemon's restart policy
+    -- and the monitor, so it is never finalized as a job or removed.
     local is_service = cfg.restart_policy ~= nil and consts.service_restart_policies[tostring(cfg.restart_policy)] == true
-    local log_since = os.time() - 1
-    local lines_seen = 0
-    local exit_code: number = -1
-    local final_status = consts.status.STOPPED
-    local error_msg: string? = nil
-    local still_running = false
-    local max_polls = consts.defaults.POLL_MAX
-    local stabilize_polls = consts.defaults.POLL_STABILIZE
 
-    for poll = 1, max_polls do
-        local info, inspect_err = docker:inspect_container(docker_id)
-        if inspect_err then
-            final_status = consts.status.FAILED
-            error_msg = "inspect failed: " .. tostring(inspect_err)
-            break
-        end
-
-        local stopped = false
-        if info and info.State then
-            if not info.State.Running then
-                exit_code = tonumber(info.State.ExitCode) or 0
-                if exit_code ~= 0 then
-                    final_status = consts.status.FAILED
-                end
-                stopped = true
+    local outcome = log_watch.follow({
+        docker = docker,
+        docker_id = docker_id,
+        -- A container created here is followed from its first line; an adopted one
+        -- already has its history persisted from the run that started it.
+        since = adopted and tostring(os.time() - 1) or nil,
+        is_service = is_service,
+        stabilize_seconds = consts.defaults.SERVICE_STABILIZE_SECONDS,
+        session_timeout = consts.defaults.LOG_FOLLOW_SESSION,
+        started_at = os.time(),
+        on_logs = function(entries)
+            local batch: {{stream: string, line: string}} = {}
+            for _, entry in ipairs(entries) do
+                table.insert(batch, { stream = tostring(entry.stream), line = tostring(entry.line) })
             end
-        end
+            record_logs(db_id, root_pid, cid, batch)
+        end,
+        sleep = function(duration) time.sleep(duration) end,
+        now = os.time,
+    })
 
-        local raw_logs = docker:get_logs(docker_id, { since = log_since })
-        if raw_logs then
-            local lines = docker_client.parse_logs(tostring(raw_logs))
-            local new_count = #lines - lines_seen
-            if new_count > 0 then
-                local log_db = sql.get(db_id)
-                for i = lines_seen + 1, #lines do
-                    local entry = lines[i]
-                    local stream = entry.stream or "stdout"
-                    local line_text = tostring(entry.line)
-                    local sequence: number? = nil
-                    local log_id: number? = nil
-                    if log_db then
-                        sequence, _, log_id = containers_repo.append_log(log_db, cid, stream, line_text)
-                    end
-                    if sequence and log_id then
-                        notify_root(root_pid, consts.topic.CONTAINER_LOG, {
-                            container_id = cid, stream = stream, line = line_text,
-                            log_id = log_id, cursor = sequence,
-                        })
-                    end
-                end
-                if log_db then log_db:release() end
-                lines_seen = #lines
-            end
-        end
-
-        if stopped then
-            break
-        end
-
-        -- A service past stabilization, or any container still running at the poll
-        -- cap, is a live long-lived container, not a failed job: stop polling, mark
-        -- it running, and let Docker's restart policy + the monitor own it.
-        if (is_service and poll >= stabilize_polls) or poll == max_polls then
-            still_running = true
-            break
-        end
-
-        time.sleep("500ms")
-    end
-
-    -- A still-running container is a live service: keep it (do not remove), leave
-    -- it marked running, and hand ongoing lifecycle to Docker's restart policy and
-    -- the monitor. Only finite jobs fall through to drain + remove below.
-    if still_running then
-        local run_db = sql.get(db_id)
-        if run_db then
-            containers_repo.update_status(run_db, cid, consts.status.RUNNING, {})
-            run_db:release()
-        end
-        notify_status(root_pid, cid, consts.status.RUNNING, { docker_id = docker_id })
+    if outcome.kind == "detached" then
         return
     end
 
-    -- Drain remaining logs
-    for _ = 1, 5 do
-        local raw_logs = docker:get_logs(docker_id, { since = log_since })
-        if raw_logs then
-            local lines = docker_client.parse_logs(tostring(raw_logs))
-            if #lines > lines_seen then
-                local drain_db = sql.get(db_id)
-                for i = lines_seen + 1, #lines do
-                    local entry = lines[i]
-                    local stream = entry.stream or "stdout"
-                    local line_text = tostring(entry.line)
-                    local sequence: number? = nil
-                    local log_id: number? = nil
-                    if drain_db then
-                        sequence, _, log_id = containers_repo.append_log(drain_db, cid, stream, line_text)
-                    end
-                    if sequence and log_id then
-                        notify_root(root_pid, consts.topic.CONTAINER_LOG, {
-                            container_id = cid, stream = stream, line = line_text,
-                            log_id = log_id, cursor = sequence,
-                        })
-                    end
-                end
-                if drain_db then drain_db:release() end
-                lines_seen = #lines
-                break
-            end
+    local exit_code: number = -1
+    local final_status = consts.status.STOPPED
+    local error_msg: string? = nil
+    if outcome.kind == "failed" then
+        final_status = consts.status.FAILED
+        error_msg = outcome.error
+    else
+        exit_code = tonumber(outcome.exit_code) or 0
+        if exit_code ~= 0 then
+            final_status = consts.status.FAILED
         end
-        time.sleep("100ms")
     end
 
     local update_fields: {[string]: any} = {
