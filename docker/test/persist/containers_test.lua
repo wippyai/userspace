@@ -73,6 +73,22 @@ local function define_tests()
                 db:release()
             end)
 
+            it("stores the OCI runtime in the container config", function()
+                local db = get_db()
+                local id = containers_repo.create(db, {
+                    image = "vllm/vllm-openai:latest",
+                    command = "serve",
+                    runtime = "nvidia",
+                })
+                assert(id)
+
+                local c = containers_repo.get(db, id)
+                test.eq(c.config.runtime, "nvidia", "runtime persisted")
+
+                cleanup(db, id)
+                db:release()
+            end)
+
             it("stores config as JSON", function()
                 local db = get_db()
                 local id = containers_repo.create(db, {

@@ -91,6 +91,10 @@ entries:
         description: Rename a container
       - name: exec
         description: Execute a command inside a running container
+      - name: put_archive
+        description: Copy a file into a running container (binary-safe, any size)
+      - name: get_archive
+        description: Copy a file out of a running container (binary-safe, any size)
       - name: wait
         description: Block until a container stops and return exit code
       - name: inspect
@@ -206,6 +210,8 @@ entries:
           stdin_status: userspace.docker.binding:containers_stdin_status_func
           compose: userspace.docker.binding:containers_compose_func
           exec: userspace.docker.binding:containers_exec_func
+          put_archive: userspace.docker.binding:containers_put_archive_func
+          get_archive: userspace.docker.binding:containers_get_archive_func
           wait: userspace.docker.binding:containers_wait_func
           inspect: userspace.docker.binding:containers_inspect_func
           compose_teardown: userspace.docker.binding:containers_compose_teardown_func

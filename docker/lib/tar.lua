@@ -16,18 +16,18 @@ local function pad_to_512(data)
     return data .. string.rep("\0", 512 - remainder)
 end
 
-local function build_header(name, size)
+local function build_header(name: string, size: number, typeflag: string?, mode: string?): string
     if #name > 99 then
         name = name:sub(1, 99)
     end
     local header = name .. string.rep("\0", 100 - #name)  -- name: 100 bytes
-    header = header .. "0000644\0"                         -- mode: 8 bytes
+    header = header .. (mode or "0000644") .. "\0"         -- mode: 8 bytes
     header = header .. "0000000\0"                         -- uid: 8 bytes
     header = header .. "0000000\0"                         -- gid: 8 bytes
     header = header .. to_octal(size, 12)                  -- size: 12 bytes
     header = header .. to_octal(0, 12)                     -- mtime: 12 bytes
     header = header .. "        "                          -- checksum placeholder: 8 bytes (spaces)
-    header = header .. "0"                                 -- typeflag: 1 byte (regular file)
+    header = header .. (typeflag or "0")                   -- typeflag: 1 byte (0=file, 5=dir)
     header = header .. string.rep("\0", 100)               -- linkname: 100 bytes
     header = header .. "ustar\0"                           -- magic: 6 bytes
     header = header .. "00"                                -- version: 2 bytes
@@ -62,6 +62,29 @@ function tar.create(files: {{name: string, content: string}}): string
 
     table.insert(parts, string.rep("\0", 1024))
     return table.concat(parts)
+end
+
+local function parse_octal(s: string): number
+    local digits = (s:gsub("[^0-7]", ""))
+    if digits == "" then return 0 end
+    return tonumber(digits, 8) or 0
+end
+
+-- read_first(tar_data) -> (content, name, is_dir). Inspects the FIRST archive
+-- entry only. A single-file copy yields that file (content, name, false); a
+-- directory path yields the directory entry (nil, name, true) so a caller can
+-- reject it instead of silently returning a child. (nil, nil, false) for an empty
+-- archive. Used to unpack a single file from a `GET /archive` tar stream.
+function tar.read_first(tar_data: string): (string?, string?, boolean)
+    local data = tostring(tar_data or "")
+    if #data < 512 then return nil, nil, false end
+    local header = data:sub(1, 512)
+    local name = (header:sub(1, 100):gsub("\0.*$", ""))
+    if name == "" then return nil, nil, false end
+    local typeflag = header:sub(157, 157)
+    if typeflag == "5" then return nil, name, true end
+    local size = parse_octal(header:sub(125, 136))
+    return data:sub(513, (512 + size) :: integer), name, false
 end
 
 return tar

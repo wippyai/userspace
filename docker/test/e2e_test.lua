@@ -2,6 +2,7 @@ local env = require("env")
 local test = require("test")
 local time = require("time")
 local docker_client = require("docker_client")
+local tar = require("tar")
 
 local function get_logs_retry(docker, container_id, opts, max_retries)
     for i = 1, max_retries or 10 do
@@ -128,6 +129,92 @@ local function define_tests()
 
                 local all = c:logs({ id = id, limit = 100 })
                 test.eq(#all.lines, 6, "every line persisted exactly once")
+
+                c:delete({ id = id })
+                if c.release then c:release() end
+            end)
+        end)
+
+        describe("archive copy (put/get file)", function()
+            it("round-trips a file in and out of a container, byte-exact", function()
+                local config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "sleep 30" },
+                    HostConfig = { AutoRemove = false },
+                }
+                local created, create_err = docker:create_container(config)
+                test.is_nil(create_err, "archive test container created")
+                local id = created.Id
+                docker:start_container(id)
+                docker:exec_container(id, "mkdir -p /copytest/nested")
+
+                local dir = "/copytest/nested"
+                for _, payload in ipairs({
+                    "plain text payload",
+                    string.char(0, 1, 2, 255, 254, 10, 13, 9) .. "binary-bytes",
+                    string.rep("checkpoint-shard-0123456789abcdef\n", 8000),
+                }) do
+                    local put_ok, put_err = docker:put_archive(id, dir, tar.create({ { name = "data.bin", content = payload } }))
+                    test.not_nil(put_ok, "put_archive ok: " .. tostring(put_err))
+
+                    local tar_data, get_err = docker:get_archive(id, dir .. "/data.bin")
+                    test.is_nil(get_err, "get_archive ok")
+                    local content, _, is_dir = tar.read_first(tostring(tar_data))
+                    test.is_false(is_dir, "file path not flagged as dir")
+                    test.eq(content, payload, "copied bytes match (" .. #payload .. " bytes)")
+                end
+
+                -- get on a directory path reports a directory, never a child file
+                local dtar, derr = docker:get_archive(id, dir)
+                test.is_nil(derr, "get_archive on dir succeeds at the wire level")
+                local _, _, dir_is = tar.read_first(tostring(dtar))
+                test.is_true(dir_is, "directory path flagged as a directory")
+
+                docker:stop_container(id, 1)
+                docker:remove_container(id, true)
+            end)
+
+            it("copies files through the containers contract and honors runtime", function()
+                local c = contract.get("userspace.docker:containers"):open()
+                local created = c:create({
+                    image = "alpine:latest",
+                    command = "sleep 60",
+                    runtime = "runc",
+                })
+                test.is_true(created.success, "container accepted: " .. tostring(created.error))
+                local id = created.id
+
+                local row: any = nil
+                for _ = 1, 120 do
+                    local got = c:get({ id = id })
+                    row = got and got.container
+                    if row and row.status == "running" and row.docker_id and row.docker_id ~= "" then break end
+                    time.sleep("250ms")
+                end
+                test.eq(row and row.status, "running", "managed container running")
+                test.eq(row.config and row.config.runtime, "runc", "runtime persisted with the container config")
+
+                local info = docker:inspect_container(tostring(row.docker_id))
+                test.eq(info.HostConfig.Runtime, "runc", "runtime passed to the daemon")
+
+                local payload = string.char(0, 7, 255) .. string.rep("weights", 1000)
+                local put = c:put_archive({ id = id, path = "/tmp/model.bin", content = payload })
+                test.is_true(put.success, "put_archive: " .. tostring(put.error))
+                test.eq(put.bytes, #payload)
+
+                local got = c:get_archive({ id = id, path = "/tmp/model.bin" })
+                test.is_true(got.success, "get_archive: " .. tostring(got.error))
+                test.eq(got.content, payload, "contract round-trip is byte-exact")
+                test.eq(got.size, #payload)
+
+                local as_dir = c:get_archive({ id = id, path = "/tmp" })
+                test.is_false(as_dir.success, "a directory is rejected")
+
+                local clobber = c:put_archive({ id = id, path = "/tmp/model.bin/child", content = "x" })
+                test.is_false(clobber.success, "writing below a file fails instead of clobbering it")
+
+                local missing = c:put_archive({ id = "no-such-container", path = "/tmp/x", content = "x" })
+                test.is_false(missing.success)
 
                 c:delete({ id = id })
                 if c.release then c:release() end

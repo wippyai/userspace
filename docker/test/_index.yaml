@@ -102,6 +102,7 @@ entries:
     imports:
       docker_client: userspace.docker:docker_client
       spec: userspace.docker.lib:spec
+      tar: userspace.docker.lib:tar
       test: wippy.test:test
     modules:
       - env
