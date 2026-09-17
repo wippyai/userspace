@@ -46,6 +46,7 @@ entries:
       images: userspace.docker.lib:images
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
+      log_watch: userspace.docker.lib:log_watch
       interactive_routes: userspace.docker.service:interactive_executor_routes
     modules:
       - sql
@@ -60,18 +61,6 @@ entries:
   - name: interactive_executor_routes
     kind: library.lua
     source: file://interactive_executor_routes.lua
-
-  - name: interactive_executor_routes_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Interactive executor routes fail closed and preserve exact Docker image identity
-    source: file://interactive_executor_routes_test.lua
-    method: run_tests
-    imports:
-      routes: userspace.docker.service:interactive_executor_routes
-      test: wippy.test:test
 
   - name: monitor
     kind: process.lua

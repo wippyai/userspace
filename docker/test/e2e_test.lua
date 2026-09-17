@@ -2,6 +2,7 @@ local env = require("env")
 local test = require("test")
 local time = require("time")
 local docker_client = require("docker_client")
+local tar = require("tar")
 
 local function get_logs_retry(docker, container_id, opts, max_retries)
     for i = 1, max_retries or 10 do
@@ -30,6 +31,194 @@ local function define_tests()
             local client, err = docker_client.new("/var/run/docker.sock")
             test.not_nil(client, "docker client connects: " .. tostring(err))
             docker = client
+        end)
+
+        describe("log streaming", function()
+            it("delivers lines while the container runs and ends when it exits", function()
+                local created, create_err = docker:create_container({
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "echo first; sleep 3; echo second >&2; exit 7" },
+                    Tty = false,
+                    HostConfig = { AutoRemove = false },
+                })
+                test.is_nil(create_err, "container created")
+                local id = created.Id
+                docker:start_container(id)
+                local started = time.now()
+
+                local reader, follow_err = docker:follow_logs(id)
+                test.is_nil(follow_err, "follow stream opened")
+
+                local decoder = docker_client.new_log_decoder({ timestamps = true })
+                local cursor = docker_client.new_log_cursor()
+                local lines = {}
+                local first_seen_after: any = nil
+                while true do
+                    local chunk, read_err = reader:read(65536)
+                    if read_err or chunk == nil then break end
+                    for _, entry in ipairs(decoder:push(chunk)) do
+                        if cursor:accept(entry) then
+                            table.insert(lines, entry)
+                            if entry.line == "first" then
+                                first_seen_after = time.now():sub(started):seconds()
+                            end
+                        end
+                    end
+                end
+                reader:close()
+                local ended_after = time.now():sub(started):seconds()
+
+                test.eq(#lines, 2, "both lines streamed")
+                test.eq(lines[1].line, "first")
+                test.eq(lines[2].line, "second")
+                test.eq(lines[2].stream, "stderr")
+                test.not_nil(lines[1].ts, "timestamped")
+                test.ok(first_seen_after ~= nil and first_seen_after < 2.5, "first line arrived before the container slept out")
+                test.ok(ended_after >= 3, "stream stayed open until the container exited")
+
+                local info = docker:inspect_container(id)
+                test.eq(info.State.ExitCode, 7, "exit code recorded")
+
+                -- Reopening from the last delivered timestamp replays only what was already seen.
+                cursor:reconnect()
+                local resumed = docker:follow_logs(id, { since = cursor:since() })
+                local replay = docker_client.new_log_decoder({ timestamps = true })
+                local fresh = 0
+                while true do
+                    local chunk = resumed:read(65536)
+                    if chunk == nil then break end
+                    for _, entry in ipairs(replay:push(chunk)) do
+                        if cursor:accept(entry) then fresh = fresh + 1 end
+                    end
+                end
+                resumed:close()
+                test.eq(fresh, 0, "resume delivers no duplicates")
+
+                docker:remove_container(id, true)
+            end)
+
+            it("runs a managed container through the worker and persists its logs", function()
+                local handle = contract.get("userspace.docker:containers")
+                test.not_nil(handle, "containers contract available")
+                local c = handle:open()
+                local created = c:create({
+                    image = "alpine:latest",
+                    command = "for i in 1 2 3 4 5; do echo line_$i; done; sleep 2; echo done >&2; exit 3",
+                })
+                test.is_true(created.success, "container accepted: " .. tostring(created.error))
+                local id = created.id
+
+                local container: any = nil
+                for _ = 1, 120 do
+                    local got = c:get({ id = id })
+                    container = got and got.container
+                    if container and (container.status == "stopped" or container.status == "failed") then break end
+                    time.sleep("250ms")
+                end
+                test.not_nil(container, "container row exists")
+                test.eq(container.status, "failed", "non-zero exit marks the container failed")
+                test.eq(tonumber(container.exit_code), 3, "exit code persisted")
+
+                local logs = c:logs({ id = id, tail = 3 })
+                test.is_true(logs.success, "logs readable: " .. tostring(logs.error))
+                test.eq(#logs.lines, 3, "tail returns the newest lines")
+                test.eq(logs.lines[1].line, "line_4")
+                test.eq(logs.lines[2].line, "line_5")
+                test.eq(logs.lines[3].line, "done")
+                test.eq(logs.lines[3].stream, "stderr")
+
+                local all = c:logs({ id = id, limit = 100 })
+                test.eq(#all.lines, 6, "every line persisted exactly once")
+
+                c:delete({ id = id })
+                if c.release then c:release() end
+            end)
+        end)
+
+        describe("archive copy (put/get file)", function()
+            it("round-trips a file in and out of a container, byte-exact", function()
+                local config = {
+                    Image = "alpine:latest",
+                    Cmd = { "sh", "-c", "sleep 30" },
+                    HostConfig = { AutoRemove = false },
+                }
+                local created, create_err = docker:create_container(config)
+                test.is_nil(create_err, "archive test container created")
+                local id = created.Id
+                docker:start_container(id)
+                docker:exec_container(id, "mkdir -p /copytest/nested")
+
+                local dir = "/copytest/nested"
+                for _, payload in ipairs({
+                    "plain text payload",
+                    string.char(0, 1, 2, 255, 254, 10, 13, 9) .. "binary-bytes",
+                    string.rep("checkpoint-shard-0123456789abcdef\n", 8000),
+                }) do
+                    local put_ok, put_err = docker:put_archive(id, dir, tar.create({ { name = "data.bin", content = payload } }))
+                    test.not_nil(put_ok, "put_archive ok: " .. tostring(put_err))
+
+                    local tar_data, get_err = docker:get_archive(id, dir .. "/data.bin")
+                    test.is_nil(get_err, "get_archive ok")
+                    local content, _, is_dir = tar.read_first(tostring(tar_data))
+                    test.is_false(is_dir, "file path not flagged as dir")
+                    test.eq(content, payload, "copied bytes match (" .. #payload .. " bytes)")
+                end
+
+                -- get on a directory path reports a directory, never a child file
+                local dtar, derr = docker:get_archive(id, dir)
+                test.is_nil(derr, "get_archive on dir succeeds at the wire level")
+                local _, _, dir_is = tar.read_first(tostring(dtar))
+                test.is_true(dir_is, "directory path flagged as a directory")
+
+                docker:stop_container(id, 1)
+                docker:remove_container(id, true)
+            end)
+
+            it("copies files through the containers contract and honors runtime", function()
+                local c = contract.get("userspace.docker:containers"):open()
+                local created = c:create({
+                    image = "alpine:latest",
+                    command = "sleep 60",
+                    runtime = "runc",
+                })
+                test.is_true(created.success, "container accepted: " .. tostring(created.error))
+                local id = created.id
+
+                local row: any = nil
+                for _ = 1, 120 do
+                    local got = c:get({ id = id })
+                    row = got and got.container
+                    if row and row.status == "running" and row.docker_id and row.docker_id ~= "" then break end
+                    time.sleep("250ms")
+                end
+                test.eq(row and row.status, "running", "managed container running")
+                test.eq(row.config and row.config.runtime, "runc", "runtime persisted with the container config")
+
+                local info = docker:inspect_container(tostring(row.docker_id))
+                test.eq(info.HostConfig.Runtime, "runc", "runtime passed to the daemon")
+
+                local payload = string.char(0, 7, 255) .. string.rep("weights", 1000)
+                local put = c:put_archive({ id = id, path = "/tmp/model.bin", content = payload })
+                test.is_true(put.success, "put_archive: " .. tostring(put.error))
+                test.eq(put.bytes, #payload)
+
+                local got = c:get_archive({ id = id, path = "/tmp/model.bin" })
+                test.is_true(got.success, "get_archive: " .. tostring(got.error))
+                test.eq(got.content, payload, "contract round-trip is byte-exact")
+                test.eq(got.size, #payload)
+
+                local as_dir = c:get_archive({ id = id, path = "/tmp" })
+                test.is_false(as_dir.success, "a directory is rejected")
+
+                local clobber = c:put_archive({ id = id, path = "/tmp/model.bin/child", content = "x" })
+                test.is_false(clobber.success, "writing below a file fails instead of clobbering it")
+
+                local missing = c:put_archive({ id = "no-such-container", path = "/tmp/x", content = "x" })
+                test.is_false(missing.success)
+
+                c:delete({ id = id })
+                if c.release then c:release() end
+            end)
         end)
 
         describe("container lifecycle", function()
@@ -636,7 +825,6 @@ local function define_tests()
                     Image = "alpine:latest",
                     Cmd = { "sh", "-c", "sleep 30" },
                     AttachStdout = true,
-                    HostConfig = { NetworkMode = net_name },
                 }
 
                 docker:create_network(net_name)
@@ -645,8 +833,9 @@ local function define_tests()
                 test.is_nil(s_err, "server created")
                 docker:start_container(server.Id)
 
-                -- Connect with alias so DNS resolves
-                docker:connect_network(net_name, server.Id, { "test-server" })
+                -- Attach the server to the compose network under an alias so DNS resolves it
+                local _, connect_err = docker:connect_network(net_name, server.Id, { "test-server" })
+                test.is_nil(connect_err, "server connected to network with alias")
                 time.sleep("500ms")
 
                 -- Client pings server by alias

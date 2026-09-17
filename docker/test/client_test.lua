@@ -1,5 +1,6 @@
 local docker_client = require("docker_client")
 local test = require("test")
+local time = require("time")
 
 local function define_tests()
     describe("Docker Client", function()
@@ -247,6 +248,126 @@ local function define_tests()
             it("handles non-string input via tostring", function()
                 local result = parse(42)
                 test.not_nil(result, "non-string input handled")
+            end)
+        end)
+
+        describe("log_decoder", function()
+            local function frame(stream_byte: number, payload: string): string
+                local n = #payload
+                return string.char(stream_byte, 0, 0, 0,
+                    math.floor(n / 16777216) % 256, math.floor(n / 65536) % 256,
+                    math.floor(n / 256) % 256, n % 256) .. payload
+            end
+
+            local function collect(decoder, chunks: {string}): {table}
+                local out = {}
+                for _, chunk in ipairs(chunks) do
+                    for _, entry in ipairs(decoder:push(chunk)) do
+                        table.insert(out, entry)
+                    end
+                end
+                return out
+            end
+
+            it("decodes frames split at every byte boundary identically", function()
+                local data = frame(1, "alpha\n") .. frame(2, "beta\ngamma\n") .. frame(1, "delta")
+                local whole = docker_client.parse_logs(data)
+                test.eq(#whole, 4, "reference parse yields four lines")
+                for split = 1, #data - 1 do
+                    local got = collect(docker_client.new_log_decoder(),
+                        { data:sub(1, split), data:sub(split + 1) })
+                    test.eq(#got, #whole, "line count with split at " .. split)
+                    for i, entry in ipairs(whole) do
+                        test.eq(got[i].stream, entry.stream, "stream " .. i .. " split " .. split)
+                        test.eq(got[i].line, entry.line, "line " .. i .. " split " .. split)
+                    end
+                end
+            end)
+
+            it("emits nothing until a frame is complete", function()
+                local decoder = docker_client.new_log_decoder()
+                local data = frame(1, "hello\n")
+                test.eq(#decoder:push(data:sub(1, 3)), 0, "partial header yields nothing")
+                test.eq(#decoder:push(data:sub(4, 10)), 0, "partial payload yields nothing")
+                local rest = decoder:push(data:sub(11))
+                test.eq(#rest, 1, "completed frame yields its line")
+                test.eq(rest[1].line, "hello")
+            end)
+
+            it("strips the per-frame timestamp and exposes it on each entry", function()
+                local decoder = docker_client.new_log_decoder({ timestamps = true })
+                local ts = "2026-09-17T10:00:00.000000123Z"
+                local got = decoder:push(frame(2, ts .. " warn one\n") .. frame(1, ts .. " two\n"))
+                test.eq(#got, 2)
+                test.eq(got[1].stream, "stderr")
+                test.eq(got[1].line, "warn one")
+                test.eq(got[1].ts, ts)
+                test.eq(got[2].line, "two")
+                test.eq(got[2].ts, ts)
+            end)
+        end)
+
+        describe("log_cursor", function()
+            it("has no resume point before any entry is accepted", function()
+                local cursor = docker_client.new_log_cursor()
+                test.is_nil(cursor:since(), "no since before first entry")
+            end)
+
+            it("accepts entries in timestamp order and resumes from the last timestamp", function()
+                local cursor = docker_client.new_log_cursor()
+                test.is_true(cursor:accept({ ts = "2026-09-17T10:00:00.000000100Z", line = "a" }))
+                test.is_true(cursor:accept({ ts = "2026-09-17T10:00:01.000000200Z", line = "b" }))
+                local expected_unix = time.parse(time.RFC3339NANO, "2026-09-17T10:00:01.000000200Z"):unix()
+                test.eq(cursor:since(), string.format("%d.%09d", expected_unix, 200))
+            end)
+
+            it("skips entries replayed at or before the resume point", function()
+                local cursor = docker_client.new_log_cursor()
+                local t1 = "2026-09-17T10:00:00.000000001Z"
+                local t2 = "2026-09-17T10:00:00.000000002Z"
+                test.is_true(cursor:accept({ ts = t1, line = "one" }))
+                test.is_true(cursor:accept({ ts = t2, line = "two" }))
+                test.is_true(cursor:accept({ ts = t2, line = "two again" }))
+
+                -- A reconnect with since=t2 replays everything stamped t2 and later.
+                cursor:reconnect()
+                test.is_false(cursor:accept({ ts = t2, line = "two" }), "first replayed line at t2 skipped")
+                test.is_false(cursor:accept({ ts = t2, line = "two again" }), "second replayed line at t2 skipped")
+                test.is_true(cursor:accept({ ts = t2, line = "two third" }), "unseen line at t2 accepted")
+                test.is_false(cursor:accept({ ts = t1, line = "one" }), "older line rejected")
+                test.is_true(cursor:accept({ ts = "2026-09-17T10:00:00.000000003Z", line = "three" }))
+            end)
+
+            it("resumes a replay window only once per reconnect", function()
+                local cursor = docker_client.new_log_cursor()
+                local t = "2026-09-17T10:00:00.000000005Z"
+                test.is_true(cursor:accept({ ts = t, line = "x" }))
+                cursor:reconnect()
+                test.is_false(cursor:accept({ ts = t, line = "x" }), "replayed line skipped after reconnect")
+                test.is_true(cursor:accept({ ts = t, line = "y" }), "new line at same ts accepted")
+                cursor:reconnect()
+                test.is_false(cursor:accept({ ts = t, line = "x" }), "first replayed line skipped again")
+                test.is_false(cursor:accept({ ts = t, line = "y" }), "second replayed line skipped again")
+            end)
+        end)
+
+        describe("parse_response", function()
+            local parse = docker_client.parse_response
+
+            it("decodes a JSON body", function()
+                local body = parse('{"Id":"abc","State":{"Running":true}}', { ["Content-Type"] = "application/json" })
+                test.eq(body.Id, "abc")
+                test.is_true(body.State.Running)
+            end)
+
+            it("returns a multiplexed log stream body untouched", function()
+                local raw = string.char(1, 0, 0, 0, 0, 0, 0, 3) .. "hi\n"
+                local body = parse(raw, { ["Content-Type"] = "application/vnd.docker.multiplexed-stream" })
+                test.eq(body, raw)
+            end)
+
+            it("returns a plain text body untouched", function()
+                test.eq(parse("OK", { ["Content-Type"] = "text/plain; charset=utf-8" }), "OK")
             end)
         end)
     end)

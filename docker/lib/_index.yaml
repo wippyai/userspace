@@ -35,64 +35,8 @@ entries:
     imports:
       consts: userspace.docker.lib:consts
 
-  - name: spec_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Container config builder tests
-    source: file://spec_test.lua
-    method: run_tests
-    modules:
-      - json
+  - name: log_watch
+    kind: library.lua
+    source: file://log_watch.lua
     imports:
-      spec: userspace.docker.lib:spec
-      test: wippy.test:test
-
-  - name: tar_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Tar archive builder tests
-    source: file://tar_test.lua
-    method: run_tests
-    imports:
-      tar: userspace.docker.lib:tar
-      test: wippy.test:test
-
-  - name: images_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Image ensure/pull tests
-    source: file://images_test.lua
-    method: run_tests
-    imports:
-      images: userspace.docker.lib:images
-      test: wippy.test:test
-
-  - name: reconcile_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Declared-container reconcile tests
-    source: file://reconcile_test.lua
-    method: run_tests
-    imports:
-      reconcile: userspace.docker.lib:reconcile
-      test: wippy.test:test
-
-  - name: reclaim_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Orphaned-container reclaim tests
-    source: file://reclaim_test.lua
-    method: run_tests
-    imports:
-      reclaim: userspace.docker.lib:reclaim
-      test: wippy.test:test
+      docker_client: userspace.docker:docker_client

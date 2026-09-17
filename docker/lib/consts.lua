@@ -18,6 +18,7 @@ consts.stream = {
 consts.topic = {
     CONTAINER_NEW    = "container.new",
     CONTAINER_LOG    = "container.log",
+    CONTAINER_LOG_BATCH = "container.log.batch",
     CONTAINER_STATUS = "container.status",
     SUBSCRIBE        = "container.subscribe",
     UNSUBSCRIBE      = "container.unsubscribe",
@@ -53,7 +54,8 @@ consts.restart_policy = {
 }
 
 -- Restart policies that mark a container as a long-lived service: the daemon keeps
--- it running, so the worker hands it off instead of polling it to completion.
+-- it running, so the worker keeps following its logs and leaves its lifecycle to
+-- the daemon once it has stabilized.
 -- on-failure is intentionally excluded: such a container is a job that retries.
 consts.service_restart_policies = {
     [consts.restart_policy.ALWAYS]         = true,
@@ -78,8 +80,11 @@ consts.defaults = {
     LOG_TTL            = 3600,
     MAX_RESTARTS       = 3,
     WORKER_COUNT       = 2,
-    POLL_MAX           = 3600,
-    POLL_STABILIZE     = 6,
+    -- A service that stops within this many seconds of starting is finalized as a
+    -- failed job instead of being left to its restart policy.
+    SERVICE_STABILIZE_SECONDS = 3,
+    -- Upper bound of one log follow request; the stream is reopened seamlessly.
+    LOG_FOLLOW_SESSION = "1h",
 }
 
 return consts

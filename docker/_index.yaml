@@ -91,6 +91,10 @@ entries:
         description: Rename a container
       - name: exec
         description: Execute a command inside a running container
+      - name: put_archive
+        description: Copy a file into a running container (binary-safe, any size)
+      - name: get_archive
+        description: Copy a file out of a running container (binary-safe, any size)
       - name: wait
         description: Block until a container stops and return exit code
       - name: inspect
@@ -206,6 +210,8 @@ entries:
           stdin_status: userspace.docker.binding:containers_stdin_status_func
           compose: userspace.docker.binding:containers_compose_func
           exec: userspace.docker.binding:containers_exec_func
+          put_archive: userspace.docker.binding:containers_put_archive_func
+          get_archive: userspace.docker.binding:containers_get_archive_func
           wait: userspace.docker.binding:containers_wait_func
           inspect: userspace.docker.binding:containers_inspect_func
           compose_teardown: userspace.docker.binding:containers_compose_teardown_func
@@ -307,49 +313,6 @@ entries:
     modules:
       - http_client
       - json
-
-  # Tests
-  - name: client_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Docker client parse_logs and protocol tests
-    source: file://client_test.lua
-    method: run_tests
-    imports:
-      docker_client: userspace.docker:docker_client
-      test: wippy.test:test
-
-  - name: registry_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker
-      description: Registry event subscription tests for dynamic container pickup
-    source: file://registry_test.lua
-    method: run_tests
-    imports:
-      test: wippy.test:test
-    modules:
-      - events
-      - channel
-      - time
-
-  - name: e2e_test
-    kind: function.lua
-    meta:
-      type: test
-      suite: docker-e2e
-      description: Docker client end-to-end tests (requires WIPPY_E2E=1 and Docker)
-    source: file://e2e_test.lua
-    method: run_tests
-    imports:
-      docker_client: userspace.docker:docker_client
-      spec: userspace.docker.lib:spec
-      test: wippy.test:test
-    modules:
-      - env
       - time
 
   # Environment
