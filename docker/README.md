@@ -316,6 +316,32 @@ while true do
 end
 ```
 
+### Observed container identity and cleanup
+
+Narrow observations preserve Docker's `created`, `running`, `paused`,
+`restarting`, `removing`, `exited` and `dead` states. Missing or unrecognized
+states are `unknown`, never an inferred exit. `observed_image_digest` comes from
+the daemon's actual image ID, not the requested `bee.image_digest` label; a
+missing or malformed image ID is reported as an empty string. Callers must
+compare observations with their own admitted identity and treat missing evidence
+as uncertainty. Labels alone do not establish authorization or actual image
+identity. A successful stop is reported as `stopped` only after observing
+`created` or `exited`; paused/restarting/unknown states cannot establish it.
+
+`started_at` preserves the daemon's `State.StartedAt` string, including its
+fractional precision. It is absent when the daemon supplies no bounded string
+(for example, list responses). Compare it with the admitted execution timestamp
+before attaching or controlling a retained container: a container ID survives a
+restart. The field is observed data, not authorization or an atomic control
+fence; callers validate the timestamp and keep uncertain observations uncertain.
+
+If a narrow `remove` request fails, a subsequent inspection must return Docker
+HTTP 404 before the operation reports `destroyed`. Transport failures, denied
+access and daemon errors leave removal unconfirmed; their diagnostic text is
+never interpreted as proof of absence. The low-level client's
+`inspect_container` supplies an optional third return value for the actual HTTP
+status, preserving its existing result/error returns.
+
 ## License
 
 Apache-2.0
