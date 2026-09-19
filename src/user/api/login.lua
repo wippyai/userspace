@@ -6,6 +6,7 @@ local time = require("time")
 local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
+local scope_lib = require("scope")
 
 local function handler()
     local res = http.response()
@@ -111,17 +112,14 @@ local function handler()
 
     local actor = security.new_actor(tostring(user.user_id), actor_metadata)
 
-    local scope_id = config.default_group_id
+    local scope_id = scope_lib.resolve(user.security_groups)
     local is_admin = false
 
     if user.security_groups then
         for _, group_id in ipairs(user.security_groups) do
             if group_id == config.admin_group_id then
-                scope_id = config.admin_group_id
                 is_admin = true
                 break
-            else
-                scope_id = group_id
             end
         end
     end

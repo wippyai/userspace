@@ -73,4 +73,13 @@ entries:
     modules:
       - env
     method: consts
-    
+
+  # userspace.user:scope
+  - name: scope
+    kind: library.lua
+    meta:
+      comment: Security scope resolution for user group memberships
+      description: Resolves which named security scope a user's security groups map to (admin group wins outright; otherwise the last group wins; empty groups fall back to the default group)
+    source: file://scope.lua
+    imports:
+      consts: userspace.user:consts

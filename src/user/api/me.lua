@@ -6,6 +6,7 @@ local time = require("time")
 -- Import our repositories and constants
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
+local scope_lib = require("scope")
 
 -- User profile endpoint handler - returns current authenticated user info with security groups
 local function handler()
@@ -72,19 +73,14 @@ local function handler()
 
     -- Get configuration to determine admin status and current scope
     local config = consts.get_config()
+    local current_scope_id = scope_lib.resolve(user_groups.groups)
     local is_admin = false
-    local current_scope_id = config.default_group_id
 
-    -- Check if user is admin based on current groups and determine current scope
     if user_groups.groups then
         for _, group_id in ipairs(user_groups.groups) do
             if group_id == config.admin_group_id then
                 is_admin = true
-                current_scope_id = config.admin_group_id  -- Admin group used as scope
                 break
-            else
-                -- Use first non-admin group as scope
-                current_scope_id = group_id
             end
         end
     end
