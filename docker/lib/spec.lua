@@ -21,6 +21,7 @@ function spec.build_container_config(c: {
     work_dir: string?,
     user: string?,
     memory_limit: number?,
+    shm_size: number?,
     cpu_quota: number?,
     interactive: boolean?,
     labels: {[string]: string}?,
@@ -93,6 +94,10 @@ function spec.build_container_config(c: {
 
     if c.memory_limit then
         host_config.Memory = c.memory_limit
+    end
+
+    if c.shm_size then
+        host_config.ShmSize = c.shm_size
     end
 
     if c.cpu_quota then
@@ -210,12 +215,21 @@ function spec.build_container_config(c: {
     return config
 end
 
-function spec.validate(s: {image: string?}?)
+local function positive_integer(value: unknown): boolean
+    if type(value) ~= "number" then return false end
+    local n = value :: number
+    return n > 0 and n ~= math.huge and n % 1 == 0
+end
+
+function spec.validate(s: {image: string?, shm_size: number?}?)
     if not s then
         return nil, "spec is required"
     end
     if not s.image or s.image == "" then
         return nil, "image is required"
+    end
+    if s.shm_size ~= nil and not positive_integer(s.shm_size) then
+        return nil, "shm_size must be a positive integer number of bytes"
     end
     return true
 end

@@ -219,6 +219,42 @@ local function define_tests()
                 c:delete({ id = id })
                 if c.release then c:release() end
             end)
+
+            it("sizes /dev/shm through the containers contract", function()
+                local c = contract.get("userspace.docker:containers"):open()
+                local shm_size = 268435456
+                local created = c:create({
+                    image = "alpine:latest",
+                    command = "sleep 60",
+                    shm_size = shm_size,
+                })
+                test.is_true(created.success, "container accepted: " .. tostring(created.error))
+                local id = created.id
+
+                local row: any = nil
+                for _ = 1, 120 do
+                    local got = c:get({ id = id })
+                    row = got and got.container
+                    if row and row.status == "running" and row.docker_id and row.docker_id ~= "" then break end
+                    time.sleep("250ms")
+                end
+                test.eq(row and row.status, "running", "managed container running")
+                test.eq(row.config and row.config.shm_size, shm_size, "shm_size persisted with the container config")
+
+                local info = docker:inspect_container(tostring(row.docker_id))
+                test.eq(info.HostConfig.ShmSize, shm_size, "shm size passed to the daemon")
+
+                local df, df_err = docker:exec_container(tostring(row.docker_id), "df -k /dev/shm | tail -1")
+                test.is_nil(df_err, "df exec succeeded")
+                test.contains(tostring(df and df.stdout), "262144", "/dev/shm mounted at the requested size")
+
+                local rejected = c:create({ image = "alpine:latest", command = "true", shm_size = 0 })
+                test.is_false(rejected.success, "non-positive shm_size rejected")
+                test.contains(tostring(rejected.error), "shm_size")
+
+                c:delete({ id = id })
+                if c.release then c:release() end
+            end)
         end)
 
         describe("container lifecycle", function()

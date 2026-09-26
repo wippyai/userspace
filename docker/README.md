@@ -153,6 +153,7 @@ entries:
 | `network` | string? | Docker network name |
 | `volumes` | array | Volume mounts: `{host, container, mode?}` |
 | `work_dir` | string? | Working directory inside container |
+| `shm_size` | integer? | Size of `/dev/shm` in bytes (positive integer; Docker `HostConfig.ShmSize`). Unset keeps the daemon default (64 MiB). |
 | `interactive` | boolean? | Enable stdin for interactive containers |
 | `labels` | map? | Container labels |
 
@@ -181,6 +182,8 @@ local result = docker:create({
     env = { MY_VAR = "value" },
     ports = { { host = 8080, container = 80 } },
     network = "my-network",
+    memory_limit = 68719476736,  -- bytes
+    shm_size = 34359738368,      -- bytes of /dev/shm; unset keeps the daemon default
     stream = { reply_to = process.self(), topic = "docker.logs" },
 })
 
@@ -277,7 +280,10 @@ Docker API configuration. It accepts only immutable images, non-root users,
 read-only root filesystems, dropped capabilities, no-new-privileges,
 seccomp/AppArmor, positive PID/CPU/memory limits, non-host networking, bounded
 binds, one hardened tmpfs, and exact `bee.*` attempt labels. Unknown or broader
-Docker fields fail closed.
+Docker fields fail closed. `ShmSize` is optional; when set it must be a positive
+integer no larger than `Memory`, since `/dev/shm` pages are charged to the
+container memory cgroup. `IpcMode` is not accepted, so a sandbox never joins the
+host IPC namespace.
 
 ```lua
 local narrow = contract.open("userspace.docker:narrow")

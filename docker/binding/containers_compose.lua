@@ -86,6 +86,7 @@ local function handle(input: {
             work_dir = def.work_dir and tostring(def.work_dir) or nil,
             user = def.user and tostring(def.user) or nil,
             memory_limit = def.memory_limit and tonumber(def.memory_limit) or nil,
+            shm_size = def.shm_size :: number?,
             cpu_quota = def.cpu_quota and tonumber(def.cpu_quota) or nil,
             health_check = def.health_check :: {test: {string}?, interval: number?, timeout: number?, retries: number?}?,
             group_id = group_id,

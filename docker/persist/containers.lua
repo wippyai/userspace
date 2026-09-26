@@ -1,6 +1,7 @@
 local json = require("json")
 local uuid = require("uuid")
 local sql = require("sql")
+local container_spec = require("container_spec")
 
 local containers = {}
 
@@ -52,6 +53,7 @@ function containers.create(db, spec: {
     work_dir: string?,
     user: string?,
     memory_limit: number?,
+    shm_size: number?,
     cpu_quota: number?,
     auto_remove: boolean?,
     interactive: boolean?,
@@ -75,6 +77,11 @@ function containers.create(db, spec: {
     persist_logs: boolean?,
     created_by: string?,
 }): (string?, string?)
+    local valid, invalid = container_spec.validate(spec)
+    if not valid then
+        return nil, invalid
+    end
+
     local id = spec.id or uuid.v4()
     local now = os.time()
 
@@ -90,6 +97,7 @@ function containers.create(db, spec: {
         work_dir       = spec.work_dir,
         user           = spec.user,
         memory_limit   = spec.memory_limit,
+        shm_size       = spec.shm_size,
         cpu_quota      = spec.cpu_quota,
         auto_remove    = spec.auto_remove,
         interactive    = spec.interactive,
