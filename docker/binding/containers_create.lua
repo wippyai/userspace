@@ -21,6 +21,7 @@ local function handle(input: {
     work_dir: string?,
     user: string?,
     memory_limit: number?,
+    shm_size: number?,
     cpu_quota: number?,
     labels: {[string]: string}?,
     group_id: string?,
@@ -44,10 +45,6 @@ local function handle(input: {
     created_by: string?,
     stream: table?,
 })
-    if not input.image or input.image == "" then
-        return { success = false, error = "image is required" }
-    end
-
     local db, err = get_db()
     if err then
         return { success = false, error = tostring(err) }
@@ -65,6 +62,7 @@ local function handle(input: {
         work_dir = input.work_dir,
         user = input.user,
         memory_limit = input.memory_limit,
+        shm_size = input.shm_size,
         cpu_quota = input.cpu_quota,
         labels = input.labels,
         group_id = input.group_id,

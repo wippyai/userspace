@@ -41,6 +41,16 @@ local function main()
     local arbitrary_host = fixture()
     arbitrary_host.HostConfig.ExtraHosts = { "database.internal:host-gateway" }
     if runtime.config(arbitrary_host) ~= nil then fail("arbitrary host gateway alias admitted") end
+    local shared = fixture(); shared.HostConfig.ShmSize = 524288
+    if runtime.config(shared) == nil then fail("bounded ShmSize was rejected") end
+    local empty_shm = fixture(); empty_shm.HostConfig.ShmSize = 0
+    if runtime.config(empty_shm) ~= nil then fail("non-positive ShmSize admitted") end
+    local fractional_shm = fixture(); fractional_shm.HostConfig.ShmSize = 1.5
+    if runtime.config(fractional_shm) ~= nil then fail("fractional ShmSize admitted") end
+    local oversized_shm = fixture(); oversized_shm.HostConfig.ShmSize = 2097152
+    if runtime.config(oversized_shm) ~= nil then fail("ShmSize above Memory admitted") end
+    local host_ipc = fixture(); host_ipc.HostConfig.IpcMode = "host"
+    if runtime.config(host_ipc) ~= nil then fail("host IPC namespace admitted") end
     local calls = 0
     local running = { Id = "container-one", Config = { Labels = fixture().Labels },
         State = { Status = "running" } }

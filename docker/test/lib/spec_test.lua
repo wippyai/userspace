@@ -141,6 +141,21 @@ local function define_tests()
                 test.eq(result.HostConfig.Memory, 536870912)
             end)
 
+            it("sets shm size in HostConfig", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                    shm_size = 34359738368,
+                })
+                test.eq(result.HostConfig.ShmSize, 34359738368)
+            end)
+
+            it("omits ShmSize when shm_size is unset", function()
+                local result = spec.build_container_config({
+                    image = "alpine:latest",
+                })
+                test.is_nil(result.HostConfig.ShmSize, "daemon default applies")
+            end)
+
             it("converts cpu_quota to NanoCPUs", function()
                 local result = spec.build_container_config({
                     image = "alpine:latest",
@@ -472,6 +487,44 @@ local function define_tests()
                 local ok, err = spec.validate({ image = "" })
                 test.is_nil(ok, "nil result")
                 test.not_nil(err, "error returned")
+            end)
+
+            it("passes with a positive integer shm_size", function()
+                local ok, err = spec.validate({ image = "alpine:latest", shm_size = 1073741824 })
+                test.is_true(ok)
+                test.is_nil(err, "no error")
+            end)
+
+            it("rejects a zero shm_size", function()
+                local ok, err = spec.validate({ image = "alpine:latest", shm_size = 0 })
+                test.is_nil(ok, "nil result")
+                test.contains(err, "shm_size", "error mentions shm_size")
+            end)
+
+            it("rejects a negative shm_size", function()
+                local ok, err = spec.validate({ image = "alpine:latest", shm_size = -1 })
+                test.is_nil(ok, "nil result")
+                test.contains(err, "shm_size", "error mentions shm_size")
+            end)
+
+            it("rejects a fractional shm_size", function()
+                local ok, err = spec.validate({ image = "alpine:latest", shm_size = 1.5 })
+                test.is_nil(ok, "nil result")
+                test.contains(err, "shm_size", "error mentions shm_size")
+            end)
+
+            it("rejects a non-numeric shm_size", function()
+                -- Contract and registry input is untyped at runtime.
+                local input = { image = "alpine:latest", shm_size = ("64g" :: unknown) :: number }
+                local ok, err = spec.validate(input)
+                test.is_nil(ok, "nil result")
+                test.contains(err, "shm_size", "error mentions shm_size")
+            end)
+
+            it("rejects an infinite shm_size", function()
+                local ok, err = spec.validate({ image = "alpine:latest", shm_size = math.huge })
+                test.is_nil(ok, "nil result")
+                test.contains(err, "shm_size", "error mentions shm_size")
             end)
 
             it("fails with nil spec", function()

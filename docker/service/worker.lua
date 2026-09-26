@@ -185,6 +185,7 @@ local function run_managed(docker, db_id, c, root_pid)
         work_dir = cfg.work_dir and tostring(cfg.work_dir) or nil,
         user = cfg.user and tostring(cfg.user) or nil,
         memory_limit = tonumber(cfg.memory_limit),
+        shm_size = tonumber(cfg.shm_size),
         cpu_quota = tonumber(cfg.cpu_quota),
         interactive = cfg.interactive and true or false,
         labels = type(c.labels) == "table" and (c.labels :: {[string]: string}) or nil,

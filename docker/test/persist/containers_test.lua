@@ -89,6 +89,47 @@ local function define_tests()
                 db:release()
             end)
 
+            it("stores the shm size in the container config", function()
+                local db = get_db()
+                local id = containers_repo.create(db, {
+                    image = "vllm/vllm-openai:latest",
+                    command = "serve",
+                    memory_limit = 68719476736,
+                    shm_size = 34359738368,
+                })
+                assert(id)
+
+                local c = containers_repo.get(db, id)
+                test.eq(c.config.shm_size, 34359738368, "shm_size persisted")
+                test.eq(c.config.memory_limit, 68719476736, "memory_limit persisted")
+                test.eq(tostring(c.config.shm_size), tostring(34359738368), "shm_size reads back as the same integer")
+
+                local listed = nil
+                for _, row in ipairs(containers_repo.list(db, {})) do
+                    if row.id == id then listed = row end
+                end
+                test.not_nil(listed, "container listed")
+                test.eq(listed.config.shm_size, 34359738368, "list returns the persisted shm_size")
+
+                cleanup(db, id)
+                db:release()
+            end)
+
+            it("rejects an invalid shm size without inserting", function()
+                local db = get_db()
+                local id, err = containers_repo.create(db, {
+                    id = "invalid-shm-size",
+                    image = "alpine:latest",
+                    command = "true",
+                    shm_size = 0,
+                })
+                test.is_nil(id, "no id returned")
+                test.contains(err, "shm_size", "error mentions shm_size")
+                test.is_nil(containers_repo.get(db, "invalid-shm-size"), "no row inserted")
+
+                db:release()
+            end)
+
             it("stores config as JSON", function()
                 local db = get_db()
                 local id = containers_repo.create(db, {

@@ -87,7 +87,7 @@ function runtime.config(value: unknown): (DynamicObject?, string?)
     if not label_value then return nil, label_err end
     local host, host_err = object(raw.HostConfig, { ReadonlyRootfs = true,
         Privileged = true, CapDrop = true, SecurityOpt = true, PidsLimit = true,
-        Memory = true, NanoCPUs = true, NetworkMode = true, Binds = true,
+        Memory = true, ShmSize = true, NanoCPUs = true, NetworkMode = true, Binds = true,
         Tmpfs = true, AutoRemove = true, ExtraHosts = true, Devices = true },
         "narrow Docker HostConfig")
     if not host then return nil, host_err end
@@ -114,6 +114,13 @@ function runtime.config(value: unknown): (DynamicObject?, string?)
         if type(host[name]) ~= "number" or (host[name] :: number) <= 0 then
             return nil, "narrow Docker " .. name .. " must be positive"
         end
+    end
+    -- /dev/shm pages are charged to the container memory cgroup, so a size above
+    -- Memory is unreachable and is rejected as a malformed request.
+    if host.ShmSize ~= nil and (type(host.ShmSize) ~= "number"
+        or (host.ShmSize :: number) <= 0 or (host.ShmSize :: number) % 1 ~= 0
+        or (host.ShmSize :: number) > (host.Memory :: number)) then
+        return nil, "narrow Docker ShmSize must be a positive integer no larger than Memory"
     end
     if type(host.NetworkMode) ~= "string" or host.NetworkMode == ""
         or host.NetworkMode == "host" or host.NetworkMode == "default" then

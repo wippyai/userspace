@@ -5,6 +5,8 @@ entries:
   - name: containers
     kind: library.lua
     source: file://containers.lua
+    imports:
+      container_spec: userspace.docker.lib:spec
     modules:
       - json
       - sql
