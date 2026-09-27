@@ -27,6 +27,62 @@ local function define_tests()
             test.is_false(reconcile.needs_requeue(nil, false), "no row -> skip")
         end)
     end)
+
+    describe("Docker reconcile.vanished", function()
+        it("detects a missing running container by Docker ID", function()
+            local docker = {}
+            function docker:inspect_container(id)
+                test.eq(id, "missing-id")
+                return nil, "HTTP 404: No such container: missing-id"
+            end
+
+            test.is_true(reconcile.is_vanished({
+                status = "running",
+                docker_id = "missing-id",
+            }, docker), "missing Docker object is vanished")
+        end)
+
+        it("tries the persisted name when the Docker ID is stale", function()
+            local inspected = {}
+            local docker = {}
+            function docker:inspect_container(id)
+                table.insert(inspected, id)
+                if id == "stale-id" then
+                    return nil, "HTTP 404: No such container: stale-id"
+                end
+                return { State = { Running = true } }, nil
+            end
+
+            test.is_false(reconcile.is_vanished({
+                status = "paused",
+                docker_id = "stale-id",
+                name = "still-here",
+            }, docker), "name resolves the existing container")
+            test.eq(#inspected, 2, "both identifiers inspected")
+            test.eq(inspected[2], "still-here")
+        end)
+
+        it("does not treat Docker connection errors as vanished containers", function()
+            local docker = {}
+            function docker:inspect_container(_id)
+                return nil, "connection refused"
+            end
+
+            local vanished, inspect_err = reconcile.is_vanished({ status = "running", docker_id = "id" }, docker)
+            test.is_false(vanished, "temporary daemon failure preserves row")
+            test.eq(inspect_err, "connection refused")
+        end)
+
+        it("ignores terminal and in-flight rows", function()
+            local docker = {}
+            function docker:inspect_container(_id)
+                error("terminal/in-flight rows are not inspected")
+            end
+
+            test.is_false(reconcile.is_vanished({ status = "removed", docker_id = "id" }, docker))
+            test.is_false(reconcile.is_vanished({ status = "pending", name = "future" }, docker))
+        end)
+    end)
 end
 
 return test.run_cases(define_tests)

@@ -95,7 +95,11 @@ function log_watch.follow(p: WatchParams): WatchOutcome
         local waiting_for_restart = false
 
         if inspect_err then
-            outcome = { kind = "failed", error = "inspect failed: " .. tostring(inspect_err) }
+            if tostring(inspect_err):find("HTTP 404", 1, true) then
+                outcome = { kind = "vanished", error = "container vanished outside the module (Docker inspect returned 404)" }
+            else
+                outcome = { kind = "failed", error = "inspect failed: " .. tostring(inspect_err) }
+            end
         elseif not state.Running then
             local stabilized = p.is_service and (p.now() - p.started_at) >= p.stabilize_seconds
             if not stabilized then

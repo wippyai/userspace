@@ -315,7 +315,10 @@ local function run_managed(docker, db_id, c, root_pid)
     local exit_code: number = -1
     local final_status = consts.status.STOPPED
     local error_msg: string? = nil
-    if outcome.kind == "failed" then
+    if outcome.kind == "vanished" then
+        final_status = consts.status.REMOVED
+        error_msg = outcome.error
+    elseif outcome.kind == "failed" then
         final_status = consts.status.FAILED
         error_msg = outcome.error
     else

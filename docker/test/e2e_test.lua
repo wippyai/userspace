@@ -258,6 +258,43 @@ local function define_tests()
         end)
 
         describe("container lifecycle", function()
+            it("expires a managed row when the daemon removes its container directly", function()
+                local c = contract.get("userspace.docker:containers"):open()
+                local created = c:create({ image = "alpine:latest", command = "sleep 60" })
+                test.is_true(created.success, "container accepted: " .. tostring(created.error))
+                local id = created.id
+
+                local row: any = nil
+                for _ = 1, 120 do
+                    local got = c:get({ id = id })
+                    row = got and got.container
+                    if row and row.status == "running" and row.docker_id and row.docker_id ~= "" then break end
+                    time.sleep("250ms")
+                end
+                test.eq(row and row.status, "running", "managed container is running")
+
+                local _, remove_err = docker:remove_container(tostring(row.docker_id), true)
+                test.is_nil(remove_err, "daemon removes container outside module")
+
+                for _ = 1, 80 do
+                    local got = c:get({ id = id })
+                    row = got and got.container
+                    if row and row.status == "removed" then break end
+                    time.sleep("250ms")
+                end
+                test.eq(row and row.status, "removed", "monitor marks the missing container removed")
+                test.contains(tostring(row and row.error), "vanished", "removal reason is persisted")
+
+                local listed = c:list({})
+                test.is_true(listed.success, "container list succeeds")
+                for _, listed_row in ipairs(listed.containers or {}) do
+                    test.is_false(listed_row.id == id, "removed row is hidden from default list")
+                end
+
+                c:delete({ id = id })
+                if c.release then c:release() end
+            end)
+
             it("runs a container and captures stdout/stderr", function()
                 local config = {
                     Image = "alpine:latest",

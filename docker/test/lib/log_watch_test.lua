@@ -189,6 +189,15 @@ local function define_tests()
             test.eq(outcome.error, "inspect failed: no such container")
         end)
 
+        it("reports a removed Docker container as vanished", function()
+            local docker = fake_docker({ { chunks = { line(1, "x") } } }, {
+                { err = "HTTP 404: No such container: missing-id" },
+            })
+            local outcome = run(docker)
+            test.eq(outcome.kind, "vanished")
+            test.contains(outcome.error, "vanished")
+        end)
+
         it("treats a service that exits inside the stabilization window as a finished job", function()
             local docker = fake_docker({ { chunks = { line(1, "crash") } } }, { { Running = false, ExitCode = 3 } })
             local outcome = run(docker, { is_service = true, now = function() return 101 end })
