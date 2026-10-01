@@ -285,8 +285,23 @@ integer no larger than `Memory`, since `/dev/shm` pages are charged to the
 container memory cgroup. `IpcMode` is not accepted, so a sandbox never joins the
 host IPC namespace.
 
+Set `config.Tty` explicitly to `true` for a PTY or `false` for byte streams.
+Both modes require attached stdin/stdout/stderr and open stdin, and pass the same
+sandbox validation. `create` forwards the requested mode and returns the observed
+container identity without starting it. Terminal attachment is a separate caller
+responsibility; this operation does not create an interactive worker or grant
+access to a terminal.
+
+The `Docker checks` CI workflow exercises both modes through the default
+contract binding against a real Linux Docker daemon. To run the same check,
+install the locked dependencies in `docker/test`, then run
+`WIPPY=/absolute/path/to/wippy bash check_pty.sh` from that directory. The daemon
+must support AppArmor, seccomp, and cgroup v2; missing protections fail the check
+instead of weakening the configuration. It removes only containers labelled
+with that run's unique test directory.
+
 ```lua
-local narrow = contract.open("userspace.docker:narrow")
+local narrow = contract.get("userspace.docker:narrow"):open()
 local created = narrow:create({ name = "bee-<digest>", config = protected_config })
 narrow:start({ backend_ref = created.backend_ref })
 local observed = narrow:inspect({ backend_ref = created.backend_ref })

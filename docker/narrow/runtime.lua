@@ -80,7 +80,7 @@ function runtime.config(value: unknown): (DynamicObject?, string?)
         end
     end
     if raw.OpenStdin ~= true or raw.AttachStdin ~= true or raw.AttachStdout ~= true
-        or raw.AttachStderr ~= true or raw.Tty ~= false then
+        or raw.AttachStderr ~= true or type(raw.Tty) ~= "boolean" then
         return nil, "narrow Docker stdio shape is unsafe"
     end
     local label_value, label_err = labels(raw.Labels)

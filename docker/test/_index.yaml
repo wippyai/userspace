@@ -2,6 +2,82 @@ version: "1.0"
 namespace: app
 
 entries:
+  - name: pty_config
+    kind: process.lua
+    source: file://pty_config.lua
+    method: main
+    modules: [io, json, contract]
+    imports: {runtime: userspace.docker.narrow:runtime}
+    security:
+      actor: {id: app:pty_config}
+      policies: [app:pty_contract_access, app:pty_contract_methods]
+    meta:
+      command: {name: docker-pty-config}
+
+  - name: pty_config_test
+    kind: function.lua
+    source: file://pty_config.lua
+    method: main
+    modules: [io, json, contract]
+    imports: {runtime: userspace.docker.narrow:runtime}
+    security:
+      actor: {id: app:pty_config_test}
+      policies: [app:pty_contract_access, app:pty_contract_methods]
+    meta:
+      type: test
+      suite: docker
+      description: Explicit terminal mode, no-start create, and unchanged sandbox validation
+
+  - name: pty_contract
+    kind: process.lua
+    source: file://pty_contract.lua
+    method: main
+    modules: [contract, env, io]
+    imports: {docker_client: userspace.docker:docker_client}
+    security:
+      actor: {id: app:pty_contract}
+      policies: [app:pty_contract_access, app:pty_contract_methods, app:pty_daemon_access, app:pty_daemon_socket]
+    meta:
+      command: {name: docker-pty-contract}
+
+  - name: pty_contract_access
+    kind: security.policy
+    policy:
+      resources: [userspace.docker:narrow, userspace.docker:narrow_binding]
+      actions: [contract.get, contract.open]
+      effect: allow
+
+  - name: pty_contract_methods
+    kind: security.policy
+    policy:
+      resources: [create, start]
+      actions: [contract.call]
+      effect: allow
+
+  - name: pty_daemon_access
+    kind: security.policy
+    policy:
+      resources: ['http://docker/*', WIPPY_DOCKER_PTY_IMAGE, WIPPY_DOCKER_PTY_ROOT]
+      actions: [http_client.request, env.get]
+      effect: allow
+
+  - name: pty_daemon_socket
+    kind: security.policy
+    policy:
+      resources: ['/var/run/docker.sock']
+      actions: [http_client.unix_socket]
+      effect: allow
+
+  - name: WIPPY_DOCKER_PTY_IMAGE
+    kind: env.variable
+    variable: WIPPY_DOCKER_PTY_IMAGE
+    storage: userspace.docker:os_env
+
+  - name: WIPPY_DOCKER_PTY_ROOT
+    kind: env.variable
+    variable: WIPPY_DOCKER_PTY_ROOT
+    storage: userspace.docker:os_env
+
   - name: observed_identity
     kind: process.lua
     source: file://observed_identity.lua
