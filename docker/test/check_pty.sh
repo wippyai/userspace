@@ -51,7 +51,12 @@ while read -r marker id tty; do
   [[ "$id" =~ ^[0-9a-f]{64}$ ]]
   [[ "$tty" == true || "$tty" == false ]]
   test "$(docker inspect --format '{{index .Config.Labels "bee.attempt_id"}}' "$id")" = "$test_root"
-  printf 'pty-input\n' | timeout 30s docker attach --sig-proxy=false "$id" > "$test_root/$tty.stdout" 2> "$test_root/$tty.stderr"
+  # Keep stdin open until attachment completes. A short-lived pipe producer can
+  # make Docker detach on EOF before it drains the container's final output.
+  coproc PTY_ATTACH { timeout --kill-after=5s 30s docker attach --sig-proxy=false "$id" > "$test_root/$tty.stdout" 2> "$test_root/$tty.stderr"; }
+  attach_pid=$PTY_ATTACH_PID
+  printf 'pty-input\n' >& "${PTY_ATTACH[1]}"
+  wait "$attach_pid"
   tr -d '\r' < "$test_root/$tty.stdout" > "$test_root/$tty.output"
   grep -Fxq "PTY_MODE $tty" "$test_root/$tty.output"
   grep -Fxq 'PTY_INPUT_OK' "$test_root/$tty.output"
