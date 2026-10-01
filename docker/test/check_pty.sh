@@ -25,6 +25,10 @@ cleanup() {
   fi
   while IFS= read -r id; do
     if [[ "$id" =~ ^[0-9a-f]{64}$ ]]; then
+      if [[ "$status" != 0 ]]; then
+        docker inspect --format '{{json .State}}' "$id" >&2 || true
+        docker logs "$id" >&2 || true
+      fi
       docker rm --force "$id" || status=1
     fi
   done < <(docker ps --all --quiet --no-trunc --filter "label=bee.attempt_id=$test_root")

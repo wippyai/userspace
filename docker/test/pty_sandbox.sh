@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eu
+set -eux
 
 test "$(id -u)" = 1000
 test "$(id -g)" = 1000
