@@ -142,6 +142,9 @@ function containers.get(db, id: string): (table?, string?)
         return nil, nil
     end
     local row = rows[1]
+    if type(row) ~= "table" then
+        return nil, nil
+    end
     if row.labels and row.labels ~= "" then
         row.labels = safe_json_decode(tostring(row.labels))
     end
@@ -240,7 +243,10 @@ function containers.requeue_claimed(db): number
     local result = db_execute(db,
         "UPDATE containers SET status = 'pending' WHERE status = 'claimed'"
     )
-    return (result and result.rows_affected) or 0
+    if type(result) == "table" and type(result.rows_affected) == "number" then
+        return result.rows_affected
+    end
+    return 0
 end
 
 function containers.update_status(db, id: string, status: string, fields: {
@@ -415,7 +421,12 @@ function containers.get_logs(db, container_id: string, options: LogOptions?): ({
             "SELECT id, sequence, stream, line, ts FROM container_logs WHERE "
                 .. table.concat(where, " AND ") .. " ORDER BY sequence DESC LIMIT ?", params)
         if err then return {}, "failed to get logs: " .. tostring(err) end
-        local newest: {table} = rows or {}
+        local newest: {table} = {}
+        for _, row in ipairs(rows or {}) do
+            if type(row) == "table" then
+                table.insert(newest, row)
+            end
+        end
         local has_more = #newest > tail
         if has_more then table.remove(newest, #newest) end
         local result: {table} = {}
@@ -460,7 +471,12 @@ function containers.get_logs(db, container_id: string, options: LogOptions?): ({
         "SELECT id, sequence, stream, line, ts FROM container_logs WHERE "
             .. table.concat(where, " AND ") .. suffix, params)
     if err then return {}, "failed to get logs: " .. tostring(err) end
-    local result: {table} = rows or {}
+    local result: {table} = {}
+    for _, row in ipairs(rows or {}) do
+        if type(row) == "table" then
+            table.insert(result, row)
+        end
+    end
     local has_more = not legacy_unbounded and #result > limit
     if has_more then table.remove(result, #result) end
     local next_after = after
@@ -481,6 +497,9 @@ function containers.stdin_begin(db, container_id: string, operation_id: string,
     if query_err then return nil, "failed to read stdin operation: " .. tostring(query_err) end
     if rows and #rows > 0 then
         local existing = rows[1]
+        if type(existing) ~= "table" then
+            return nil, "failed to read stdin operation: invalid row"
+        end
         if tostring(existing.container_id) ~= container_id
             or tostring(existing.request_digest) ~= request_digest
             or tonumber(existing.byte_count) ~= byte_count then

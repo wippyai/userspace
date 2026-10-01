@@ -60,7 +60,16 @@ local function make_request(sock: string, method: string, endpoint: string, opti
         end
     end
 
-    local hdrs: {[string]: string} = opts.headers or { ["Content-Type"] = "application/json" }
+    local hdrs: {[string]: string} = {}
+    if type(opts.headers) == "table" then
+        for key, value in pairs(opts.headers) do
+            if type(key) == "string" and type(value) == "string" then
+                hdrs[key] = value
+            end
+        end
+    else
+        hdrs["Content-Type"] = "application/json"
+    end
     local timeout: string = tostring(opts.timeout or DEFAULT_TIMEOUT)
 
     local response, err
@@ -473,7 +482,7 @@ function docker.new(socket_path: string?)
             timeout = "300s",
         })
         if req_err then
-            return nil, req_err
+            return nil, tostring(req_err)
         end
         return true, nil
     end
@@ -487,7 +496,7 @@ function docker.new(socket_path: string?)
             timeout = "300s",
         })
         if req_err or not result then
-            return nil, req_err
+            return nil, req_err and tostring(req_err) or nil
         end
         return tostring(result.raw_body or ""), nil
     end
@@ -817,7 +826,7 @@ function docker.new(socket_path: string?)
             body = exec_config,
         })
         if create_err or not create_result then
-            return nil, create_err or "exec create failed"
+            return nil, create_err and tostring(create_err) or "exec create failed"
         end
 
         local exec_id = create_result.body and create_result.body.Id
@@ -830,7 +839,7 @@ function docker.new(socket_path: string?)
             timeout = opts.timeout or "300s",
         })
         if start_err or not start_result then
-            return nil, start_err or "exec start failed"
+            return nil, start_err and tostring(start_err) or "exec start failed"
         end
 
         local stdout_parts: {string} = {}

@@ -48,6 +48,10 @@ local function define_tests()
                     command = "echo hello",
                     args = { "--flag" },
                 })
+                if not result.Cmd then
+                    test.fail("Cmd is set")
+                    return
+                end
                 test.eq(result.Cmd[1], "--flag", "args wins")
                 test.eq(#result.Cmd, 1, "no sh -c wrap when args present")
             end)

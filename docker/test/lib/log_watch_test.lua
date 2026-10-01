@@ -39,7 +39,10 @@ type FakeDocker = {
     readers: {{closed: boolean}},
 }
 
-local function fake_docker(sessions: {any}, states: {any})
+type LogSession = {chunks: {string}?, err: string?}
+type ContainerState = {Running: boolean?, Restarting: boolean?, ExitCode: number?, err: string?}
+
+local function fake_docker(sessions: {LogSession}, states: {ContainerState})
     local d = {
         follows = {} :: {{id: string, since: string?}},
         inspects = 0,
@@ -50,6 +53,7 @@ local function fake_docker(sessions: {any}, states: {any})
         local s = table.remove(sessions, 1)
         if s == nil then error("unexpected follow_logs call") end
         if s.err then return nil, s.err end
+        if not s.chunks then error("missing follow_logs chunks") end
         local r = reader(s.chunks)
         table.insert(self.readers, r)
         return r, nil
