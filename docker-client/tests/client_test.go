@@ -79,7 +79,7 @@ entries:
   kind: process.lua
   source: file://check.lua
   method: main
-  imports: {client: 'userspace.docker:docker_client'}
+  imports: {client: 'userspace.docker.client:client'}
   meta:
     command:
       name: check
@@ -96,7 +96,7 @@ entries:
 	script := `local client = require("client")
 local function main()
     local docker, connection_error = client.new(SOCKET)
-    assert(docker, tostring(connection_error))
+    if not docker then error(connection_error) end
     local found, found_error, found_status = docker:inspect_container("found")
     assert(found and found.Id == "found" and not found_error and found_status == 200)
     local missing, missing_error, missing_status = docker:inspect_container("missing")

@@ -165,6 +165,7 @@ entries:
     method: run_tests
     imports:
       docker_client: userspace.docker:docker_client
+      shared_client: userspace.docker.client:client
       test: wippy.test:test
     modules:
       - time

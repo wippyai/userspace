@@ -311,6 +311,13 @@ entries:
           stop: userspace.docker.narrow:stop
           remove: userspace.docker.narrow:remove
 
+  # Shared Docker client library
+  - name: docker_client
+    kind: library.lua
+    source: file://client.lua
+    imports:
+      client: userspace.docker.client:client
+
   # Environment
   - name: os_env
     kind: env.storage.os
