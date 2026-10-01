@@ -1,0 +1,48 @@
+name: Docker checks
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'docker/**'
+      - '.github/workflows/docker-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    name: Docker unit and hardened PTY checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: wippy
+        uses: wippyai/framework/.github/actions/setup-wippy@2d0e5fd3db3bf96702102ec77b5342fb334bfe02
+      - name: Install locked dependencies
+        working-directory: docker/test
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+        run: '"$WIPPY" install'
+      - name: Lint and regression tests
+        working-directory: docker/test
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+        run: |
+          "$WIPPY" lint --level error
+          "$WIPPY" test
+          "$WIPPY" run userspace-docker-check-narrow
+          "$WIPPY" run docker-observed-identity
+          "$WIPPY" run docker-remove-observation
+      - name: Real hardened Docker attachment
+        working-directory: docker/test
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+        run: bash check_pty.sh
+      - name: Package dry run
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+        run: '"$WIPPY" publish --config docker --version 0.5.17 --dry-run'
