@@ -1,0 +1,42 @@
+name: Publish checks
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - '.github/workflows/publish*.yml'
+      - '.github/scripts/publish-module.sh'
+      - '.github/tests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publishing:
+    name: Single-module publication guards and packing
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: wippyai/framework
+          ref: 2d0e5fd3db3bf96702102ec77b5342fb334bfe02
+          path: .ci-framework
+          sparse-checkout: .github/actions/setup-wippy
+          persist-credentials: false
+      - id: wippy
+        uses: ./.ci-framework/.github/actions/setup-wippy
+      - name: Check workflow syntax
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/publish.yml .github/workflows/publish-checks.yml
+      - name: Test single-module selection and publication guards
+        run: bash .github/tests/publish-module.sh
+      - name: Pack representative modules without publishing
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+        run: |
+          bash .github/scripts/publish-module.sh docker 0.0.0-test dry-run
+          bash .github/scripts/publish-module.sh src/user 0.0.0-test dry-run
