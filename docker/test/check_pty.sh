@@ -3,7 +3,7 @@ set -euo pipefail
 
 : "${WIPPY:?path to the verified runtime is required}"
 docker_security=$(docker info --format '{{json .SecurityOptions}}')
-if ! rg -q 'name=apparmor' <<< "$docker_security" || ! rg -q 'name=seccomp' <<< "$docker_security" \
+if ! grep -q 'name=apparmor' <<< "$docker_security" || ! grep -q 'name=seccomp' <<< "$docker_security" \
   || ! test -f /sys/fs/cgroup/cgroup.controllers; then
   echo 'Hardened PTY check requires a Linux Docker daemon with AppArmor, seccomp and cgroup v2' >&2
   exit 1
@@ -49,13 +49,13 @@ while read -r marker id tty; do
   test "$(docker inspect --format '{{index .Config.Labels "bee.attempt_id"}}' "$id")" = "$test_root"
   printf 'pty-input\n' | timeout 30s docker attach --sig-proxy=false "$id" > "$test_root/$tty.stdout" 2> "$test_root/$tty.stderr"
   tr -d '\r' < "$test_root/$tty.stdout" > "$test_root/$tty.output"
-  rg -q "^PTY_MODE $tty$" "$test_root/$tty.output"
-  rg -q '^PTY_INPUT_OK$' "$test_root/$tty.output"
+  grep -Fxq "PTY_MODE $tty" "$test_root/$tty.output"
+  grep -Fxq 'PTY_INPUT_OK' "$test_root/$tty.output"
   if [[ "$tty" == true ]]; then
-    rg -q '^PTY_STDERR_OK$' "$test_root/$tty.output"
+    grep -Fxq 'PTY_STDERR_OK' "$test_root/$tty.output"
   else
-    rg -q '^PTY_STDERR_OK$' "$test_root/$tty.stderr"
-    if rg -q '^PTY_STDERR_OK$' "$test_root/$tty.output"; then exit 1; fi
+    grep -Fxq 'PTY_STDERR_OK' "$test_root/$tty.stderr"
+    if grep -Fxq 'PTY_STDERR_OK' "$test_root/$tty.output"; then exit 1; fi
   fi
   test "$(docker wait "$id")" = 0
   containers=$((containers + 1))
