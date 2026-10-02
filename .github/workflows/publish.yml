@@ -1,24 +1,60 @@
-name: Publish Userspace components
+name: Publish one Userspace module
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      directory:
+        description: 'Single package directory, e.g. docker or src/uploads (not . or src)'
+        type: string
+        required: true
+      version:
+        description: 'Explicit Hub module version, e.g. 0.5.18'
+        type: string
+        required: true
+      dry_run:
+        description: 'Pack only; do not upload to the Hub'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-module-${{ inputs.directory }}
+  cancel-in-progress: false
 
 jobs:
-  userspace:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+  module:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-
-      - name: Release module
-        uses: wippyai/action-module-release@main
+      - name: Require master for publication
+        if: ${{ !inputs.dry_run }}
+        run: test "$GITHUB_REF" = refs/heads/master
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          directory: .
-          tag: ${{ github.ref_name }}
-          username: ${{ secrets.WIPPY_USERNAME }}
-          password: ${{ secrets.WIPPY_PASSWORD }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: wippyai/framework
+          ref: 2d0e5fd3db3bf96702102ec77b5342fb334bfe02
+          path: .ci-framework
+          sparse-checkout: .github/actions/setup-wippy
+          persist-credentials: false
+      - id: wippy
+        uses: ./.ci-framework/.github/actions/setup-wippy
+      - name: Pack selected module without publishing
+        if: ${{ inputs.dry_run }}
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+          MODULE_DIRECTORY: ${{ inputs.directory }}
+          MODULE_VERSION: ${{ inputs.version }}
+        run: bash .github/scripts/publish-module.sh "$MODULE_DIRECTORY" "$MODULE_VERSION" dry-run
+      - name: Publish selected module
+        if: ${{ !inputs.dry_run && github.ref == 'refs/heads/master' }}
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+          MODULE_DIRECTORY: ${{ inputs.directory }}
+          MODULE_VERSION: ${{ inputs.version }}
+          WIPPY_TOKEN: ${{ secrets.WIPPY_TOKEN }}
+        run: bash .github/scripts/publish-module.sh "$MODULE_DIRECTORY" "$MODULE_VERSION" publish
