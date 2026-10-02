@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - 'docker/**'
+      - 'docker-client/**'
       - '.github/workflows/docker-checks.yml'
   workflow_dispatch:
 
@@ -31,6 +32,11 @@ jobs:
           persist-credentials: false
       - id: wippy
         uses: ./.ci-framework/.github/actions/setup-wippy
+      - name: Standalone client lint and HTTP boundary
+        working-directory: docker-client
+        env:
+          WIPPY: ${{ steps.wippy.outputs.path }}
+        run: make check
       - name: Install locked dependencies
         working-directory: docker/test
         env:
@@ -54,4 +60,6 @@ jobs:
       - name: Package dry run
         env:
           WIPPY: ${{ steps.wippy.outputs.path }}
-        run: '"$WIPPY" publish --config docker --version 0.5.17 --dry-run'
+        run: |
+          "$WIPPY" publish --config docker-client --version 0.1.0 --dry-run
+          "$WIPPY" publish --config docker --version 0.5.18 --dry-run

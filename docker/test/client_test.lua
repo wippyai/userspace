@@ -5,6 +5,11 @@ local time = require("time")
 local function define_tests()
     describe("Docker Client", function()
 
+        it("re-exports the standalone client without duplicating it", function()
+            local shared_client = require("shared_client")
+            test.is_true(rawequal(docker_client, shared_client))
+        end)
+
         describe("parse_logs", function()
             local parse_logs = docker_client.parse_logs
 
