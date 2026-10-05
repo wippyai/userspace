@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.6.0](https://github.com/wippyai/userspace/compare/v0.5.0...v0.6.0) (2026-10-05)
+
+
+### Features
+
+* **docker:** allow PTY mode in narrow create ([#68](https://github.com/wippyai/userspace/issues/68)) ([9aa2184](https://github.com/wippyai/userspace/commit/9aa218496d2906c4898a366dfda8951da750b598))
+* **docker:** size /dev/shm per container (shm_size) ([#77](https://github.com/wippyai/userspace/issues/77)) ([93c06be](https://github.com/wippyai/userspace/commit/93c06be1072d65200662d4d675db73180623cc78))
+* **upload:** implement recovery mechanism for interrupted uploads ([#65](https://github.com/wippyai/userspace/issues/65)) ([9193dab](https://github.com/wippyai/userspace/commit/9193dab2f17a34c788b7140e143733fe306ce693))
+* **uploads:** add apple pages mime type ([#81](https://github.com/wippyai/userspace/issues/81)) ([1c7ffa9](https://github.com/wippyai/userspace/commit/1c7ffa9eff1b83d0f1d3076dca4ceb07f2866e44))
+
+
+### Bug Fixes
+
+* **ci:** publish Userspace modules independently ([#80](https://github.com/wippyai/userspace/issues/80)) ([c497baf](https://github.com/wippyai/userspace/commit/c497bafa85b5355f14e5c3bba48ec300816f8b1e))
+* **docker:** backfill SQLite log cursors in one pass ([#74](https://github.com/wippyai/userspace/issues/74)) ([30dfe5b](https://github.com/wippyai/userspace/commit/30dfe5b14f9847c25a1dac155c9a5024971bb180))
+* **docker:** expire rows whose container vanished outside the module ([#78](https://github.com/wippyai/userspace/issues/78)) ([957a89f](https://github.com/wippyai/userspace/commit/957a89fe3c708b1aede8007545b1ddac23c7f381))
+* **docker:** grant root service process capabilities ([#59](https://github.com/wippyai/userspace/issues/59)) ([f4c4cc9](https://github.com/wippyai/userspace/commit/f4c4cc91617bef049ed744a4b27f3313bcdff8a5))
+* **docker:** narrow runtime values for go-lua strict-any ([#79](https://github.com/wippyai/userspace/issues/79)) ([fe3aec6](https://github.com/wippyai/userspace/commit/fe3aec6db28151d9de0cf82c97db3c6e2cc8d4e2))
+* **docker:** preserve daemon evidence during lifecycle reconciliation ([#67](https://github.com/wippyai/userspace/issues/67)) ([576a6be](https://github.com/wippyai/userspace/commit/576a6be2df1fc1340cf7b311f3f808c1b5ceca22))
+* **scheduler:** release claims stranded before mark_executing ([#72](https://github.com/wippyai/userspace/issues/72)) ([ef6e66f](https://github.com/wippyai/userspace/commit/ef6e66f4b3686e45d763b33e1e63d18c7a7e7120))
+* **uploads:** declare the SQLite no-op for migration 04 ([#75](https://github.com/wippyai/userspace/issues/75)) ([8504a13](https://github.com/wippyai/userspace/commit/8504a132547cc1a15d17136daffb6633b7a17ec5))
+
+
+### Performance Improvements
+
+* **docker:** stream container logs instead of polling ([#73](https://github.com/wippyai/userspace/issues/73)) ([50f3c33](https://github.com/wippyai/userspace/commit/50f3c33bcd0161407414f50b704f8b3cc4d4ceec))
+
 ## [0.5.0](https://github.com/wippyai/userspace/compare/v0.4.0...v0.5.0) (2026-09-01)
 
 
