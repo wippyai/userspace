@@ -40,6 +40,15 @@ local function define_tests()
             test.eq(claimed, "application/vnd.ms-powerpoint")
         end)
 
+        it("resolves Apple Pages whatever the browser claims", function()
+            for _, claim in ipairs({ "application/x-iwork-pages-sffpages", "application/zip" }) do
+                local resolved, claimed = upload_lib.resolve_mime_type(claim, "lease.pages")
+                test.eq(resolved, "application/vnd.apple.pages")
+                test.eq(claimed, claim)
+            end
+            test.eq(upload_lib.resolve_mime_type("", "lease.pages"), "application/vnd.apple.pages")
+        end)
+
         it("matches the extension case-insensitively", function()
             test.eq(upload_lib.resolve_mime_type("application/msword", "SHOUTING.RTF"), "application/rtf")
         end)
@@ -71,6 +80,7 @@ local function define_tests()
             test.eq(upload_lib.mime_type_for_extension("rtf"), "application/rtf")
             test.eq(upload_lib.mime_type_for_extension("RTF"), "application/rtf")
             test.eq(upload_lib.mime_type_for_extension("msg"), "application/vnd.ms-outlook")
+            test.eq(upload_lib.mime_type_for_extension("pages"), "application/vnd.apple.pages")
         end)
 
         it("knows every presentation extension the pipeline accepts", function()
