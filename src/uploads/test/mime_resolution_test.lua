@@ -58,6 +58,15 @@ local function define_tests()
             test.eq(upload_lib.resolve_mime_type("", "budget.numbers"), "application/vnd.apple.numbers")
         end)
 
+        it("resolves Apple Keynote whatever the browser claims", function()
+            for _, claim in ipairs({ "application/x-iwork-keynote-sffkey", "application/zip" }) do
+                local resolved, claimed = upload_lib.resolve_mime_type(claim, "deck.key")
+                test.eq(resolved, "application/vnd.apple.keynote")
+                test.eq(claimed, claim)
+            end
+            test.eq(upload_lib.resolve_mime_type("", "deck.key"), "application/vnd.apple.keynote")
+        end)
+
         it("matches the extension case-insensitively", function()
             test.eq(upload_lib.resolve_mime_type("application/msword", "SHOUTING.RTF"), "application/rtf")
         end)
@@ -91,6 +100,7 @@ local function define_tests()
             test.eq(upload_lib.mime_type_for_extension("msg"), "application/vnd.ms-outlook")
             test.eq(upload_lib.mime_type_for_extension("pages"), "application/vnd.apple.pages")
             test.eq(upload_lib.mime_type_for_extension("numbers"), "application/vnd.apple.numbers")
+            test.eq(upload_lib.mime_type_for_extension("key"), "application/vnd.apple.keynote")
         end)
 
         it("knows every presentation extension the pipeline accepts", function()
@@ -110,6 +120,8 @@ local function define_tests()
                 upload_lib.mime_type_for_extension("odp"),
                 "application/vnd.oasis.opendocument.presentation"
             )
+
+            test.eq(upload_lib.mime_type_for_extension("key"), "application/vnd.apple.keynote")
         end)
 
         it("falls back to octet-stream on anything it does not know", function()
