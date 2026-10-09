@@ -41,6 +41,7 @@ local MIME_TYPES: {[string]: string} = {
     ["ods"] = "application/vnd.oasis.opendocument.spreadsheet",
     ["odp"] = "application/vnd.oasis.opendocument.presentation",
     ["pages"] = "application/vnd.apple.pages",
+    ["numbers"] = "application/vnd.apple.numbers",
     ["rtf"] = "application/rtf",
     ["jpg"] = "image/jpeg",
     ["jpeg"] = "image/jpeg",
