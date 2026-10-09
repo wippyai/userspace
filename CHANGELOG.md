@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/wippyai/userspace/compare/v0.6.0...v0.7.0) (2026-10-09)
+
+
+### Features
+
+* **uploads:** add apple keynote mime type ([#84](https://github.com/wippyai/userspace/issues/84)) ([e150b4d](https://github.com/wippyai/userspace/commit/e150b4d7953bd628ff0930b54779bdce5815e3e8))
+* **uploads:** add apple numbers mime type ([#82](https://github.com/wippyai/userspace/issues/82)) ([1336eff](https://github.com/wippyai/userspace/commit/1336eff3d413efca14cad0d5ee9371ffcc9cb0a5))
+
 ## [0.6.0](https://github.com/wippyai/userspace/compare/v0.5.0...v0.6.0) (2026-10-05)
 
 
