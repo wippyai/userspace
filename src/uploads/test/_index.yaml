@@ -376,3 +376,24 @@ entries:
     imports:
       runner: wippy.migration:runner
       test: wippy.test:test
+
+  - name: fair_dispatch_test
+    kind: function.lua
+    meta:
+      name: Fair dispatch
+      type: test
+      suite: uploads
+      comment: In fair mode a queue message is a work token; the upload that runs is the longest-waiting one of the user whose turn it is
+    source: file://fair_dispatch_test.lua
+    modules:
+      - uuid
+      - sql
+      - time
+    imports:
+      dispatch: userspace.uploads:dispatch_lib
+      recovery: userspace.uploads:recovery_lib
+      upload_lib: userspace.uploads:upload_lib
+      upload_repo: userspace.uploads:upload_repo
+      pipeline_lib: userspace.uploads:pipeline_lib
+      test: wippy.test:test
+    method: run

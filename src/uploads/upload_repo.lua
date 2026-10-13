@@ -1057,4 +1057,224 @@ function upload_repo.requeue_if_stale(uuid, metadata, cutoff)
     return result.rows_affected > 0
 end
 
+function upload_repo.next_turn()
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local rows, query_err = sql.builder.select("p.user_id AS user_id")
+        :from("uploads p")
+        :left_join("upload_turns t ON t.user_id = p.user_id")
+        :where("p.status IN (?, ?)", "uploaded", "queued")
+        :group_by("p.user_id", "t.served_at")
+        :order_by("(t.served_at IS NULL) DESC", "t.served_at ASC", "MIN(p.updated_at) ASC", "p.user_id ASC")
+        :limit(1)
+        :run_with(db)
+        :query()
+
+    db:release()
+
+    if query_err then
+        return nil, "Failed to find the next turn: " .. query_err
+    end
+
+    if #rows == 0 then
+        return nil
+    end
+
+    return rows[1].user_id
+end
+
+function upload_repo.oldest_pending(user_id)
+    if not user_id or user_id == "" then
+        return nil, "User ID is required"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local rows, query_err = sql.builder.select(table.unpack(UPLOAD_COLUMNS))
+        :from("uploads")
+        :where("user_id = ?", user_id)
+        :where("status IN (?, ?)", "uploaded", "queued")
+        :order_by("updated_at ASC", "uuid ASC")
+        :limit(1)
+        :run_with(db)
+        :query()
+
+    db:release()
+
+    if query_err then
+        return nil, "Failed to find the oldest pending upload: " .. query_err
+    end
+
+    if #rows == 0 then
+        return nil
+    end
+
+    return decode_metadata(rows[1])
+end
+
+function upload_repo.list_stale_pending(cutoff, after, limit)
+    if not cutoff or cutoff == "" then
+        return nil, "Cutoff is required"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local query = sql.builder.select(table.unpack(UPLOAD_COLUMNS))
+        :from("uploads")
+        :where("status IN (?, ?)", "uploaded", "queued")
+        :where("updated_at < ?", cutoff)
+    query = after_uuid(query, after)
+        :order_by("uuid ASC")
+        :limit(limit or 100)
+
+    local uploads, query_err = query:run_with(db):query()
+
+    db:release()
+
+    if query_err then
+        return nil, "Failed to list stale pending uploads: " .. query_err
+    end
+
+    for _, upload in ipairs(uploads) do
+        decode_metadata(upload)
+    end
+
+    return uploads
+end
+
+function upload_repo.claim(uuid)
+    if not uuid or uuid == "" then
+        return nil, "Upload ID is required"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local now = time.now():format(time.RFC3339)
+
+    local result, exec_err = sql.builder.update("uploads")
+        :set("status", "processing")
+        :set("updated_at", now)
+        :where("uuid = ?", uuid)
+        :where("status IN (?, ?)", "uploaded", "queued")
+        :run_with(db)
+        :exec()
+
+    db:release()
+
+    if exec_err then
+        return nil, "Failed to claim upload: " .. exec_err
+    end
+
+    return result.rows_affected > 0
+end
+
+function upload_repo.mark_queued(uuid, opts)
+    if not uuid or uuid == "" then
+        return nil, "Upload ID is required"
+    end
+
+    opts = opts or {}
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local now = time.now():format(time.RFC3339)
+
+    local query = sql.builder.update("uploads")
+        :set("status", "queued")
+        :set("updated_at", now)
+        :where("uuid = ?", uuid)
+        :where("status <> ?", "pending")
+
+    if opts.stale_before then
+        query = query:where("(status <> ? OR updated_at < ?)", "processing", opts.stale_before)
+    end
+
+    local result, exec_err = query:run_with(db):exec()
+
+    db:release()
+
+    if exec_err then
+        return nil, "Failed to queue upload: " .. exec_err
+    end
+
+    return result.rows_affected > 0
+end
+
+function upload_repo.record_turn(user_id, served_at)
+    if not user_id or user_id == "" then
+        return nil, "User ID is required"
+    end
+
+    if type(served_at) ~= "number" then
+        return nil, "served_at must be a number"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local _, exec_err = sql.builder.insert("upload_turns")
+        :set_map({
+            user_id = user_id,
+            served_at = sql.as.int(served_at),
+        })
+        :suffix("ON CONFLICT (user_id) DO UPDATE SET served_at = excluded.served_at")
+        :run_with(db)
+        :exec()
+
+    db:release()
+
+    if exec_err then
+        return nil, "Failed to record turn: " .. exec_err
+    end
+
+    return true
+end
+
+function upload_repo.turn_of(user_id)
+    if not user_id or user_id == "" then
+        return nil, "User ID is required"
+    end
+
+    local db, err = resources.get_db()
+    if err then
+        return nil, err
+    end
+
+    local rows, query_err = sql.builder.select("served_at")
+        :from("upload_turns")
+        :where("user_id = ?", user_id)
+        :limit(1)
+        :run_with(db)
+        :query()
+
+    db:release()
+
+    if query_err then
+        return nil, "Failed to read turn: " .. query_err
+    end
+
+    if #rows == 0 then
+        return nil
+    end
+
+    return tonumber(rows[1].served_at)
+end
+
 return upload_repo

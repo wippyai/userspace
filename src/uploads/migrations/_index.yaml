@@ -66,3 +66,19 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  # userspace.uploads.migrations:05_create_upload_turns_table
+  - name: 05_create_upload_turns_table
+    kind: function.lua
+    meta:
+      type: migration
+      tags:
+        - uploads
+        - database
+      description: Create upload_turns table — when each user was last given a processing turn, which is what fair dispatch orders users by — and index uploads(status, user_id, updated_at), the shape of every query fair dispatch runs to pick the next upload
+      target_db: app:db
+      timestamp: "2026-10-12T12:00:00Z"
+    source: file://05_create_upload_turns_table.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

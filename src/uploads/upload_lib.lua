@@ -9,6 +9,7 @@ local logger = require("logger")
 local upload_repo = require("upload_repo")
 local upload_type = require("upload_type")
 local pipeline_lib = require("pipeline_lib")
+local recovery = require("recovery")
 local resources = require("uploads_resources")
 local content_repo = require("content_repo")
 
@@ -762,6 +763,60 @@ function upload_lib.abort_multipart_upload(user_id, upload_id)
     end
 
     return upload_repo.delete(upload_id)
+end
+
+local function publish_upload(upload_id)
+    local _, err = queue.publish(QUEUE_ID, json.encode({ upload_id = upload_id }))
+    if err then
+        return nil, tostring(err)
+    end
+    return true
+end
+
+function upload_lib.requeue(upload_id, opts)
+    if not upload_id or upload_id == "" then
+        return nil, "Upload ID is required"
+    end
+
+    opts = opts or {}
+    local publish = opts.publish or publish_upload
+
+    local upload, err = upload_repo.get(upload_id)
+    if err or not upload then
+        return nil, "Upload cannot be queued: " .. tostring(err or "not found")
+    end
+
+    if upload.status == "pending" then
+        return nil, "Upload cannot be queued: its bytes have not arrived yet"
+    end
+
+    local parked = upload.status == pipeline_lib.STATUS.PROCESSING
+        and pipeline_lib.is_deferred(pipeline_lib.cursor_of(upload))
+
+    local stale_before = nil
+    if not opts.force and not parked then
+        stale_before = recovery.cutoff(time.now(), recovery.load_config().stale_after)
+    end
+
+    local queued, queue_err = upload_repo.mark_queued(upload_id, { stale_before = stale_before })
+    if queue_err then
+        return nil, queue_err
+    end
+
+    if not queued then
+        return nil, "Upload cannot be queued: it is still being processed"
+    end
+
+    upload.status = pipeline_lib.STATUS.QUEUED
+    pipeline_lib.notify_status_change(upload, pipeline_lib.STATUS.QUEUED)
+
+    local published, publish_err = publish(upload_id)
+    if not published then
+        log:error("queued an upload but failed to publish it", { upload_id = upload_id, error = publish_err })
+        return nil, "Failed to publish: " .. tostring(publish_err)
+    end
+
+    return true
 end
 
 upload_lib.UNSUPPORTED_FORMAT = UNSUPPORTED_FORMAT
