@@ -102,7 +102,10 @@ ways:
   `userspace.uploads:process_queue`; the run then resumes from the deferred
   stage, skipping the stages before it. The deferring stage re-runs on
   resume and is responsible for telling "start async work" apart from
-  "work is done" (e.g. via its own metadata or a jobs table). If the
+  "work is done" (e.g. via its own metadata or a jobs table). Before it
+  re-runs, the cursor is marked `active` again, so an interruption during
+  the resumed stage is recovered like any other and the upload no longer
+  looks parked while it is being worked on. If the
   pipeline definition changed while parked and the recorded stage no longer
   exists, the upload fails explicitly instead of silently re-running
   non-idempotent stages. The cursor is cleared on completion and on error,
@@ -160,6 +163,83 @@ effects and the cursor write replays that stage.
 A single instance that is stopped before its replacement starts can lower
 `recovery_stale_after` for faster recovery; several instances sharing one
 database should keep it above their longest stage that does not heartbeat.
+
+### Queue dispatch strategy
+
+The processing queue is shared by every user of the instance and is served in
+arrival order, with a fixed number of workers. By default (`queue_strategy:
+fifo`) each queue message names the upload to run, so a user who uploads
+thirty thousand documents holds everyone else's files behind them until the
+workers have been through all of theirs.
+
+With `queue_strategy: fair` a queue message is only a work token: *there is
+one more upload to process*. The worker that takes it picks the upload itself,
+from the uploads table:
+
+1. the user whose turn it is — among users with an upload in `uploaded` or
+   `queued`, the one served longest ago; a user never served goes first, and
+   ties go to the user whose upload has been in line longest;
+2. that user's upload that has been in line longest — by `updated_at`, the
+   moment the row became `uploaded` or `queued`, so a re-driven old document
+   joins the back of its owner's line instead of jumping ahead of fresh files;
+3. a compare-and-set on the row (`uploaded`/`queued` → `processing`).
+
+The turn is recorded in `upload_turns` (one row per user, the microsecond of
+their last claim), so the order is a round-robin over users: two users with
+large backlogs alternate, and a single new file from a third user is picked up
+by the next free worker. Migration 05 creates `upload_turns` and the index
+`uploads(status, user_id, updated_at)` that these lookups run on.
+
+A worker that loses the compare-and-set to another worker pauses for a few
+milliseconds and looks again — a lost race means someone else just made
+progress, so the loop ends — and never hands the token back for that. It
+only gives the token back (nack) after a long run of lost races or after
+several database errors, each retried after a pause of about a second, so a
+database outage does not become a hot redelivery loop.
+
+Tokens are never fewer than waiting uploads: every row that enters `uploaded`
+or `queued` publishes one, a token that finds nothing left to claim is simply
+acknowledged, and duplicates — a startup republish on a second instance, a
+retry endpoint and a job poller both re-queuing the same upload — only cost a
+claim attempt, because the compare-and-set runs each upload once. A token can
+still be lost (a publish that failed, a nack the full queue could not take
+back), so in `fair` mode the recovery sweep also republishes tokens for
+uploads that have waited untouched for longer than `recovery_stale_after`,
+at most 500 per pass and only while the queue is empty; surplus tokens are
+harmless, so the check errs on the side of publishing.
+
+Switch strategies only with a drained queue: `fifo` workers run the upload a
+message names without a compare-and-set, so tokens left over from `fair`
+would run uploads that other tokens already claimed.
+
+Anything that returns a parked upload to the queue — a job poller after an
+asynchronous stage, a retry endpoint — must put it back in line rather than
+publish its id directly, because in `fair` mode the id in a message is not
+what runs:
+
+```lua
+local upload_lib = require("userspace.uploads:upload_lib")
+
+local ok, err = upload_lib.requeue(upload_id)
+```
+
+`requeue` moves the row to `queued`, notifies the owner, and publishes one
+token; the run then resumes at the stage its cursor names. It refuses a
+`pending` row (a presigned upload whose bytes have not arrived) and a
+`processing` row that is still being worked on — one whose cursor is not
+deferred and whose `updated_at` is newer than `recovery_stale_after` — because
+queuing a running upload would run it twice; `{ force = true }` overrides that
+for an operator who knows better. A caller that has just written to the row
+itself — a resume cursor, cleared flags — has made it look active and must
+pass `force` with its own reason for believing nothing is running. It works
+the same way under both
+strategies, so callers can switch to it before the strategy changes. If the
+publish fails, the row stays `queued` and the startup pass of recovery
+publishes it again.
+
+| Dependency parameter | Default | Meaning |
+|----------------------|---------|---------|
+| `queue_strategy` | `fifo` | `fifo`: run the upload each message names, in arrival order. `fair`: round-robin over users; each message is a work token |
 
 ### Multipart Uploads
 

@@ -288,6 +288,18 @@ function pipeline_lib.process_upload(upload)
         print("Resuming upload", upload.uuid, "from stage", start_index, "of", #pipeline)
     end
 
+    if cursor and pipeline_lib.is_deferred(cursor) then
+        local resumed = pipeline_lib.merge_metadata(upload.metadata or {}, {})
+        resumed[CURSOR_KEY] = active_cursor(pipeline, start_index, cursor)
+
+        local _, resume_meta_err = upload_repo.update_metadata(upload.uuid, resumed)
+        if resume_meta_err then
+            print("Warning: Failed to mark the resumed stage active for", upload.uuid, ":", resume_meta_err)
+        else
+            upload.metadata = resumed
+        end
+    end
+
     -- Execute each processor in sequence
     for i = start_index, #pipeline do
         local stage = pipeline[i]

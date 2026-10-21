@@ -24,6 +24,8 @@ local DEFAULTS = table.freeze({
 
 local BATCH_SIZE = 100
 
+local LOST_BATCH = 500
+
 local RECOVERING_STAGE = "Recovering after an interruption"
 
 local recovery = {}
@@ -31,6 +33,7 @@ local recovery = {}
 recovery.QUEUE_ID = QUEUE_ID
 recovery.DEFAULTS = DEFAULTS
 recovery.BATCH_SIZE = BATCH_SIZE
+recovery.LOST_BATCH = LOST_BATCH
 recovery.RECOVERING_STAGE = RECOVERING_STAGE
 
 local function nonblank(value)
@@ -156,6 +159,67 @@ function recovery.republish_pending(publish, batch_size)
 
     if summary.published > 0 or summary.errors > 0 then
         log:info("re-published pending uploads", summary)
+    end
+
+    return summary
+end
+
+function recovery.queue_depth()
+    local info, err = queue.info(QUEUE_ID)
+    if err or type(info) ~= "table" then
+        return nil
+    end
+    return tonumber(info.message_count) or tonumber(info.ready)
+end
+
+function recovery.republish_lost(publish, opts)
+    opts = opts or {}
+
+    if not opts.cutoff or opts.cutoff == "" then
+        return nil, "Cutoff is required"
+    end
+
+    local summary = { published = 0, errors = 0, skipped = false }
+
+    local depth = (opts.depth or recovery.queue_depth)()
+    if depth == nil or depth > 0 then
+        summary.skipped = true
+        return summary
+    end
+
+    local limit = opts.limit or LOST_BATCH
+    local after = nil
+
+    while summary.published + summary.errors < limit do
+        local page = math.min(opts.batch_size or BATCH_SIZE, limit - summary.published - summary.errors)
+        local uploads, err = upload_repo.list_stale_pending(opts.cutoff, after, page)
+        if err then
+            log:error("failed to list waiting uploads", { error = err })
+            summary.errors = summary.errors + 1
+            break
+        end
+        if #uploads == 0 then
+            break
+        end
+
+        for _, upload in ipairs(uploads) do
+            local ok, publish_err = publish(upload.uuid)
+            if ok then
+                summary.published = summary.published + 1
+            else
+                summary.errors = summary.errors + 1
+                log:error("failed to re-publish a waiting upload", {
+                    upload_id = upload.uuid,
+                    error = publish_err,
+                })
+            end
+        end
+
+        after = uploads[#uploads].uuid
+    end
+
+    if summary.published > 0 or summary.errors > 0 then
+        log:info("re-published waiting uploads whose token was lost", summary)
     end
 
     return summary

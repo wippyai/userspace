@@ -55,3 +55,12 @@ entries:
       icon: tabler:repeat
       private: true
     default: "3"
+
+  # userspace.uploads.env:queue_strategy
+  - name: queue_strategy
+    kind: env.variable
+    meta:
+      comment: "Queue dispatch strategy: fifo runs the upload each message names, in arrival order; fair treats each message as a work token and runs the longest-waiting upload of the user whose turn it is"
+      icon: tabler:arrows-shuffle
+      private: true
+    default: fifo

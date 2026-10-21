@@ -1,7 +1,7 @@
 local json = require("json")
 local logger = require("logger")
 local pipeline_lib = require("pipeline_lib")
-local upload_repo = require("upload_repo")
+local dispatch = require("dispatch_lib")
 
 local log = logger:named("upload_worker")
 
@@ -18,9 +18,19 @@ local function handler(body)
         return nil, "missing upload_id"
     end
 
-    local upload, err = upload_repo.get(upload_id)
-    if err or not upload then
-        log:error("upload not found", { upload_id = upload_id, error = err })
+    local strategy = dispatch.load_strategy()
+
+    local upload, pick_err = dispatch.pick(upload_id, strategy)
+    if pick_err then
+        log:error("failed to pick an upload to process", {
+            strategy = strategy,
+            upload_id = upload_id,
+            error = pick_err,
+        })
+        return nil, pick_err
+    end
+
+    if not upload then
         return { skipped = true }
     end
 
@@ -28,12 +38,12 @@ local function handler(body)
 
     if not success then
         log:error("processing failed", {
-            upload_id = upload_id,
+            upload_id = upload.uuid,
             error = proc_err,
         })
     end
 
-    return { success = success }
+    return { success = success, upload_id = upload.uuid }
 end
 
 return { handler = handler }
