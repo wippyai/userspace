@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/wippyai/userspace/compare/v0.7.0...v0.8.0) (2026-10-21)
+
+
+### Features
+
+* **uploads:** add configurable queue strategy ([#85](https://github.com/wippyai/userspace/issues/85)) ([49a6b33](https://github.com/wippyai/userspace/commit/49a6b336532d55e5e9fad8cf3d3f8c8dc040628f))
+
 ## [0.7.0](https://github.com/wippyai/userspace/compare/v0.6.0...v0.7.0) (2026-10-09)
 
 
