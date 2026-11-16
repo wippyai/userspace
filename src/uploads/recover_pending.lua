@@ -40,9 +40,26 @@ local function run()
         return { pending = pending, interrupted = interrupted }
     end
 
+    -- Wait on the timer and the lifecycle events together, so a graceful
+    -- shutdown (CANCEL) ends the process instead of hitting the stop timeout.
+    local events = process.events()
+    local timer = time.after(config.interval)
+
     while true do
-        time.sleep(config.interval)
-        sweep(config, publish)
+        local result = channel.select({
+            events:case_receive(),
+            timer:case_receive(),
+        })
+
+        if result.channel == events then
+            if not result.ok or result.value.kind == process.event.CANCEL then
+                log:info("periodic recovery stopped")
+                return
+            end
+        else
+            sweep(config, publish)
+            timer = time.after(config.interval)
+        end
     end
 end
 
