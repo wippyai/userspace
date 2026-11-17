@@ -99,8 +99,10 @@ is removed.
 
 Logs are ingested from a single follow stream per container. The daemon pushes
 new output as it is written; the worker never re-reads log history or polls
-container state while the container runs. A dropped stream is reopened from the
-last delivered timestamp without duplicating lines. When a stream breaks
+container state while the container runs. stdout and stderr are stamped
+independently, so delivery is tracked per stream; a dropped stream is reopened
+from the earliest last-delivered timestamp of the two (or from the start while
+one stream has produced nothing) without duplicating lines. When a stream breaks
 (timeout, connection error) and the container is then found stopped, one
 non-follow read from the last delivered timestamp collects the remaining lines.
 

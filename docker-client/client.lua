@@ -200,52 +200,73 @@ local function since_of(ts: string): string?
     return string.format("%d.%09d", t:unix(), t:nanosecond())
 end
 
--- Tracks the last delivered log timestamp so a follow stream reopened with
--- since=<last timestamp> skips the lines it replays. Docker timestamps are fixed
--- width UTC, so they order lexicographically.
+-- Tracks the last delivered log timestamp of each stream so a follow stream
+-- reopened with since=<resume point> skips the lines it replays. The daemon
+-- stamps stdout and stderr in separate copiers, so timestamps are ordered within
+-- a stream but not across streams: a stderr line can follow a stdout line in the
+-- log and carry an earlier stamp. Docker timestamps are fixed width UTC, so they
+-- order lexicographically.
+--
+-- The resume point is the earliest last-delivered timestamp across both streams:
+-- every undelivered line of a stream is stamped at or after that stream's last
+-- delivered line. While a stream is unseen nothing bounds its next stamp, so
+-- there is no resume point and the caller re-reads from its own start.
 type LogCursor = {
-    accept: (self: LogCursor, entry: {ts: string?}) -> boolean,
+    accept: (self: LogCursor, entry: {stream: string, ts: string?}) -> boolean,
     reconnect: (self: LogCursor) -> (),
     since: (self: LogCursor) -> string?,
 }
 
+type StreamPosition = {ts: string, seen: number, skip: number}
+
+local LOG_STREAMS = { "stdout", "stderr" }
+
 local function new_log_cursor(): LogCursor
-    local last_ts: string? = nil
-    local seen_at_last: number = 0
-    local replay_skip: number = 0
+    local positions: {[string]: StreamPosition} = {}
     local cursor = {}
 
-    function cursor:accept(entry: {ts: string?}): boolean
+    function cursor:accept(entry: {stream: string, ts: string?}): boolean
         local ts = entry.ts
         if ts == nil then
             return true
         end
-        if last_ts == nil or ts > last_ts then
-            last_ts = ts
-            seen_at_last = 1
-            replay_skip = 0
+        local position = positions[entry.stream]
+        if position == nil or ts > position.ts then
+            positions[entry.stream] = { ts = ts, seen = 1, skip = 0 }
             return true
         end
-        if ts < last_ts then
+        if ts < position.ts then
             return false
         end
-        if replay_skip > 0 then
-            replay_skip = replay_skip - 1
+        if position.skip > 0 then
+            position.skip = position.skip - 1
             return false
         end
-        seen_at_last = seen_at_last + 1
+        position.seen = position.seen + 1
         return true
     end
 
     function cursor:reconnect()
-        replay_skip = seen_at_last
+        for _, position in pairs(positions) do
+            position.skip = position.seen
+        end
     end
 
     function cursor:since(): string?
-        if last_ts == nil then
+        local earliest: string? = nil
+        for _, stream in ipairs(LOG_STREAMS) do
+            local position = positions[stream]
+            if position == nil then
+                return nil
+            end
+            if earliest == nil or position.ts < earliest then
+                earliest = position.ts
+            end
+        end
+        if earliest == nil then
             return nil
         end
-        return since_of(last_ts)
+        return since_of(earliest)
     end
 
     return cursor :: LogCursor

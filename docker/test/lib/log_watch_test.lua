@@ -151,6 +151,17 @@ local function define_tests()
             test.eq(#docker.reads, 0, "a session the daemon ended needs no final read")
         end)
 
+        it("delivers a stderr line stamped before the preceding stdout line", function()
+            local docker = fake_docker({
+                { chunks = { line(2, "a") .. line(1, "last", 2) } },
+            }, {
+                { Running = false, ExitCode = 0 },
+            })
+            local outcome, got = run(docker)
+            test.eq(outcome.kind, "exited")
+            test.eq(lines_of(got), "a,last", "streams are stamped independently")
+        end)
+
         it("reports a non-zero exit code", function()
             local docker = fake_docker({ { chunks = { line(1, "boom") } } }, { { Running = false, ExitCode = 42 } })
             local outcome = run(docker)
@@ -166,22 +177,18 @@ local function define_tests()
 
         it("resumes after a dropped session without duplicating or losing lines", function()
             local docker = fake_docker({
-                { chunks = { line(1, "a") .. line(2, "b") } },
-                { chunks = { line(2, "b") .. line(2, "b2") .. line(3, "c") } },
+                { chunks = { line(1, "a") .. line(1, "err", 2) .. line(2, "b") } },
+                { chunks = { line(1, "a") .. line(1, "err", 2) .. line(2, "b") .. line(2, "b2") .. line(3, "c") } },
             }, {
                 { Running = true },
                 { Running = false, ExitCode = 0 },
             })
             local outcome, got, sleeps = run(docker)
             test.eq(outcome.kind, "exited")
-            test.eq(#got, 4)
-            test.eq(got[1].line, "a")
-            test.eq(got[2].line, "b")
-            test.eq(got[3].line, "b2")
-            test.eq(got[4].line, "c")
+            test.eq(lines_of(got), "a,err,b,b2,c")
             test.eq(#docker.follows, 2)
-            local expected_since = log_watch.since_of(ts(2))
-            test.eq(docker.follows[2].since, expected_since, "resume from last timestamp")
+            local expected_since = log_watch.since_of(ts(1))
+            test.eq(docker.follows[2].since, expected_since, "resume from the earliest stream position")
             test.eq(#sleeps, 0, "a session that delivered data reconnects immediately")
         end)
 
@@ -230,7 +237,7 @@ local function define_tests()
             test.eq(outcome.exit_code, 0)
             test.eq(lines_of(got), "before,after")
             test.eq(#docker.follows, 2, "re-followed after the failed inspect")
-            test.eq(docker.follows[2].since, log_watch.since_of(ts(1)))
+            test.is_nil(docker.follows[2].since, "stderr unseen: resume from the watch start")
             test.eq(#sleeps, 1, "backs off while the daemon errors")
             test.eq(#warnings, 1, "the inspect failure is reported")
             test.eq(warnings[1].fields.error, "context deadline exceeded")
@@ -285,18 +292,18 @@ local function define_tests()
 
         it("reads the rest of the log when a session breaks before the container exits", function()
             local docker = fake_docker({
-                { chunks = { line(1, "a") .. line(2, "b"), line(3, "c"):sub(1, 6) }, read_err = "context deadline exceeded" },
+                { chunks = { line(1, "a") .. line(2, "b", 2), line(3, "c"):sub(1, 6) }, read_err = "context deadline exceeded" },
             }, {
                 { Running = false, ExitCode = 0 },
             }, {
-                { raw = line(2, "b") .. line(3, "c") .. line(4, "d") },
+                { raw = line(1, "a") .. line(2, "b", 2) .. line(3, "c") .. line(4, "d") },
             })
             local outcome, got, _, warnings = run(docker)
             test.eq(outcome.kind, "exited")
             test.eq(lines_of(got), "a,b,c,d", "trailing lines captured once")
             test.eq(#docker.follows, 1)
             test.eq(#docker.reads, 1, "one final read")
-            test.eq(docker.reads[1].since, log_watch.since_of(ts(2)), "final read resumes from the last line")
+            test.eq(docker.reads[1].since, log_watch.since_of(ts(1)), "final read resumes from the earliest stream position")
             test.is_true(docker.reads[1].timestamps, "final read carries timestamps for de-duplication")
             test.eq(#warnings, 0)
         end)
