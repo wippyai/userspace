@@ -40,3 +40,4 @@ entries:
     source: file://log_watch.lua
     imports:
       docker_client: userspace.docker:docker_client
+      reconcile: userspace.docker.lib:reconcile

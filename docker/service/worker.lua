@@ -9,6 +9,7 @@ local images = require("images")
 local containers_repo = require("containers_repo")
 local docker_client = require("docker_client")
 local log_watch = require("log_watch")
+local reconcile = require("reconcile")
 local helpers = require("helpers")
 local interactive_routes = require("interactive_routes")
 local registry = require("registry")
@@ -229,12 +230,13 @@ local function run_managed(docker, db_id, c, root_pid)
         -- just to recreate it (which drops availability for the whole start
         -- window). Anything not running is reclaimed so create can rebind the
         -- name and its host ports; a reclaim failure is logged and left for
-        -- create to surface.
-        local info, ierr = docker:inspect_container(tostring(c.name))
-        if not ierr and info and info.Id and info.State and info.State.Running then
+        -- create to surface. An unobserved survivor is left in place: create
+        -- reports a name conflict instead of a healthy workload being removed.
+        local info, absent, inspect_err = reconcile.observe(docker, tostring(c.name))
+        if info and info.Id and info.State and info.State.Running then
             docker_id = tostring(info.Id)
             adopted = true
-        else
+        elseif info or absent then
             local _, reclaim_err = reclaim.reclaim_existing(docker, tostring(c.name))
             if reclaim_err then
                 logger:warn("reclaim existing container failed before create", {
@@ -242,6 +244,11 @@ local function run_managed(docker, db_id, c, root_pid)
                     error = tostring(reclaim_err),
                 })
             end
+        else
+            logger:warn("container inspect failed before create", {
+                name = tostring(c.name),
+                error = inspect_err,
+            })
         end
     end
 
@@ -304,6 +311,10 @@ local function run_managed(docker, db_id, c, root_pid)
             end
             record_logs(db_id, root_pid, cid, batch)
         end,
+        warn = function(message, fields)
+            fields.container_id = cid
+            logger:warn(message, fields)
+        end,
         sleep = function(duration) time.sleep(duration) end,
         now = os.time,
     })
@@ -317,9 +328,6 @@ local function run_managed(docker, db_id, c, root_pid)
     local error_msg: string? = nil
     if outcome.kind == "vanished" then
         final_status = consts.status.REMOVED
-        error_msg = outcome.error
-    elseif outcome.kind == "failed" then
-        final_status = consts.status.FAILED
         error_msg = outcome.error
     else
         exit_code = tonumber(outcome.exit_code) or 0

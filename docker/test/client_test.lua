@@ -313,46 +313,79 @@ local function define_tests()
         end)
 
         describe("log_cursor", function()
+            local function since_of(ts: string): string
+                local t = time.parse(time.RFC3339NANO, ts)
+                return string.format("%d.%09d", t:unix(), t:nanosecond())
+            end
+
             it("has no resume point before any entry is accepted", function()
                 local cursor = docker_client.new_log_cursor()
                 test.is_nil(cursor:since(), "no since before first entry")
             end)
 
-            it("accepts entries in timestamp order and resumes from the last timestamp", function()
+            it("accepts entries in timestamp order and resumes from the earliest stream position", function()
                 local cursor = docker_client.new_log_cursor()
-                test.is_true(cursor:accept({ ts = "2026-09-17T10:00:00.000000100Z", line = "a" }))
-                test.is_true(cursor:accept({ ts = "2026-09-17T10:00:01.000000200Z", line = "b" }))
-                local expected_unix = time.parse(time.RFC3339NANO, "2026-09-17T10:00:01.000000200Z"):unix()
-                test.eq(cursor:since(), string.format("%d.%09d", expected_unix, 200))
+                test.is_true(cursor:accept({ stream = "stdout", ts = "2026-09-17T10:00:00.000000100Z", line = "a" }))
+                test.is_true(cursor:accept({ stream = "stderr", ts = "2026-09-17T10:00:01.000000200Z", line = "b" }))
+                test.is_true(cursor:accept({ stream = "stdout", ts = "2026-09-17T10:00:02.000000300Z", line = "c" }))
+                test.eq(cursor:since(), since_of("2026-09-17T10:00:01.000000200Z"))
+            end)
+
+            it("has no resume point while a stream is unseen", function()
+                local cursor = docker_client.new_log_cursor()
+                test.is_true(cursor:accept({ stream = "stdout", ts = "2026-09-17T10:00:00.000000100Z", line = "a" }))
+                test.is_nil(cursor:since(), "an unseen stream may hold lines stamped before any seen one")
+            end)
+
+            it("accepts a line of the other stream stamped before the last accepted line", function()
+                local cursor = docker_client.new_log_cursor()
+                test.is_true(cursor:accept({ stream = "stdout", ts = "2026-09-17T10:00:00.000000200Z", line = "a" }))
+                test.is_true(cursor:accept({ stream = "stderr", ts = "2026-09-17T10:00:00.000000100Z", line = "last" }),
+                    "streams are stamped independently")
+                test.eq(cursor:since(), since_of("2026-09-17T10:00:00.000000100Z"))
             end)
 
             it("skips entries replayed at or before the resume point", function()
                 local cursor = docker_client.new_log_cursor()
                 local t1 = "2026-09-17T10:00:00.000000001Z"
                 local t2 = "2026-09-17T10:00:00.000000002Z"
-                test.is_true(cursor:accept({ ts = t1, line = "one" }))
-                test.is_true(cursor:accept({ ts = t2, line = "two" }))
-                test.is_true(cursor:accept({ ts = t2, line = "two again" }))
+                test.is_true(cursor:accept({ stream = "stdout", ts = t1, line = "one" }))
+                test.is_true(cursor:accept({ stream = "stdout", ts = t2, line = "two" }))
+                test.is_true(cursor:accept({ stream = "stdout", ts = t2, line = "two again" }))
 
                 -- A reconnect with since=t2 replays everything stamped t2 and later.
                 cursor:reconnect()
-                test.is_false(cursor:accept({ ts = t2, line = "two" }), "first replayed line at t2 skipped")
-                test.is_false(cursor:accept({ ts = t2, line = "two again" }), "second replayed line at t2 skipped")
-                test.is_true(cursor:accept({ ts = t2, line = "two third" }), "unseen line at t2 accepted")
-                test.is_false(cursor:accept({ ts = t1, line = "one" }), "older line rejected")
-                test.is_true(cursor:accept({ ts = "2026-09-17T10:00:00.000000003Z", line = "three" }))
+                test.is_false(cursor:accept({ stream = "stdout", ts = t2, line = "two" }), "first replayed line at t2 skipped")
+                test.is_false(cursor:accept({ stream = "stdout", ts = t2, line = "two again" }), "second replayed line at t2 skipped")
+                test.is_true(cursor:accept({ stream = "stdout", ts = t2, line = "two third" }), "unseen line at t2 accepted")
+                test.is_false(cursor:accept({ stream = "stdout", ts = t1, line = "one" }), "older line rejected")
+                test.is_true(cursor:accept({ stream = "stdout", ts = "2026-09-17T10:00:00.000000003Z", line = "three" }))
+            end)
+
+            it("skips replayed entries per stream", function()
+                local cursor = docker_client.new_log_cursor()
+                local t1 = "2026-09-17T10:00:00.000000001Z"
+                local t2 = "2026-09-17T10:00:00.000000002Z"
+                test.is_true(cursor:accept({ stream = "stdout", ts = t2, line = "out" }))
+                test.is_true(cursor:accept({ stream = "stderr", ts = t1, line = "err" }))
+
+                -- A reconnect from the earliest stream position (t1) replays both.
+                cursor:reconnect()
+                test.is_false(cursor:accept({ stream = "stderr", ts = t1, line = "err" }), "replayed stderr line skipped")
+                test.is_false(cursor:accept({ stream = "stdout", ts = t2, line = "out" }), "replayed stdout line skipped")
+                test.is_true(cursor:accept({ stream = "stderr", ts = t2, line = "err2" }), "new stderr line accepted")
             end)
 
             it("resumes a replay window only once per reconnect", function()
                 local cursor = docker_client.new_log_cursor()
                 local t = "2026-09-17T10:00:00.000000005Z"
-                test.is_true(cursor:accept({ ts = t, line = "x" }))
+                test.is_true(cursor:accept({ stream = "stdout", ts = t, line = "x" }))
                 cursor:reconnect()
-                test.is_false(cursor:accept({ ts = t, line = "x" }), "replayed line skipped after reconnect")
-                test.is_true(cursor:accept({ ts = t, line = "y" }), "new line at same ts accepted")
+                test.is_false(cursor:accept({ stream = "stdout", ts = t, line = "x" }), "replayed line skipped after reconnect")
+                test.is_true(cursor:accept({ stream = "stdout", ts = t, line = "y" }), "new line at same ts accepted")
                 cursor:reconnect()
-                test.is_false(cursor:accept({ ts = t, line = "x" }), "first replayed line skipped again")
-                test.is_false(cursor:accept({ ts = t, line = "y" }), "second replayed line skipped again")
+                test.is_false(cursor:accept({ stream = "stdout", ts = t, line = "x" }), "first replayed line skipped again")
+                test.is_false(cursor:accept({ stream = "stdout", ts = t, line = "y" }), "second replayed line skipped again")
             end)
         end)
 

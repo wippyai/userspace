@@ -61,5 +61,5 @@ jobs:
         env:
           WIPPY: ${{ steps.wippy.outputs.path }}
         run: |
-          "$WIPPY" publish --config docker-client --version 0.1.0 --dry-run
+          "$WIPPY" publish --config docker-client --version 0.1.1 --dry-run
           "$WIPPY" publish --config docker --version 0.5.18 --dry-run

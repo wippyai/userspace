@@ -132,17 +132,17 @@ function monitor.run(config: {
                 -- Docker's restart policy handles an ordinary crash; this catches the
                 -- cases it can't. The worker's fallback poll then recreates.
                 local declared, decl_err = registry.find({ ["meta.type"] = "docker.container" })
-                if not decl_err then
+                if docker and not decl_err then
                     for _, entry in ipairs(declared or {}) do
                         local row = containers_repo.get(db, entry.id)
-                        local alive = false
-                        if row and docker and row.docker_id and tostring(row.docker_id) ~= "" then
-                            local info = (docker :: {[string]: any}):inspect_container(tostring(row.docker_id))
-                            alive = (info and info.State and info.State.Running) and true or false
-                        end
-                        if row and reconcile.needs_requeue(row, alive) then
+                        local requeue, inspect_err = reconcile.needs_requeue(row, docker)
+                        if requeue then
                             log:warn("declared container vanished; requeueing", { id = entry.id })
                             containers_repo.update_status(db, tostring(row.id), consts.status.PENDING, {})
+                        elseif inspect_err then
+                            log:warn("container inspect failed during runtime recovery", {
+                                id = entry.id, error = inspect_err,
+                            })
                         end
                     end
                 end
