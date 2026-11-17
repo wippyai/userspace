@@ -2,28 +2,46 @@ local consts = require("consts")
 
 local reconcile = {}
 
--- Decide whether a declared container should be requeued during a monitor sweep.
--- A row marked running whose container is no longer alive (removed, or restart
--- retries exhausted) is requeued so the worker recreates it. Containers that are
--- alive, in-flight (pending/claimed), or terminal (stopped/failed) are left as-is
--- (Docker's restart policy handles a normal crash; boot reset handles claimed).
-function reconcile.needs_requeue(row, alive)
-    if not row then
-        return false
+-- Inspects a container and classifies the answer. Exactly one holds:
+--   info     the daemon returned the container
+--   absent   the daemon answered HTTP 404
+--   err      nothing was observed (transport failure or daemon error status)
+-- Only the HTTP status establishes absence; diagnostic text never does.
+function reconcile.observe(docker, identifier: string): (table?, boolean, string?)
+    local info, inspect_err, status = docker:inspect_container(identifier)
+    if type(info) == "table" then
+        return info, false, nil
     end
-    return tostring(row.status) == consts.status.RUNNING and not alive
+    if status == 404 then
+        return nil, true, nil
+    end
+    return nil, false, inspect_err and tostring(inspect_err) or "container inspect returned no result"
 end
 
-local function inspect_missing(docker, identifier: string): (boolean, string?)
-    local info, inspect_err = docker:inspect_container(identifier)
-    if info then
+-- Decide whether a declared container should be requeued during a monitor sweep.
+-- A row marked running is requeued only when the daemon reports its container
+-- stopped (restart retries exhausted) or gone, so the worker recreates it. An
+-- unobserved container keeps its row and the inspect error is returned. Rows
+-- that are in-flight (pending/claimed) or terminal (stopped/failed) are left
+-- as-is (Docker's restart policy handles a normal crash; boot reset handles
+-- claimed).
+function reconcile.needs_requeue(row, docker): (boolean, string?)
+    if not row or tostring(row.status) ~= consts.status.RUNNING then
         return false, nil
     end
-    local err = tostring(inspect_err or "")
-    if err:find("HTTP 404", 1, true) then
+    local docker_id = row.docker_id and tostring(row.docker_id) or ""
+    if docker_id == "" then
+        return false, nil
+    end
+    local info, absent, err = reconcile.observe(docker, docker_id)
+    if absent then
         return true, nil
     end
-    return false, inspect_err and tostring(inspect_err) or "container inspect returned no result"
+    if not info then
+        return false, err
+    end
+    local state = info.State
+    return type(state) == "table" and not state.Running, nil
 end
 
 -- Check persisted Docker identifiers for a non-terminal row. A daemon error
@@ -53,7 +71,7 @@ function reconcile.is_vanished(row, docker): (boolean, string?)
 
     local last_err: string? = nil
     for _, identifier in ipairs(identifiers) do
-        local missing, inspect_err = inspect_missing(docker, identifier)
+        local _, missing, inspect_err = reconcile.observe(docker, identifier)
         if not missing then
             if inspect_err then
                 last_err = inspect_err

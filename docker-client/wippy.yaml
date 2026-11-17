@@ -1,6 +1,6 @@
 organization: userspace
 module: docker-client
-version: 0.1.0
+version: 0.1.1
 description: Docker HTTP client without service or database dependencies
 license: Apache-2.0
 repository: https://github.com/wippyai/userspace

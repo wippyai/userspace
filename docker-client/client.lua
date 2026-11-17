@@ -411,7 +411,9 @@ function docker.new(socket_path: string?)
         return result.body, nil
     end
 
-    function client:get_logs(id: string, options: {since: number?, tail: string?, timeout: string?}?)
+    -- Reads the container's stdout/stderr log without following it. With
+    -- `timestamps`, every frame payload starts with its RFC3339Nano stamp.
+    function client:get_logs(id: string, options: {since: number | string | nil, tail: string?, timestamps: boolean?, timeout: string?}?)
         local log_opts = options or {}
         local query = {
             stdout = "true",
@@ -419,6 +421,9 @@ function docker.new(socket_path: string?)
         }
         if log_opts.since then
             query.since = tostring(log_opts.since)
+        end
+        if log_opts.timestamps then
+            query.timestamps = "true"
         end
         if log_opts.tail then
             query.tail = tostring(log_opts.tail)

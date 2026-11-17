@@ -70,7 +70,7 @@ entries:
 - name: dependency
   kind: ns.dependency
   component: userspace/docker-client
-  version: 0.1.0
+  version: 0.1.1
 - name: terminal
   kind: terminal.host
   hide_logs: true

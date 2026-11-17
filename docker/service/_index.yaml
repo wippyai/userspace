@@ -47,6 +47,7 @@ entries:
       containers_repo: userspace.docker.persist:containers
       docker_client: userspace.docker:docker_client
       log_watch: userspace.docker.lib:log_watch
+      reconcile: userspace.docker.lib:reconcile
       interactive_routes: userspace.docker.service:interactive_executor_routes
     modules:
       - sql
