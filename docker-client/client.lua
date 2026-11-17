@@ -231,8 +231,14 @@ local function new_log_cursor(): LogCursor
             return true
         end
         local position = positions[entry.stream]
-        if position == nil or ts > position.ts then
+        if position == nil then
             positions[entry.stream] = { ts = ts, seen = 1, skip = 0 }
+            return true
+        end
+        if ts > position.ts then
+            position.ts = ts
+            position.seen = 1
+            position.skip = 0
             return true
         end
         if ts < position.ts then
