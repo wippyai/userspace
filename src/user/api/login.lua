@@ -96,9 +96,15 @@ local function handler()
         full_name = user.full_name,
         status = user.status,
         security_groups = user.security_groups or {},
-        login_time = time.now():format_rfc3339(),
-        ip_address = req:remote_addr() or "unknown",
-        user_agent = req:header("User-Agent") or "unknown"
+        -- Facts of this login only. wippy/relay reserves the `session` key for
+        -- per-login context and leaves it out when it compares a user's
+        -- authority, so another login of the same user keeps the user's relay
+        -- hub and the sessions that run in it.
+        session = {
+            login_time = time.now():format_rfc3339(),
+            ip_address = req:remote_addr() or "unknown",
+            user_agent = req:header("User-Agent") or "unknown"
+        }
     }
 
     if body.metadata then

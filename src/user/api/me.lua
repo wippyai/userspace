@@ -69,6 +69,9 @@ local function handler()
 
     -- Get actor metadata (which should include security groups from login)
     local actor_metadata = actor:meta() or {}
+    -- Login facts are under `session`; tokens issued before that change keep
+    -- them at the top level of the metadata.
+    local login = type(actor_metadata.session) == "table" and actor_metadata.session or actor_metadata
 
     -- Get configuration to determine admin status and current scope
     local config = consts.get_config()
@@ -114,9 +117,9 @@ local function handler()
             }
         },
         session = {
-            login_time = actor_metadata.login_time,
-            ip_address = actor_metadata.ip_address,
-            user_agent = actor_metadata.user_agent,
+            login_time = login.login_time,
+            ip_address = login.ip_address,
+            user_agent = login.user_agent,
             timestamp = time.now():format_rfc3339()
         }
     }
@@ -125,12 +128,12 @@ local function handler()
     local current_ip = req:remote_addr()
     local current_ua = req:header("User-Agent")
 
-    if current_ip and current_ip ~= actor_metadata.ip_address then
+    if current_ip and current_ip ~= login.ip_address then
         profile.session.current_ip_address = current_ip
         profile.session.ip_changed = true
     end
 
-    if current_ua and current_ua ~= actor_metadata.user_agent then
+    if current_ua and current_ua ~= login.user_agent then
         profile.session.current_user_agent = current_ua
         profile.session.user_agent_changed = true
     end
