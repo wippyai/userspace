@@ -138,42 +138,52 @@ local function define_tests()
         -- logins of one user with the same groups must compare equal, or the
         -- second login retires the hub that runs the first login's sessions.
         test.it("gives two logins of one user the same token metadata outside session", function()
-            local first = token_metadata(login(email, password, "browser-one").token)
-            local second = token_metadata(login(email, password, "browser-two").token)
+            local first = token_metadata(login(email, password, "browser-one", { device = "phone" }).token)
+            local second = token_metadata(login(email, password, "browser-two", { device = "desktop" }).token)
             test.is_true(same(without_session(first), without_session(second)),
                 json.encode({ first = first, second = second }))
             test.neq((first.session or {}).user_agent, (second.session or {}).user_agent)
+            test.eq(first.session.client.device, "phone")
+            test.eq(second.session.client.device, "desktop")
         end)
 
-        test.it("keeps the server's login facts when the client sends a session table", function()
-            local emptied = token_metadata(login(email, password, "browser-one", { session = {} }).token)
-            test.eq(type(emptied.session), "table", json.encode(emptied))
-            test.eq(emptied.session.user_agent, "browser-one")
-            test.not_nil(emptied.session.login_time)
-            test.not_nil(emptied.session.ip_address)
+        -- Other modules read the top level as the user's authority (for example
+        -- component access reads `groups`), so no client value may reach it.
+        test.it("keeps the client's metadata as session.client and never at the top level", function()
+            local body = login(email, password, "browser-one", {
+                user_id = "another-user",
+                email = "another@example.com",
+                full_name = { first = "Forged" },
+                status = "inactive",
+                security_groups = { "app.security:admin" },
+                groups = { "another-user" },
+                login_time = "1999-01-01T00:00:00Z",
+                user_agent = "client-claim",
+                session = { user_agent = "client-claim" },
+                team = "blue",
+            })
+            local metadata = token_metadata(body.token)
+            local top_level = { user_id = true, email = true, full_name = true, status = true,
+                security_groups = true, session = true }
+            for key in pairs(metadata) do
+                test.is_true(top_level[key] == true, "client key at the top level: " .. tostring(key))
+            end
+            test.eq(metadata.user_id, user_id)
+            test.eq(metadata.email, email)
+            test.eq(metadata.full_name, "Login Session")
+            test.eq(metadata.status, "active")
+            test.eq(#(metadata.security_groups or {}), 0)
+            test.eq(metadata.session.user_agent, "browser-one")
+            test.neq(metadata.session.login_time, "1999-01-01T00:00:00Z")
+            test.eq(metadata.session.client.team, "blue")
+            test.eq(metadata.session.client.groups[1], "another-user")
 
-            local spoofed = token_metadata(login(email, password, "browser-one", {
-                session = { device = "phone", user_agent = "spoofed", login_time = "1999-01-01T00:00:00Z" },
-            }).token)
-            test.eq(type(spoofed.session), "table", json.encode(spoofed))
-            test.eq(spoofed.session.device, "phone")
-            test.eq(spoofed.session.user_agent, "browser-one")
-            test.neq(spoofed.session.login_time, "1999-01-01T00:00:00Z")
-        end)
-
-        test.it("keeps client login fact keys out of the top level of the token", function()
-            local first = token_metadata(login(email, password, "browser-one", {
-                team = "blue", user_agent = "client-a", ip_address = "10.0.0.1", login_time = "2001-01-01T00:00:00Z",
-            }).token)
-            local second = token_metadata(login(email, password, "browser-two", {
-                team = "blue", user_agent = "client-b", ip_address = "10.0.0.2", login_time = "2002-01-01T00:00:00Z",
-            }).token)
-            test.eq(first.team, "blue")
-            test.is_nil(first.user_agent)
-            test.is_nil(first.ip_address)
-            test.is_nil(first.login_time)
-            test.is_true(same(without_session(first), without_session(second)),
-                json.encode({ first = first, second = second }))
+            local profile = me(body.token)
+            test.eq(profile.user.email, email)
+            test.eq(profile.user.full_name, "Login Session")
+            test.eq(profile.user.status, "active")
+            test.is_nil(profile.user.metadata.groups)
+            test.eq(profile.session.user_agent, "browser-one")
         end)
 
         test.it("answers 400 when metadata is not a JSON object", function()
@@ -188,36 +198,18 @@ local function define_tests()
                 test.eq(json.decode(response.body).error, "Invalid metadata field", metadata)
             end
 
-            -- JSON null is the same as no metadata.
-            local response = send("POST", "/api/public/user/token", {
-                headers = { ["Content-Type"] = "application/json" },
-                body = "{" .. credentials .. ',"metadata":null}',
-                timeout = "10s",
-            })
-            test.eq(response.status_code, 200, "null: " .. tostring(response.body))
-        end)
-
-        test.it("keeps the user record's values when client metadata names server keys", function()
-            local body = login(email, password, "browser-one", {
-                user_id = "another-user",
-                email = "another@example.com",
-                full_name = { first = "Forged" },
-                status = "inactive",
-                security_groups = { "app.security:admin" },
-                team = "blue",
-            })
-            local metadata = token_metadata(body.token)
-            test.eq(metadata.user_id, user_id)
-            test.eq(metadata.email, email)
-            test.eq(metadata.full_name, "Login Session")
-            test.eq(metadata.status, "active")
-            test.eq(#(metadata.security_groups or {}), 0)
-            test.eq(metadata.team, "blue")
-
-            local profile = me(body.token)
-            test.eq(profile.user.email, email)
-            test.eq(profile.user.full_name, "Login Session")
-            test.eq(profile.user.status, "active")
+            -- JSON null, an empty object and an empty array (which decode alike)
+            -- are the same as no metadata.
+            for _, empty in ipairs({ "null", "{}", "[]" }) do
+                local response = send("POST", "/api/public/user/token", {
+                    headers = { ["Content-Type"] = "application/json" },
+                    body = "{" .. credentials .. ',"metadata":' .. empty .. "}",
+                    timeout = "10s",
+                })
+                test.eq(response.status_code, 200, empty .. ": " .. tostring(response.body))
+                local metadata = token_metadata(json.decode(response.body).token)
+                test.is_nil(metadata.session.client, empty)
+            end
         end)
 
         test.it("keeps the login facts at the top level of the login and /user/me responses", function()
@@ -235,7 +227,8 @@ local function define_tests()
         end)
 
         -- Before the login facts moved under `session`, a client could add a
-        -- `session` table next to the top-level facts.
+        -- `session` table next to the server's top-level facts, so the
+        -- top-level value wins and each fact is read separately.
         test.it("reads each login fact of an older token separately in /user/me", function()
             local store, store_err = security.token_store(TOKEN_STORE)
             test.is_nil(store_err)
@@ -245,9 +238,8 @@ local function define_tests()
                 user_id = user_id,
                 email = email,
                 login_time = "2026-01-01T00:00:00Z",
-                ip_address = "10.0.0.9",
                 user_agent = "legacy-browser",
-                session = { device = "phone" },
+                session = { device = "phone", user_agent = { device = "phone" }, ip_address = "10.0.0.9" },
             })
             local token, create_err = store:create(actor, scope, { expiration = "1h" })
             store:close()

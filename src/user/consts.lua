@@ -159,15 +159,17 @@ end
 -- top level they would make every login of the user a new authority.
 consts.LOGIN_FACTS = { "login_time", "ip_address", "user_agent" }
 
--- The login facts of actor metadata. Each fact is read from `session` first;
--- tokens issued before the facts moved there keep them at the top level.
+-- The login facts of actor metadata, each read separately. Tokens issued
+-- before the facts moved under `session` keep the server's values at the top
+-- level, and a `session` table in such a token came from the client, so a
+-- top-level value wins. Newer tokens have no top-level facts.
 function consts.login_facts(metadata)
     local session = type(metadata.session) == "table" and metadata.session or {}
     local facts = {}
     for _, key in ipairs(consts.LOGIN_FACTS) do
-        local value = session[key]
+        local value = metadata[key]
         if value == nil then
-            value = metadata[key]
+            value = session[key]
         end
         facts[key] = value
     end

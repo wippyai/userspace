@@ -7,20 +7,6 @@ local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
 
--- Keys of the actor metadata that the server sets from the user record and
--- the request. Client metadata from the login request may only add other keys.
-local SERVER_KEYS = {
-    user_id = true,
-    email = true,
-    full_name = true,
-    status = true,
-    security_groups = true,
-    session = true,
-}
-for _, key in ipairs(consts.LOGIN_FACTS) do
-    SERVER_KEYS[key] = true
-end
-
 -- A decoded JSON object: a table whose keys are all strings. A non-empty JSON
 -- array decodes to a table with number keys.
 local function is_json_object(value)
@@ -128,39 +114,26 @@ local function handler()
 
     local config = consts.get_config()
 
+    -- The top level holds only values from the user record: wippy/relay compares
+    -- it (except `session`) to decide whether a connection may join the user's
+    -- relay hub, and other modules read it as the user's authority (for example
+    -- component access reads `groups`). Everything that belongs to this login is
+    -- under `session`: the server's facts, and the client's `metadata` object as
+    -- one value, `session.client`, so no client value reaches the top level.
+    local metadata = body.metadata
     local actor_metadata = {
         user_id = user.user_id,
         email = user.email,
         full_name = user.full_name,
         status = user.status,
         security_groups = user.security_groups or {},
-        -- Facts of this login only. wippy/relay reserves the `session` key for
-        -- per-login context and leaves it out when it compares a user's
-        -- authority, so another login of the same user keeps the user's relay
-        -- hub and the sessions that run in it.
-        session = {}
+        session = {
+            login_time = time.now():format_rfc3339(),
+            ip_address = req:remote_addr() or "unknown",
+            user_agent = req:header("User-Agent") or "unknown",
+            client = (metadata ~= nil and next(metadata) ~= nil) and metadata or nil
+        }
     }
-
-    -- Client metadata may only add keys the server does not set. A client
-    -- `session` object only adds fields under `session`, and the server's
-    -- login facts overwrite those below; any other `session` value is ignored.
-    if body.metadata then
-        for key, value in pairs(body.metadata) do
-            if key == "session" then
-                if is_json_object(value) then
-                    for session_key, session_value in pairs(value) do
-                        actor_metadata.session[session_key] = session_value
-                    end
-                end
-            elseif not SERVER_KEYS[key] then
-                actor_metadata[key] = value
-            end
-        end
-    end
-
-    actor_metadata.session.login_time = time.now():format_rfc3339()
-    actor_metadata.session.ip_address = req:remote_addr() or "unknown"
-    actor_metadata.session.user_agent = req:header("User-Agent") or "unknown"
 
     local actor = security.new_actor(tostring(user.user_id), actor_metadata)
 
