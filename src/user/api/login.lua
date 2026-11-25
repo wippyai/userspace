@@ -7,6 +7,11 @@ local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
 
+local LOGIN_FACT_KEYS = {}
+for _, key in ipairs(consts.LOGIN_FACTS) do
+    LOGIN_FACT_KEYS[key] = true
+end
+
 local function handler()
     local res = http.response()
     local req = http.request()
@@ -100,20 +105,29 @@ local function handler()
         -- per-login context and leaves it out when it compares a user's
         -- authority, so another login of the same user keeps the user's relay
         -- hub and the sessions that run in it.
-        session = {
-            login_time = time.now():format_rfc3339(),
-            ip_address = req:remote_addr() or "unknown",
-            user_agent = req:header("User-Agent") or "unknown"
-        }
+        session = {}
     }
 
+    -- Client metadata may add keys, but the server owns the login facts: a
+    -- client `session` table only adds fields under `session`, and the login
+    -- fact keys never reach the top level.
     if body.metadata then
         for key, value in pairs(body.metadata) do
-            if key ~= "security_groups" then
+            if key == "session" then
+                if type(value) == "table" then
+                    for session_key, session_value in pairs(value) do
+                        actor_metadata.session[session_key] = session_value
+                    end
+                end
+            elseif key ~= "security_groups" and not LOGIN_FACT_KEYS[key] then
                 actor_metadata[key] = value
             end
         end
     end
+
+    actor_metadata.session.login_time = time.now():format_rfc3339()
+    actor_metadata.session.ip_address = req:remote_addr() or "unknown"
+    actor_metadata.session.user_agent = req:header("User-Agent") or "unknown"
 
     local actor = security.new_actor(tostring(user.user_id), actor_metadata)
 
@@ -193,7 +207,7 @@ local function handler()
         },
         actor = {
             id = actor:id(),
-            metadata = actor:meta()
+            metadata = consts.response_metadata(actor:meta())
         },
         security = {
             groups = user.security_groups,

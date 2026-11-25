@@ -41,17 +41,21 @@ entries:
       comment: Test authenticated API router
       server: gateway
     prefix: /api
+    middleware:
+      - token_auth
+    options:
+      token_store: userspace.user.security:tokens
 
   - name: test_user_scope
     kind: security.policy
     meta:
-      comment: Login tokens need the default user scope but no application permissions
+      comment: The default user group of the test app; /user/me runs with this scope and reads the database and env
     groups:
       - app.security:user
     policy:
       resources: "*"
       actions: "*"
-      effect: deny
+      effect: allow
 
   - name: login_session_test
     kind: function.lua
@@ -65,6 +69,7 @@ entries:
       - http_client
       - json
       - time
+      - security
     imports:
       test: wippy.test:test
       user_repo: userspace.user.persist:user_repo

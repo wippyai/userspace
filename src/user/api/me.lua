@@ -69,9 +69,7 @@ local function handler()
 
     -- Get actor metadata (which should include security groups from login)
     local actor_metadata = actor:meta() or {}
-    -- Login facts are under `session`; tokens issued before that change keep
-    -- them at the top level of the metadata.
-    local login = type(actor_metadata.session) == "table" and actor_metadata.session or actor_metadata
+    local login = consts.login_facts(actor_metadata)
 
     -- Get configuration to determine admin status and current scope
     local config = consts.get_config()
@@ -103,7 +101,7 @@ local function handler()
             full_name = actor_metadata.full_name,
             status = actor_metadata.status,
             created_at = actor_metadata.created_at,
-            metadata = actor_metadata,  -- Compatibility with old format
+            metadata = consts.response_metadata(actor_metadata),  -- Compatibility with old format
             timestamp = time.now():format_rfc3339()
         },
         security = {
