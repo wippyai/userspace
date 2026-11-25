@@ -6,17 +6,20 @@ modules:
       version: 0.1.0
       hash: 73d0418ca6d64f13bd78d094e98240d9ce910653b88abaaafa0c22f1a0f54922
     - name: wippy/bootloader
-      version: 0.3.12
-      hash: 2b6d8eba7b46ef900024d3a7dbf06bd560fad645b8b2ac6296e2a8bad42f60b9
+      version: 0.3.18
+      hash: c7e71b358539b450b49b55e725f60f2dac8218e1c596cf3a473ce71e36b10a9b
     - name: wippy/migration
-      version: 0.3.14
-      hash: b7c28ba246cade1bcedad8b97e22b9da9b6f5b36d859a6cee7f3153f10b14847
+      version: 0.3.26
+      hash: cf4848ad3f8ba8d31d944b2f3a7274bc2b7cf2888dd80f0db63b2c71a85f89c1
+    - name: wippy/security
+      version: 0.4.3
+      hash: f636859979e88b23647a78fb9aa8a553799de18750b0fb5fb085cbe21542c86c
     - name: wippy/terminal
-      version: 0.4.2
-      hash: 34b99aac2eba9c5016fd02c783117fb2b0381ce14696c7b199265458b99a3271
+      version: 0.4.6
+      hash: aa0c92b85c0dc2c96f00119a7eaa1ced569a2ac8899514d432aef0c910e73e63
     - name: wippy/test
-      version: 0.4.11
-      hash: 235f2f1d222dabeec1a83f6f9f48a7f75abf2143860b833437c1d96da3cd3e95
+      version: 0.4.24
+      hash: b118903b3a239b3cd423169c64f17d89b8b920b5fefbf79f94789cf49f9341b5
 replacements:
     - from: userspace/users
       to: ..

@@ -7,6 +7,20 @@ local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
 
+-- A decoded JSON object: a table whose keys are all strings. A non-empty JSON
+-- array decodes to a table with number keys.
+local function is_json_object(value)
+    if type(value) ~= "table" then
+        return false
+    end
+    for key in pairs(value) do
+        if type(key) ~= "string" then
+            return false
+        end
+    end
+    return true
+end
+
 local function handler()
     local res = http.response()
     local req = http.request()
@@ -44,6 +58,16 @@ local function handler()
         res:write_json({
             success = false,
             error = "Missing password field"
+        })
+        return
+    end
+
+    if body.metadata ~= nil and not is_json_object(body.metadata) then
+        res:set_status(http.STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "Invalid metadata field",
+            details = "metadata must be a JSON object"
         })
         return
     end
@@ -90,24 +114,26 @@ local function handler()
 
     local config = consts.get_config()
 
+    -- The top level holds only values from the user record: wippy/relay compares
+    -- it (except `session`) to decide whether a connection may join the user's
+    -- relay hub, and other modules read it as the user's authority (for example
+    -- component access reads `groups`). Everything that belongs to this login is
+    -- under `session`: the server's facts, and the client's `metadata` object as
+    -- one value, `session.client`, so no client value reaches the top level.
+    local metadata = body.metadata
     local actor_metadata = {
         user_id = user.user_id,
         email = user.email,
         full_name = user.full_name,
         status = user.status,
         security_groups = user.security_groups or {},
-        login_time = time.now():format_rfc3339(),
-        ip_address = req:remote_addr() or "unknown",
-        user_agent = req:header("User-Agent") or "unknown"
+        session = {
+            login_time = time.now():format_rfc3339(),
+            ip_address = req:remote_addr() or "unknown",
+            user_agent = req:header("User-Agent") or "unknown",
+            client = (metadata ~= nil and next(metadata) ~= nil) and metadata or nil
+        }
     }
-
-    if body.metadata then
-        for key, value in pairs(body.metadata) do
-            if key ~= "security_groups" then
-                actor_metadata[key] = value
-            end
-        end
-    end
 
     local actor = security.new_actor(tostring(user.user_id), actor_metadata)
 
@@ -187,7 +213,7 @@ local function handler()
         },
         actor = {
             id = actor:id(),
-            metadata = actor:meta()
+            metadata = consts.response_metadata(actor:meta())
         },
         security = {
             groups = user.security_groups,

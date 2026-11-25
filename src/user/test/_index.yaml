@@ -41,6 +41,38 @@ entries:
       comment: Test authenticated API router
       server: gateway
     prefix: /api
+    middleware:
+      - token_auth
+    options:
+      token_store: userspace.user.security:tokens
+
+  - name: test_user_scope
+    kind: security.policy
+    meta:
+      comment: The default user group of the test app; /user/me runs with this scope and reads the database and env
+    groups:
+      - app.security:user
+    policy:
+      resources: "*"
+      actions: "*"
+      effect: allow
+
+  - name: login_session_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: user.login_session
+    source: file://login_session_test.lua
+    method: run
+    modules:
+      - sql
+      - http_client
+      - json
+      - time
+      - security
+    imports:
+      test: wippy.test:test
+      user_repo: userspace.user.persist:user_repo
 
   - name: email_case_test
     kind: function.lua
@@ -61,12 +93,13 @@ entries:
     meta:
       description: "Users module configuration for testing"
     component: "userspace/users"
+    version: "*"
     parameters:
       - name: env_storage
         value: app:env_storage
-      - name: public_router
+      - name: userspace.user:public_router
         value: app:api.public
-      - name: router
+      - name: userspace.user:router
         value: app:api
 
   - name: dep.wippy.bootloader
@@ -74,8 +107,27 @@ entries:
     meta:
       description: "Bootloader configuration for testing"
     component: "wippy/bootloader"
+    version: "*"
     parameters:
       - name: application_host
         value: app:processes
       - name: env_storage
         value: app:env_storage
+
+  - name: dep.wippy.migration
+    kind: ns.dependency
+    component: "wippy/migration"
+    version: "*"
+    parameters:
+      - name: app_db
+        value: app:db
+
+  - name: dep.wippy.security
+    kind: ns.dependency
+    component: "wippy/security"
+    version: "*"
+
+  - name: dep.wippy.test
+    kind: ns.dependency
+    component: "wippy/test"
+    version: "*"

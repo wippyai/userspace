@@ -154,4 +154,40 @@ function consts.validate_password(password)
     return true
 end
 
+-- Facts of one login. The token's actor metadata keeps them under `session`,
+-- which wippy/relay leaves out when it compares a user's authority; at the
+-- top level they would make every login of the user a new authority.
+consts.LOGIN_FACTS = { "login_time", "ip_address", "user_agent" }
+
+-- The login facts of actor metadata, each read separately. Tokens issued
+-- before the facts moved under `session` keep the server's values at the top
+-- level, and a `session` table in such a token came from the client, so a
+-- top-level value wins. Newer tokens have no top-level facts.
+function consts.login_facts(metadata)
+    local session = type(metadata.session) == "table" and metadata.session or {}
+    local facts = {}
+    for _, key in ipairs(consts.LOGIN_FACTS) do
+        local value = metadata[key]
+        if value == nil then
+            value = session[key]
+        end
+        facts[key] = value
+    end
+    return facts
+end
+
+-- A copy of actor metadata for HTTP responses. It also carries the login
+-- facts at the top level, where the responses had them before; the token's
+-- actor metadata keeps them only under `session`.
+function consts.response_metadata(metadata)
+    local copy = {}
+    for key, value in pairs(metadata) do
+        copy[key] = value
+    end
+    for key, value in pairs(consts.login_facts(metadata)) do
+        copy[key] = value
+    end
+    return copy
+end
+
 return consts
