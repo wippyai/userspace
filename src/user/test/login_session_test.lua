@@ -44,9 +44,9 @@ local function without_session(metadata)
     return out
 end
 
--- Sends one request; the gateway may still be starting, so a failed
--- connection is retried for 10 s.
-local function request(method, path, options)
+-- Sends one request and returns the response; the gateway may still be
+-- starting, so a failed connection is retried for 10 s.
+local function send(method, path, options)
     local response, err
     for _ = 1, 50 do
         if method == "POST" then
@@ -58,6 +58,12 @@ local function request(method, path, options)
         time.sleep("200ms")
     end
     test.is_nil(err)
+    return response
+end
+
+-- Sends one request that must succeed and returns the decoded body.
+local function request(method, path, options)
+    local response = send(method, path, options)
     test.eq(response.status_code, 200, tostring(response.body))
     return json.decode(response.body)
 end
@@ -168,6 +174,50 @@ local function define_tests()
             test.is_nil(first.login_time)
             test.is_true(same(without_session(first), without_session(second)),
                 json.encode({ first = first, second = second }))
+        end)
+
+        test.it("answers 400 when metadata is not a JSON object", function()
+            local credentials = '"email":' .. json.encode(email) .. ',"password":' .. json.encode(password)
+            for _, metadata in ipairs({ "true", "42", '"phone"', "[1,2]" }) do
+                local response = send("POST", "/api/public/user/token", {
+                    headers = { ["Content-Type"] = "application/json" },
+                    body = "{" .. credentials .. ',"metadata":' .. metadata .. "}",
+                    timeout = "10s",
+                })
+                test.eq(response.status_code, 400, metadata .. ": " .. tostring(response.body))
+                test.eq(json.decode(response.body).error, "Invalid metadata field", metadata)
+            end
+
+            -- JSON null is the same as no metadata.
+            local response = send("POST", "/api/public/user/token", {
+                headers = { ["Content-Type"] = "application/json" },
+                body = "{" .. credentials .. ',"metadata":null}',
+                timeout = "10s",
+            })
+            test.eq(response.status_code, 200, "null: " .. tostring(response.body))
+        end)
+
+        test.it("keeps the user record's values when client metadata names server keys", function()
+            local body = login(email, password, "browser-one", {
+                user_id = "another-user",
+                email = "another@example.com",
+                full_name = { first = "Forged" },
+                status = "inactive",
+                security_groups = { "app.security:admin" },
+                team = "blue",
+            })
+            local metadata = token_metadata(body.token)
+            test.eq(metadata.user_id, user_id)
+            test.eq(metadata.email, email)
+            test.eq(metadata.full_name, "Login Session")
+            test.eq(metadata.status, "active")
+            test.eq(#(metadata.security_groups or {}), 0)
+            test.eq(metadata.team, "blue")
+
+            local profile = me(body.token)
+            test.eq(profile.user.email, email)
+            test.eq(profile.user.full_name, "Login Session")
+            test.eq(profile.user.status, "active")
         end)
 
         test.it("keeps the login facts at the top level of the login and /user/me responses", function()

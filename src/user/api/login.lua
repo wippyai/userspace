@@ -7,9 +7,32 @@ local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
 local consts = require("consts")
 
-local LOGIN_FACT_KEYS = {}
+-- Keys of the actor metadata that the server sets from the user record and
+-- the request. Client metadata from the login request may only add other keys.
+local SERVER_KEYS = {
+    user_id = true,
+    email = true,
+    full_name = true,
+    status = true,
+    security_groups = true,
+    session = true,
+}
 for _, key in ipairs(consts.LOGIN_FACTS) do
-    LOGIN_FACT_KEYS[key] = true
+    SERVER_KEYS[key] = true
+end
+
+-- A decoded JSON object: a table whose keys are all strings. A non-empty JSON
+-- array decodes to a table with number keys.
+local function is_json_object(value)
+    if type(value) ~= "table" then
+        return false
+    end
+    for key in pairs(value) do
+        if type(key) ~= "string" then
+            return false
+        end
+    end
+    return true
 end
 
 local function handler()
@@ -49,6 +72,16 @@ local function handler()
         res:write_json({
             success = false,
             error = "Missing password field"
+        })
+        return
+    end
+
+    if body.metadata ~= nil and not is_json_object(body.metadata) then
+        res:set_status(http.STATUS.BAD_REQUEST)
+        res:write_json({
+            success = false,
+            error = "Invalid metadata field",
+            details = "metadata must be a JSON object"
         })
         return
     end
@@ -108,18 +141,18 @@ local function handler()
         session = {}
     }
 
-    -- Client metadata may add keys, but the server owns the login facts: a
-    -- client `session` table only adds fields under `session`, and the login
-    -- fact keys never reach the top level.
+    -- Client metadata may only add keys the server does not set. A client
+    -- `session` object only adds fields under `session`, and the server's
+    -- login facts overwrite those below; any other `session` value is ignored.
     if body.metadata then
         for key, value in pairs(body.metadata) do
             if key == "session" then
-                if type(value) == "table" then
+                if is_json_object(value) then
                     for session_key, session_value in pairs(value) do
                         actor_metadata.session[session_key] = session_value
                     end
                 end
-            elseif key ~= "security_groups" and not LOGIN_FACT_KEYS[key] then
+            elseif not SERVER_KEYS[key] then
                 actor_metadata[key] = value
             end
         end
